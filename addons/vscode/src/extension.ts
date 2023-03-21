@@ -9,7 +9,7 @@ import {
 let client: LanguageClient;
 
 export function activate(_context: ExtensionContext) {
-    const serverCommand = "./typst-lsp";
+    const serverCommand = "typst-lsp";
 
     const serverOptions: ServerOptions = {
         run: { command: serverCommand },

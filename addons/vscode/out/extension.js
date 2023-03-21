@@ -4,7 +4,7 @@ exports.deactivate = exports.activate = void 0;
 const node_1 = require("vscode-languageclient/node");
 let client;
 function activate(_context) {
-    const serverCommand = "./typst-lsp";
+    const serverCommand = "typst-lsp";
     const serverOptions = {
         run: { command: serverCommand },
         debug: { command: serverCommand }
