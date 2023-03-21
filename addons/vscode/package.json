@@ -7,26 +7,41 @@
     "engines": {
         "vscode": "^1.75.0"
     },
-    "activationEvents": [
-        "onLanguage:typst"
-    ],
-    "main": "./client/out/extension",
+    "main": "./out/extension.js",
     "contributes": {
         "configuration": {
             "type": "object",
             "title": "Typst LSP configuration",
             "properties": {}
-        }
+        },
+        "languages": [
+            {
+                "id": "typst",
+                "configuration": "./language-configuration.json",
+                "extensions": [
+                    ".typ"
+                ],
+                "aliases": [
+                    "Typst"
+                ]
+            }
+        ]
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -b",
         "watch": "tsc -b -w",
-        "lint": "eslint ./src --ext .ts,.tsx"
+        "lint": "eslint ./src --ext .ts,.tsx",
+        "update-vscode": "vscode-install",
+        "postinstall": "vscode-install"
+    },
+    "dependencies": {
+        "vscode-languageclient": "^8.1.0"
     },
     "devDependencies": {
         "@types/mocha": "^9.1.0",
         "@types/node": "^16.11.7",
+        "@types/vscode": "^1.76.0",
         "@typescript-eslint/eslint-plugin": "^5.54.0",
         "@typescript-eslint/parser": "^5.54.0",
         "eslint": "^8.35.0",
