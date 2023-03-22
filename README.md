@@ -35,8 +35,8 @@ Install:
 
 ### Development cycle
 1. Make any changes
-2. Run `cargo install`; at present, the VS Code extension just invokes the
-    `typst-lsp` command to start the LSP, and this command will compile and
+2. Run `cargo install --path .`; at present, the VS Code extension just invokes
+    the `typst-lsp` command to start the LSP, and this command will compile and
     replace that binary with the latest version
     - If modifying the extension, keep `npm run watch` running, or `npm run compile`
         after changes
