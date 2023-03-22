@@ -38,9 +38,7 @@
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -b",
         "watch": "tsc -b -w",
-        "lint": "eslint ./src --ext .ts,.tsx",
-        "update-vscode": "vscode-install",
-        "postinstall": "vscode-install"
+        "lint": "eslint ./src --ext .ts,.tsx"
     },
     "dependencies": {
         "vscode-languageclient": "^8.1.0"
