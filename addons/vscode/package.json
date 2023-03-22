@@ -23,7 +23,11 @@
                 ],
                 "aliases": [
                     "Typst"
-                ]
+                ],
+                "icon": {
+                    "light": "./icons/typst.svg",
+                    "dark": "./icons/typst.svg"
+                }
             }
         ],
         "grammars": [
