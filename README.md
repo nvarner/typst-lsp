@@ -6,11 +6,11 @@ for regular use.
 Currently, it has an LSP component and a corresponding VS Code(ium) extension.
 
 ## Current features
+- Syntax highlighting
 - Compiles Typst into a PDF as you type
 - Compile errors appear in the Output pane
 
 ## Near future goals
-- Syntax highlighting
 - Improved preview
 - Completion
 - Improved development experience
