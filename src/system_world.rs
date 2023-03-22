@@ -1,5 +1,4 @@
-//! Copied from the Typst CLI because it is not exported.
-//!
+//! Derived from https://github.com/typst/typst/blob/main/cli/src/main.rs
 //! Modified for `Send`/`Sync` support.
 
 use std::collections::HashMap;
@@ -57,6 +56,7 @@ impl SystemWorld {
     pub fn new(root: PathBuf, main_source: String) -> Self {
         let mut searcher = FontSearcher::new();
         searcher.search_system();
+        searcher.add_embedded();
 
         Self {
             root,
@@ -260,6 +260,31 @@ impl FontSearcher {
             book: FontBook::new(),
             fonts: vec![],
         }
+    }
+
+    /// Add fonts that are embedded in the binary.
+    fn add_embedded(&mut self) {
+        let mut add = |bytes: &'static [u8]| {
+            let buffer = Buffer::from_static(bytes);
+            for (i, font) in Font::iter(buffer).enumerate() {
+                self.book.push(font.info().clone());
+                self.fonts.push(FontSlot {
+                    path: PathBuf::new(),
+                    index: i as u32,
+                    font: OnceCell::from(Some(font)),
+                });
+            }
+        };
+
+        // Embed default fonts.
+        add(include_bytes!("../assets/fonts/LinLibertine_R.ttf"));
+        add(include_bytes!("../assets/fonts/LinLibertine_RB.ttf"));
+        add(include_bytes!("../assets/fonts/LinLibertine_RBI.ttf"));
+        add(include_bytes!("../assets/fonts/LinLibertine_RI.ttf"));
+        add(include_bytes!("../assets/fonts/NewCMMath-Book.otf"));
+        add(include_bytes!("../assets/fonts/NewCMMath-Regular.otf"));
+        add(include_bytes!("../assets/fonts/DejaVuSansMono.ttf"));
+        add(include_bytes!("../assets/fonts/DejaVuSansMono-Bold.ttf"));
     }
 
     /// Search for fonts in the linux system font directories.
