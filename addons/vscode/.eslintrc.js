@@ -1,20 +1,18 @@
-/**@type {import('eslint').Linter.Config} */
-// eslint-disable-next-line no-undef
 module.exports = {
-    root: true,
-    parser: '@typescript-eslint/parser',
-    plugins: [
-        '@typescript-eslint',
-    ],
-    extends: [
-        'eslint:recommended',
-        'plugin:@typescript-eslint/recommended',
-    ],
-    rules: {
-        'semi': [2, "always"],
-        '@typescript-eslint/no-unused-vars': 0,
-        '@typescript-eslint/no-explicit-any': 0,
-        '@typescript-eslint/explicit-module-boundary-types': 0,
-        '@typescript-eslint/no-non-null-assertion': 0,
-    }
-};
+  env: {
+    es2021: true,
+    node: true
+  },
+  extends: ["airbnb-base", "airbnb-typescript/base"],
+  overrides: [
+  ],
+  parserOptions: {
+    ecmaVersion: 'latest',
+    sourceType: 'module',
+    project: 'tsconfig.json'
+  },
+  rules: {
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }]
+  }
+}

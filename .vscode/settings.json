@@ -1,0 +1,6 @@
+{
+    "eslint.format.enable": true,
+    "eslint.workingDirectories": [
+        "addons/vscode"
+    ]
+}
