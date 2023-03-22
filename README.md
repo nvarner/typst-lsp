@@ -30,7 +30,7 @@ Install:
 2. Open it in VS Code; it's needed to run the extension
 3. In the `addons/vscode` subdirectory:
     1. Run `npm install` to install extension dependencies
-    2. Run `npm compile` to build the extension
+    2. Run `npm run compile` to build the extension
 4. Run through the development cycle once to initialize and test everything
 
 ### Development cycle
@@ -38,7 +38,7 @@ Install:
 2. Run `cargo install`; at present, the VS Code extension just invokes the
     `typst-lsp` command to start the LSP, and this command will compile and
     replace that binary with the latest version
-    - If modifying the extension, keep `npm watch` running, or `npm compile`
+    - If modifying the extension, keep `npm run watch` running, or `npm run compile`
         after changes
 3. Press `ctrl+F5` to launch the "Extension Development Host"; if it's already
     running, invoke "Developer: Reload Window" from the command palette in the
