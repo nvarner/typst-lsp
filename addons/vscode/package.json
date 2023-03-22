@@ -25,6 +25,13 @@
                     "Typst"
                 ]
             }
+        ],
+        "grammars": [
+            {
+                "language": "typst",
+                "scopeName": "source.typst",
+                "path": "./typst.tmLanguage.json"
+            }
         ]
     },
     "scripts": {
