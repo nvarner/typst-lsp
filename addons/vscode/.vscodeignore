@@ -1,0 +1,11 @@
+**
+!language-configuration.json
+!syntaxes
+!out/extension.js
+!out/typst-lsp
+!out/typst-lsp.exe
+!package.json
+!package-lock.json
+!icons/typst.png
+!README.md
+!LICENSE.md
