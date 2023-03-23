@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::Path;
 use std::sync::Arc;
 
 use system_world::SystemWorld;
@@ -49,8 +50,23 @@ impl LanguageServer for Backend {
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let mut world = self.world.write().await;
         let world = world.as_mut().unwrap();
-        let text = &params.content_changes[0].text;
-        world.update_main_source(text.clone());
+
+        world.reset();
+
+        match world.resolve_with(
+            Path::new(&params.text_document.uri.path()),
+            &params.content_changes[0].text,
+        ) {
+            Ok(id) => {
+                world.main = id;
+            }
+            Err(e) => {
+                self.client
+                    .log_message(MessageType::ERROR, format!("{:?}", e))
+                    .await;
+                return;
+            }
+        }
 
         let output_path = params
             .text_document
