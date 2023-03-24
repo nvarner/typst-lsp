@@ -52,7 +52,8 @@
         "watch": "npm run build-base -- --sourcemap --watch",
         "check": "tsc --noEmit",
         "lint": "eslint ./src --ext .ts",
-        "lint-fix": "eslint ./src --ext .ts --fix"
+        "lint-fix": "eslint ./src --ext .ts --fix",
+        "format": "prettier --write ."
     },
     "dependencies": {
         "vscode-languageclient": "^8.1.0"
@@ -67,9 +68,11 @@
         "eslint": "^8.36.0",
         "eslint-config-airbnb-base": "^15.0.0",
         "eslint-config-airbnb-typescript": "^17.0.0",
+        "eslint-config-prettier": "^8.8.0",
         "eslint-plugin-import": "^2.27.5",
         "eslint-plugin-n": "^15.6.1",
         "eslint-plugin-promise": "^6.1.1",
+        "prettier": "^2.8.7",
         "typescript": "^5.0.2"
     }
 }
