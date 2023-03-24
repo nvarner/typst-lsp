@@ -54,6 +54,13 @@ impl LanguageServer for Backend {
         self.on_change(params.text_document.uri, params.text_document.text)
             .await;
     }
+
+    async fn did_close(&self, params: DidCloseTextDocumentParams) {
+        self.client
+            .publish_diagnostics(params.text_document.uri, Vec::new(), None)
+            .await;
+    }
+
     async fn did_change(&self, mut params: DidChangeTextDocumentParams) {
         let text = params.content_changes.pop().unwrap().text;
         self.on_change(params.text_document.uri, text).await;
