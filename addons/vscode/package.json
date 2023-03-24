@@ -53,7 +53,8 @@
         "check": "tsc --noEmit",
         "lint": "eslint ./src --ext .ts",
         "lint-fix": "eslint ./src --ext .ts --fix",
-        "format": "prettier --write ."
+        "format": "prettier --write .",
+        "test": ""
     },
     "dependencies": {
         "vscode-languageclient": "^8.1.0"

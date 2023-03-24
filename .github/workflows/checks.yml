@@ -21,3 +21,33 @@ jobs:
       
       - name: Formatting
         run: cargo fmt --all -- --check
+  
+  vs-code-extension:
+    runs-on: ubuntu-latest
+    name: VS Code Extension
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - shell: pwsh
+        run: npm install
+        working-directory: ./addons/vscode
+      
+      - name: Compilation
+        shell: pwsh
+        run: npm run compile
+      
+      - name: Type Checking
+        shell: pwsh
+        run: npm run check
+      
+      - name: Tests
+        shell: pwsh
+        run: npm run test
+      
+      - name: Linting
+        shell: pwsh
+        run: npm run lint
