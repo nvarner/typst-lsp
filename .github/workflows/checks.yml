@@ -39,15 +39,19 @@ jobs:
       - name: Compilation
         shell: pwsh
         run: npm run compile
+        working-directory: ./addons/vscode
       
       - name: Type Checking
         shell: pwsh
         run: npm run check
+        working-directory: ./addons/vscode
       
       - name: Tests
         shell: pwsh
         run: npm run test
+        working-directory: ./addons/vscode
       
       - name: Linting
         shell: pwsh
         run: npm run lint
+        working-directory: ./addons/vscode
