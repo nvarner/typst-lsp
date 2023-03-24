@@ -57,7 +57,7 @@ impl LanguageServer for Backend {
         world.reset();
 
         match world.resolve_with(
-            Path::new(&params.text_document.uri.path()),
+            Path::new(&params.text_document.uri.to_file_path().unwrap()),
             &params.content_changes[0].text,
         ) {
             Ok(id) => {
@@ -86,7 +86,6 @@ impl LanguageServer for Backend {
             }
             Err(errors) => errors.iter().map(|x| error_to_range(x, world)).collect(),
         };
-        drop(world);
 
         self.client
             .publish_diagnostics(
