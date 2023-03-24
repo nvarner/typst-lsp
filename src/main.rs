@@ -15,6 +15,7 @@ use typst::doc::Frame;
 use typst::eval::{CastInfo, FuncInfo, Value};
 use typst::ide::autocomplete;
 use typst::ide::CompletionKind::*;
+use typst::ide::{tooltip, Tooltip};
 use typst::syntax::{ast, LinkedNode, Source, SyntaxKind};
 use typst::World;
 use typst_library::prelude::EcoString;
@@ -102,6 +103,28 @@ impl LanguageServer for Backend {
         self.on_save(params.text_document.uri, text).await;
     }
 
+    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
+        let world = self.world.read().await;
+        let world = world.as_ref().unwrap();
+        let source = world.main();
+
+        let Some(cursor) = get_cursor_for_position(params.text_document_position_params.position, source) else {return Ok(None)};
+
+        let Some(tooltip) = tooltip(world, &[], source, cursor) else {return Ok(None)};
+        let tooltip = match tooltip {
+            Tooltip::Text(s) => s,
+            Tooltip::Code(s) => s,
+        };
+
+        let Some(lk) = LinkedNode::new(source.root()).leaf_at(cursor) else {return Ok(None)};
+
+        let range = range_to_lsp_range(lk.range(), source);
+        Ok(Some(Hover {
+            contents: HoverContents::Scalar(MarkedString::String(tooltip.into())),
+            range: Some(range),
+        }))
+    }
+
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
         let position = params.text_document_position.position;
         let world = self.world.read().await;
@@ -185,7 +208,6 @@ impl Backend {
         )
         .await;
     }
-
     async fn compile_diags_export(&self, uri: Url, text: String, export: bool) {
         let mut world_lock = self.world.write().await;
         let world = world_lock.as_mut().unwrap();
@@ -459,6 +481,23 @@ pub struct LogMessage<M: Display> {
     pub message: M,
 }
 
+fn range_to_lsp_range(range: std::ops::Range<usize>, source: &Source) -> Range {
+    Range {
+        start: Position {
+            line: source.byte_to_line(range.start).unwrap() as _,
+            character: source.byte_to_column(range.start).unwrap() as _,
+        },
+        end: Position {
+            line: source.byte_to_line(range.end).unwrap() as _,
+            character: source.byte_to_column(range.end).unwrap() as _,
+        },
+    }
+}
+
+fn get_cursor_for_position(pos: Position, source: &Source) -> Option<usize> {
+    source.line_column_to_byte(pos.line as _, pos.character as _)
+}
+
 #[tokio::main]
 async fn main() {
     let stdin = tokio::io::stdin();
@@ -477,17 +516,4 @@ fn error_to_range(error: &SourceError, world: &SystemWorld) -> (String, Range) {
     let range = source.range(error.span);
     let range = range_to_lsp_range(range, source);
     (error.message.to_string(), range)
-}
-
-fn range_to_lsp_range(range: std::ops::Range<usize>, source: &Source) -> Range {
-    Range {
-        start: Position {
-            line: source.byte_to_line(range.start).unwrap() as _,
-            character: source.byte_to_column(range.start).unwrap() as _,
-        },
-        end: Position {
-            line: source.byte_to_line(range.end).unwrap() as _,
-            character: source.byte_to_column(range.end).unwrap() as _,
-        },
-    }
 }
