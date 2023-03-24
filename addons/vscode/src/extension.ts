@@ -1,5 +1,4 @@
 import { type ExtensionContext } from "vscode";
-import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 
@@ -9,12 +8,10 @@ import {
     type ServerOptions,
 } from "vscode-languageclient/node";
 
-let client: LanguageClient;
+let client: LanguageClient | undefined = undefined;
 
-export function activate(_context: ExtensionContext) {
+export function activate(_context: ExtensionContext): Promise<void> {
     const serverCommand = getServer();
-    if (!serverCommand) return;
-
     const serverOptions: ServerOptions = {
         run: { command: serverCommand },
         debug: { command: serverCommand },
@@ -26,30 +23,28 @@ export function activate(_context: ExtensionContext) {
 
     client = new LanguageClient("typst-lsp", "Typst Language Server", serverOptions, clientOptions);
 
-    client.start();
+    return client.start();
 }
 
-export function deactivate(): Thenable<void> | undefined {
-    if (!client) {
-        return undefined;
-    }
-    return client.stop();
+export function deactivate(): Promise<void> | undefined {
+    return client?.stop();
 }
 
 function getServer(): string {
     const windows = process.platform === "win32";
     const suffix = windows ? ".exe" : "";
+    const binaryName = "typst-lsp" + suffix;
 
-    const bundledPath = path.resolve(__dirname, "typst-lsp" + suffix);
+    const bundledPath = path.resolve(__dirname, binaryName);
 
     if (fileExists(bundledPath)) {
         return bundledPath;
     }
 
-    return "typst-lsp" + suffix;
+    return binaryName;
 }
 
-function fileExists(path: string) {
+function fileExists(path: string): boolean {
     try {
         fs.accessSync(path);
         return true;
