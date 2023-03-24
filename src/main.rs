@@ -110,7 +110,6 @@ impl Backend {
             }
             Err(errors) => errors.iter().map(|x| error_to_range(x, world)).collect(),
         };
-        drop(world);
 
         self.client
             .publish_diagnostics(
