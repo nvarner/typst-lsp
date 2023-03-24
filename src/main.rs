@@ -8,12 +8,13 @@ use tokio::sync::RwLock;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
-use typst::World;
+use typst::diag::SourceError;
 use typst::diag::SourceError;
 use typst::doc::Frame;
 use typst::ide::autocomplete;
 use typst::ide::CompletionKind::*;
 use typst::syntax::Source;
+use typst::World;
 use typst_library::prelude::EcoString;
 
 mod system_world;
@@ -88,12 +89,11 @@ impl LanguageServer for Backend {
         let messages: Vec<_> = match typst::compile(world) {
             Ok(document) => {
                 let buffer = typst::export::pdf(&document);
-                let _ = fs::write(output_path, buffer).map_err(|_| "failed to write PDF file".to_string());
+                let _ = fs::write(output_path, buffer)
+                    .map_err(|_| "failed to write PDF file".to_string());
                 vec![]
             }
-            Err(errors) => errors.iter().map(
-                |x| error_to_range(x, world)
-            ).collect(),
+            Err(errors) => errors.iter().map(|x| error_to_range(x, world)).collect(),
         };
         drop(world);
 
@@ -199,7 +199,7 @@ fn error_to_range(error: &SourceError, world: &SystemWorld) -> (String, Range) {
     (error.message.to_string(), range)
 }
 
-fn range_to_lsp_range(range : std::ops::Range<usize>, source : &Source) -> Range {
+fn range_to_lsp_range(range: std::ops::Range<usize>, source: &Source) -> Range {
     Range {
         start: Position {
             line: source.byte_to_line(range.start).unwrap() as _,

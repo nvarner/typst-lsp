@@ -147,7 +147,6 @@ impl SystemWorld {
         id
     }
 
-
     pub fn resolve_with(&self, path: &Path, contents: &String) -> FileResult<SourceId> {
         self.slot(path)?
             .source
