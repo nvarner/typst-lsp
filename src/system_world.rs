@@ -34,8 +34,7 @@ pub struct SystemWorld {
     hashes: RwLock<HashMap<PathBuf, FileResult<PathHash>>>,
     paths: RwLock<HashMap<PathHash, PathSlot>>,
     sources: AppendOnlyVec<Source>,
-    main: SourceId,
-    main_source: Source,
+    pub main: SourceId,
 }
 
 /// Holds details about the location of a font and lazily the font itself.
@@ -67,7 +66,6 @@ impl SystemWorld {
             paths: RwLock::default(),
             sources: AppendOnlyVec::new(),
             main: SourceId::detached(),
-            main_source: Source::detached(main_source),
         }
     }
 }
@@ -97,11 +95,7 @@ impl World for SystemWorld {
     }
 
     fn source(&self, id: SourceId) -> &Source {
-        if id != self.main {
-            &self.sources[id.into_u16() as usize]
-        } else {
-            &self.main_source
-        }
+        &self.sources[id.into_u16() as usize]
     }
 
     fn book(&self) -> &Prehashed<FontBook> {
@@ -127,10 +121,6 @@ impl World for SystemWorld {
 }
 
 impl SystemWorld {
-    pub fn update_main_source(&mut self, main_source: String) {
-        self.main_source.replace(main_source);
-    }
-
     fn slot(&self, path: &Path) -> FileResult<MappedRwLockWriteGuard<PathSlot>> {
         let mut hashes = self.hashes.write();
         let hash = match hashes.get(path).cloned() {
@@ -157,6 +147,14 @@ impl SystemWorld {
         id
     }
 
+
+    pub fn resolve_with(&self, path: &Path, contents: &String) -> FileResult<SourceId> {
+        self.slot(path)?
+            .source
+            .get_or_init(|| Ok(self.insert(path, contents.to_string())))
+            .clone()
+    }
+
     fn relevant(&mut self, event: &notify::Event) -> bool {
         match &event.kind {
             notify::EventKind::Any => {}
@@ -181,7 +179,7 @@ impl SystemWorld {
             || PathHash::new(path).map_or(false, |hash| self.paths.read().contains_key(&hash))
     }
 
-    fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.sources = AppendOnlyVec::new();
         self.hashes.get_mut().clear();
         self.paths.get_mut().clear();

@@ -1,0 +1,25 @@
+name: Lint
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    name: Check
+    steps:
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@v3
+      - run: cargo check
+
+  fmt:
+    runs-on: ubuntu-latest
+    name: Rustfmt
+    steps:
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@v3
+      - run: rustup component add rustfmt
+      - run: cargo fmt --all -- --check
