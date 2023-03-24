@@ -8,8 +8,8 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 use typst::diag::SourceError;
-use typst::World;
 use typst::syntax::Source;
+use typst::World;
 
 mod system_world;
 
@@ -140,7 +140,7 @@ fn error_to_range(error: &SourceError, world: &SystemWorld) -> (String, Range) {
     (error.message.to_string(), range)
 }
 
-fn range_to_lsp_range(range : std::ops::Range<usize>, source : &Source) -> Range {
+fn range_to_lsp_range(range: std::ops::Range<usize>, source: &Source) -> Range {
     Range {
         start: Position {
             line: source.byte_to_line(range.start).unwrap() as _,
