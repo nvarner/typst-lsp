@@ -50,60 +50,13 @@ impl LanguageServer for Backend {
         Ok(())
     }
 
-    async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let mut world = self.world.write().await;
-        let world = world.as_mut().unwrap();
-
-        world.reset();
-
-        match world.resolve_with(
-            Path::new(&params.text_document.uri.path()),
-            &params.content_changes[0].text,
-        ) {
-            Ok(id) => {
-                world.main = id;
-            }
-            Err(e) => {
-                self.client
-                    .log_message(MessageType::ERROR, format!("{:?}", e))
-                    .await;
-                return;
-            }
-        }
-
-        let output_path = params
-            .text_document
-            .uri
-            .to_file_path()
-            .unwrap()
-            .with_extension("pdf");
-        let messages: Vec<_> = match typst::compile(world) {
-            Ok(document) => {
-                let buffer = typst::export::pdf(&document);
-                let _ = fs::write(output_path, buffer).map_err(|_| "failed to write PDF file".to_string());
-                vec![]
-            }
-            Err(errors) => errors.iter().map(
-                |x| error_to_range(x, world)
-            ).collect(),
-        };
-        drop(world);
-
-        self.client
-            .publish_diagnostics(
-                params.text_document.uri,
-                messages
-                    .into_iter()
-                    .map(|(message, range)| Diagnostic {
-                        range,
-                        severity: Some(DiagnosticSeverity::ERROR),
-                        message,
-                        ..Default::default()
-                    })
-                    .collect(),
-                None,
-            )
+    async fn did_open(&self, params: DidOpenTextDocumentParams) {
+        self.on_change(params.text_document.uri, params.text_document.text)
             .await;
+    }
+    async fn did_change(&self, mut params: DidChangeTextDocumentParams) {
+        let text = params.content_changes.pop().unwrap().text;
+        self.on_change(params.text_document.uri, text).await;
     }
 
     async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
@@ -118,6 +71,55 @@ impl LanguageServer for Backend {
             contents: HoverContents::Scalar(MarkedString::String("You're hovering!".to_string())),
             range: None,
         }))
+    }
+}
+
+impl Backend {
+    async fn on_change(&self, uri: Url, text: String) {
+        let mut world = self.world.write().await;
+        let world = world.as_mut().unwrap();
+
+        world.reset();
+
+        match world.resolve_with(Path::new(&uri.path()), &text) {
+            Ok(id) => {
+                world.main = id;
+            }
+            Err(e) => {
+                self.client
+                    .log_message(MessageType::ERROR, format!("{:?}", e))
+                    .await;
+                return;
+            }
+        }
+
+        let output_path = uri.to_file_path().unwrap().with_extension("pdf");
+        let messages: Vec<_> = match typst::compile(world) {
+            Ok(document) => {
+                let buffer = typst::export::pdf(&document);
+                let _ = fs::write(output_path, buffer)
+                    .map_err(|_| "failed to write PDF file".to_string());
+                vec![]
+            }
+            Err(errors) => errors.iter().map(|x| error_to_range(x, world)).collect(),
+        };
+        drop(world);
+
+        self.client
+            .publish_diagnostics(
+                uri.clone(),
+                messages
+                    .into_iter()
+                    .map(|(message, range)| Diagnostic {
+                        range,
+                        severity: Some(DiagnosticSeverity::ERROR),
+                        message,
+                        ..Default::default()
+                    })
+                    .collect(),
+                None,
+            )
+            .await;
     }
 }
 
