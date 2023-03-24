@@ -52,7 +52,7 @@ struct PathSlot {
 }
 
 impl SystemWorld {
-    pub fn new(root: PathBuf, main_source: String) -> Self {
+    pub fn new(root: PathBuf) -> Self {
         let mut searcher = FontSearcher::new();
         searcher.search_system();
         searcher.add_embedded();
@@ -152,30 +152,6 @@ impl SystemWorld {
             .source
             .get_or_init(|| Ok(self.insert(path, contents.to_string())))
             .clone()
-    }
-
-    fn relevant(&mut self, event: &notify::Event) -> bool {
-        match &event.kind {
-            notify::EventKind::Any => {}
-            notify::EventKind::Access(_) => return false,
-            notify::EventKind::Create(_) => return true,
-            notify::EventKind::Modify(kind) => match kind {
-                notify::event::ModifyKind::Any => {}
-                notify::event::ModifyKind::Data(_) => {}
-                notify::event::ModifyKind::Metadata(_) => return false,
-                notify::event::ModifyKind::Name(_) => return true,
-                notify::event::ModifyKind::Other => return false,
-            },
-            notify::EventKind::Remove(_) => {}
-            notify::EventKind::Other => return false,
-        }
-
-        event.paths.iter().any(|path| self.dependant(path))
-    }
-
-    fn dependant(&self, path: &Path) -> bool {
-        self.hashes.read().contains_key(&path.normalize())
-            || PathHash::new(path).map_or(false, |hash| self.paths.read().contains_key(&hash))
     }
 
     pub fn reset(&mut self) {

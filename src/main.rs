@@ -24,7 +24,6 @@ impl LanguageServer for Backend {
         let mut world = self.world.write().await;
         *world = Some(SystemWorld::new(
             params.root_uri.unwrap().to_file_path().unwrap(),
-            String::new(),
         ));
 
         Ok(InitializeResult {
