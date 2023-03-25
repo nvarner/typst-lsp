@@ -78,6 +78,16 @@ impl LanguageServer for Backend {
             range: None,
         }))
     }
+
+    async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
+        let settings = params.settings;
+        self.client
+            .log_message(
+                MessageType::INFO,
+                format!("Got settings change message: {:#?}", settings),
+            )
+            .await;
+    }
 }
 
 impl Backend {
