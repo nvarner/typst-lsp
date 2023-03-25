@@ -25,7 +25,11 @@
                     "description": "The extension can export PDFs of your Typst files. This setting controls whether this feature is enabled and how often it runs.",
                     "type": "string",
                     "default": "onSave",
-                    "enum": ["never", "onSave", "onType"],
+                    "enum": [
+                        "never",
+                        "onSave",
+                        "onType"
+                    ],
                     "enumDescriptions": [
                         "Never export PDFs, you will manually run typst.",
                         "Export PDFs when you save a file.",
