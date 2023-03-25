@@ -86,7 +86,7 @@ impl LanguageServer for Backend {
         let settings = params.settings;
         self.client
             .log_message(
-                MessageType::INFO,
+                MessageType::LOG,
                 format!("Got settings change message: {:#?}", settings),
             )
             .await;
@@ -105,6 +105,9 @@ impl LanguageServer for Backend {
                 })
                 .unwrap_or_default();
             config.export_pdf = export_pdf;
+            self.client
+                .log_message(MessageType::INFO, "New settings applied")
+                .await;
         } else {
             self.client
                 .log_message(MessageType::ERROR, "Got invalid configuration object")
