@@ -105,6 +105,10 @@ impl LanguageServer for Backend {
                 })
                 .unwrap_or_default();
             config.export_pdf = export_pdf;
+        } else {
+            self.client
+                .log_message(MessageType::ERROR, "Got invalid configuration object")
+                .await;
         }
     }
 }
