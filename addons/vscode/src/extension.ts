@@ -4,6 +4,7 @@ import * as fs from "fs";
 
 import {
     LanguageClient,
+    DidChangeConfigurationNotification,
     type LanguageClientOptions,
     type ServerOptions,
 } from "vscode-languageclient/node";
@@ -11,9 +12,6 @@ import {
 let client: LanguageClient | undefined = undefined;
 
 export function activate(_context: ExtensionContext): Promise<void> {
-    const settings = workspace.getConfiguration("typst-lsp").get("exportPdf", "onSave");
-    console.log("settings", settings);
-
     const serverCommand = getServer();
     const serverOptions: ServerOptions = {
         run: { command: serverCommand },
@@ -25,6 +23,15 @@ export function activate(_context: ExtensionContext): Promise<void> {
     };
 
     client = new LanguageClient("typst-lsp", "Typst Language Server", serverOptions, clientOptions);
+
+    workspace.onDidChangeConfiguration(
+        async (_) => {
+            await client?.sendNotification(DidChangeConfigurationNotification.type, {
+                settings: workspace.getConfiguration("typst-lsp"),
+            })
+        },
+        null,
+    )
 
     return client.start();
 }
