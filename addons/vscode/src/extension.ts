@@ -5,6 +5,8 @@ import * as fs from "fs";
 import {
     LanguageClient,
     DidChangeConfigurationNotification,
+    DidSaveTextDocumentNotification,
+    TextDocumentIdentifier,
     type LanguageClientOptions,
     type ServerOptions,
 } from "vscode-languageclient/node";
