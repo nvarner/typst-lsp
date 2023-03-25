@@ -1,4 +1,4 @@
-import { type ExtensionContext } from "vscode";
+import { type ExtensionContext, workspace } from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 
@@ -11,6 +11,9 @@ import {
 let client: LanguageClient | undefined = undefined;
 
 export function activate(_context: ExtensionContext): Promise<void> {
+    const settings = workspace.getConfiguration("typst-lsp").get("exportPdf", "onSave");
+    console.log("settings", settings);
+
     const serverCommand = getServer();
     const serverOptions: ServerOptions = {
         run: { command: serverCommand },
