@@ -1,3 +1,4 @@
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExportPdfMode {
     Never,
     OnSave,
@@ -10,14 +11,7 @@ impl Default for ExportPdfMode {
     }
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Config {
     pub export_pdf: ExportPdfMode,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            ..Default::default()
-        }
-    }
 }
