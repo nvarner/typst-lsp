@@ -115,8 +115,8 @@ impl LanguageServer for Backend {
 
 impl Backend {
     async fn on_change(&self, uri: Url, text: String) {
-        let mut world = self.world.write().await;
-        let world = world.as_mut().unwrap();
+        let mut world_lock = self.world.write().await;
+        let world = world_lock.as_mut().unwrap();
 
         world.reset();
 
@@ -142,6 +142,7 @@ impl Backend {
             }
             Err(errors) => errors.iter().map(|x| error_to_range(x, world)).collect(),
         };
+        drop(world_lock);
 
         self.client
             .publish_diagnostics(
