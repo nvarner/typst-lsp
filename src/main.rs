@@ -69,9 +69,6 @@ impl LanguageServer for Backend {
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        self.client
-            .log_message(MessageType::INFO, "File was saved.")
-            .await;
         let text = params.text.unwrap_or_else(|| {
             fs::read_to_string(
                 params
@@ -166,13 +163,24 @@ impl Backend {
             }
         }
 
+        let mut fs_message: Option<LogMessage> = None; // log success or error of file write
         let messages: Vec<_> = match typst::compile(world) {
             Ok(document) => {
                 let buffer = typst::export::pdf(&document);
                 if export {
                     let output_path = uri.to_file_path().unwrap().with_extension("pdf");
-                    let _ = fs::write(output_path, buffer)
-                        .map_err(|_| "failed to write PDF file".to_string());
+                    fs_message = match fs::write(&output_path, buffer)
+                        .map_err(|_| "failed to write PDF file".to_string())
+                    {
+                        Ok(_) => Some(LogMessage {
+                            message_type: MessageType::INFO,
+                            message: format!("File written to {}", output_path.to_string_lossy()),
+                        }),
+                        Err(e) => Some(LogMessage {
+                            message_type: MessageType::ERROR,
+                            message: format!("{:?}", e),
+                        }),
+                    };
                 }
                 vec![]
             }
@@ -180,6 +188,11 @@ impl Backend {
         };
         // release the lock early
         drop(world_lock);
+
+        // we can't await while we hold a lock on the world so we do it now
+        if let Some(msg) = fs_message {
+            self.client.log_message(msg.message_type, msg.message).await;
+        }
 
         self.client
             .publish_diagnostics(
@@ -197,6 +210,12 @@ impl Backend {
             )
             .await;
     }
+}
+
+// Message that is send to the client
+pub struct LogMessage {
+    pub message_type: MessageType,
+    pub message: String,
 }
 
 #[tokio::main]
