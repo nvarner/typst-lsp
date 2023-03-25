@@ -214,6 +214,7 @@ impl Backend {
 }
 
 // Message that is send to the client
+#[derive(Debug, Clone)]
 pub struct LogMessage<M: Display> {
     pub message_type: MessageType,
     pub message: M,
