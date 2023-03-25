@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -163,7 +164,7 @@ impl Backend {
             }
         }
 
-        let mut fs_message: Option<LogMessage> = None; // log success or error of file write
+        let mut fs_message: Option<LogMessage<String>> = None; // log success or error of file write
         let messages: Vec<_> = match typst::compile(world) {
             Ok(document) => {
                 let buffer = typst::export::pdf(&document);
@@ -213,9 +214,9 @@ impl Backend {
 }
 
 // Message that is send to the client
-pub struct LogMessage {
+pub struct LogMessage<M: Display> {
     pub message_type: MessageType,
-    pub message: String,
+    pub message: M,
 }
 
 #[tokio::main]
