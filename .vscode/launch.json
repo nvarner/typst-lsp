@@ -11,7 +11,8 @@
             ],
             "outFiles": [
                 "${workspaceFolder}/addons/vscode/out/**/*.js"
-            ]
+            ],
+            "preLaunchTask": "VS Code Extension Prelaunch"
         }
     ]
 }

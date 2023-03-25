@@ -1,0 +1,57 @@
+name: Checks
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    name: Rust
+    steps:
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@v3
+      
+      - name: Tests
+        run: cargo test
+
+      - name: Clippy
+        run: cargo clippy
+      
+      - name: Formatting
+        run: cargo fmt --all -- --check
+  
+  vs-code-extension:
+    runs-on: ubuntu-latest
+    name: VS Code Extension
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - shell: pwsh
+        run: npm install
+        working-directory: ./addons/vscode
+      
+      - name: Compilation
+        shell: pwsh
+        run: npm run compile
+        working-directory: ./addons/vscode
+      
+      - name: Type Checking
+        shell: pwsh
+        run: npm run check
+        working-directory: ./addons/vscode
+      
+      - name: Tests
+        shell: pwsh
+        run: npm run test
+        working-directory: ./addons/vscode
+      
+      - name: Linting
+        shell: pwsh
+        run: npm run lint
+        working-directory: ./addons/vscode

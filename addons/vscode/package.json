@@ -1,6 +1,12 @@
 {
     "name": "typst-lsp",
     "description": "A language server for Typst",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/nvarner/typst-lsp"
+    },
+    "displayName": "typst-lsp",
+    "icon": "icons/typst.png",
     "author": "Nathan Varner",
     "license": "Apache-2.0 OR MIT",
     "version": "0.1.0",
@@ -39,26 +45,33 @@
         ]
     },
     "scripts": {
-        "vscode:prepublish": "npm run compile",
-        "compile": "tsc -b",
-        "watch": "tsc -b -w",
+        "build-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --target=node16",
+        "vscode:prepublish": "npm run build-base -- --minify",
+        "package": "vsce package",
+        "compile": "npm run build-base -- --sourcemap",
+        "watch": "npm run build-base -- --sourcemap --watch",
+        "check": "tsc --noEmit",
         "lint": "eslint ./src --ext .ts",
-        "lint-fix": "eslint ./src --ext .ts --fix"
+        "lint-fix": "eslint ./src --ext .ts --fix",
+        "format": "prettier --write .",
+        "test": ""
     },
     "dependencies": {
         "vscode-languageclient": "^8.1.0"
     },
     "devDependencies": {
         "@types/node": "^16.11.7",
-        "@types/vscode": "^1.76.0",
+        "@types/vscode": "^1.75.0",
         "@typescript-eslint/eslint-plugin": "^5.56.0",
         "@typescript-eslint/parser": "^5.54.0",
+        "@vscode/vsce": "^2.18.0",
+        "esbuild": "^0.17.12",
         "eslint": "^8.36.0",
-        "eslint-config-airbnb-base": "^15.0.0",
-        "eslint-config-airbnb-typescript": "^17.0.0",
+        "eslint-config-prettier": "^8.8.0",
         "eslint-plugin-import": "^2.27.5",
         "eslint-plugin-n": "^15.6.1",
         "eslint-plugin-promise": "^6.1.1",
+        "prettier": "^2.8.7",
         "typescript": "^5.0.2"
     }
 }

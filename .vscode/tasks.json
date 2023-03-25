@@ -1,0 +1,40 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "VS Code Extension Prelaunch",
+			"dependsOn": [
+				"Compile VS Code Extension",
+				"Build Debug LSP Binary",
+				"Copy Debug LSP Binary to VS Code Extension"
+			],
+			"dependsOrder": "sequence"
+		},
+		{
+			"label": "Compile VS Code Extension",
+			"type": "npm",
+			"script": "compile",
+			"path": "addons/vscode",
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "Build Debug LSP Binary",
+			"type": "cargo",
+			"command": "build",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Copy Debug LSP Binary to VS Code Extension",
+			"type": "shell",
+			"command": "cp",
+			"args": [
+				"${workspaceFolder}/target/debug/typst-lsp",
+				"${workspaceFolder}/addons/vscode/out/"
+			]
+		}
+	]
+}
