@@ -87,7 +87,7 @@ impl Backend {
 
         world.reset();
 
-        match world.resolve_with(Path::new(&uri.path()), &text) {
+        match world.resolve_with(Path::new(&uri.to_file_path().unwrap()), &text) {
             Ok(id) => {
                 world.main = id;
             }
