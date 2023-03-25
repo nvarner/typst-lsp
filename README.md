@@ -40,7 +40,7 @@ Install:
 5. If you want to install the dev version of the extension: After finishing the
 last step in Development Cycle, then press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>,
 and choose `Developer: Install Extension from Location...` and choose the
-the root directory for the extension. There will not be any messages, but
+the directory for the extension: `addons/vscode/`. There will not be any messages, but
 the extension can be found in the Extensions `@installed` list.
 
 ### Development cycle
