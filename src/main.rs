@@ -9,7 +9,6 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 use typst::diag::SourceError;
-use typst::diag::SourceError;
 use typst::doc::Frame;
 use typst::ide::autocomplete;
 use typst::ide::CompletionKind::*;
@@ -37,7 +36,11 @@ impl LanguageServer for Backend {
             capabilities: ServerCapabilities {
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 completion_provider: Some(CompletionOptions {
-                    trigger_characters: Some(vec![String::from("#"), String::from("."), String::from("@")]),
+                    trigger_characters: Some(vec![
+                        String::from("#"),
+                        String::from("."),
+                        String::from("@"),
+                    ]),
                     ..Default::default()
                 }),
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
@@ -119,10 +122,9 @@ impl LanguageServer for Backend {
         let world = self.world.read().await;
         let source = world.as_ref().unwrap().main();
 
-        let cursor = source.line_column_to_byte(
-            position.line as _,
-            position.character as _,
-        ).unwrap();
+        let cursor = source
+            .line_column_to_byte(position.line as _, position.character as _)
+            .unwrap();
 
         let frames: [Frame; 0] = [];
 
@@ -130,11 +132,9 @@ impl LanguageServer for Backend {
 
         match completions {
             Some((_, c)) => {
-                let lsp_completions = c.iter()
-                    .map(completion_to_lsp_completion)
-                    .collect();
+                let lsp_completions = c.iter().map(completion_to_lsp_completion).collect();
                 return Ok(Some(CompletionResponse::Array(lsp_completions)));
-            },
+            }
             None => {
                 return Ok(None);
             }
