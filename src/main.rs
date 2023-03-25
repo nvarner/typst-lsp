@@ -68,6 +68,23 @@ impl LanguageServer for Backend {
         self.on_change(params.text_document.uri, text).await;
     }
 
+    async fn did_save(&self, params: DidSaveTextDocumentParams) {
+        self.client
+            .log_message(MessageType::INFO, "File was saved.")
+            .await;
+        let text = params.text.unwrap_or_else(|| {
+            fs::read_to_string(
+                params
+                    .text_document
+                    .uri
+                    .to_file_path()
+                    .expect("Could not convert URI to file path"),
+            )
+            .expect("Could not read file")
+        });
+        self.on_save(params.text_document.uri, text).await;
+    }
+
     async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
         Ok(Some(CompletionResponse::Array(vec![
             CompletionItem::new_simple("Hello".to_string(), "Some detail".to_string()),
@@ -84,12 +101,6 @@ impl LanguageServer for Backend {
 
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
         let settings = params.settings;
-        self.client
-            .log_message(
-                MessageType::LOG,
-                format!("Got settings change message: {:#?}", settings),
-            )
-            .await;
         let mut config = self.config.write().await;
         if let Value::Object(settings) = settings {
             let export_pdf = settings
@@ -118,6 +129,26 @@ impl LanguageServer for Backend {
 
 impl Backend {
     async fn on_change(&self, uri: Url, text: String) {
+        let config = self.config.read().await;
+        self.compile_diags_export(
+            uri,
+            text,
+            matches!(config.export_pdf, config::ExportPdfMode::OnType),
+        )
+        .await;
+    }
+
+    async fn on_save(&self, uri: Url, text: String) {
+        let config = self.config.read().await;
+        self.compile_diags_export(
+            uri,
+            text,
+            matches!(config.export_pdf, config::ExportPdfMode::OnSave),
+        )
+        .await;
+    }
+
+    async fn compile_diags_export(&self, uri: Url, text: String, export: bool) {
         let mut world_lock = self.world.write().await;
         let world = world_lock.as_mut().unwrap();
 
@@ -135,16 +166,19 @@ impl Backend {
             }
         }
 
-        let output_path = uri.to_file_path().unwrap().with_extension("pdf");
         let messages: Vec<_> = match typst::compile(world) {
             Ok(document) => {
                 let buffer = typst::export::pdf(&document);
-                let _ = fs::write(output_path, buffer)
-                    .map_err(|_| "failed to write PDF file".to_string());
+                if export {
+                    let output_path = uri.to_file_path().unwrap().with_extension("pdf");
+                    let _ = fs::write(output_path, buffer)
+                        .map_err(|_| "failed to write PDF file".to_string());
+                }
                 vec![]
             }
             Err(errors) => errors.iter().map(|x| error_to_range(x, world)).collect(),
         };
+        // release the lock early
         drop(world_lock);
 
         self.client
