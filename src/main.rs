@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
+use serde_json::Value;
 use system_world::SystemWorld;
 use tokio::sync::RwLock;
 use tower_lsp::jsonrpc::Result;
@@ -11,11 +12,13 @@ use typst::diag::SourceError;
 use typst::syntax::Source;
 use typst::World;
 
+mod config;
 mod system_world;
 
 struct Backend {
     client: Client,
     world: Arc<RwLock<Option<SystemWorld>>>,
+    config: Arc<RwLock<config::Config>>,
 }
 
 #[tower_lsp::async_trait]
@@ -87,6 +90,22 @@ impl LanguageServer for Backend {
                 format!("Got settings change message: {:#?}", settings),
             )
             .await;
+        let mut config = self.config.write().await;
+        if let Value::Object(settings) = settings {
+            let export_pdf = settings
+                .get("exportPdf")
+                .map(|val| match val {
+                    Value::String(val) => match val.as_str() {
+                        "never" => config::ExportPdfMode::Never,
+                        "onSave" => config::ExportPdfMode::OnSave,
+                        "onType" => config::ExportPdfMode::OnType,
+                        _ => config::ExportPdfMode::OnSave,
+                    },
+                    _ => config::ExportPdfMode::OnSave,
+                })
+                .unwrap_or_default();
+            config.export_pdf = export_pdf;
+        }
     }
 }
 
@@ -146,6 +165,7 @@ async fn main() {
     let (service, socket) = LspService::new(|client| Backend {
         client,
         world: Arc::new(RwLock::new(None)),
+        config: Arc::new(RwLock::new(config::Config::default())),
     });
     Server::new(stdin, stdout, socket).serve(service).await;
 }

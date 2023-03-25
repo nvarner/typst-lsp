@@ -1602,6 +1602,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "same-file",
+ "serde_json",
  "siphasher",
  "tokio",
  "tower-lsp",
