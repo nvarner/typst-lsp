@@ -1,5 +1,6 @@
 **
 !language-configuration.json
+!typst.tmLanguage.json
 !syntaxes
 !out/extension.js
 !out/typst-lsp
