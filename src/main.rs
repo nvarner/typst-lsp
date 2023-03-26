@@ -46,6 +46,7 @@ impl LanguageServer for Backend {
                         work_done_progress: None,
                     },
                 }),
+                hover_provider: Some(HoverProviderCapability::Simple(true)),
                 completion_provider: Some(CompletionOptions {
                     trigger_characters: Some(vec![
                         String::from("#"),
