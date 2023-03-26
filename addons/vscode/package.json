@@ -12,7 +12,7 @@
     "license": "Apache-2.0 OR MIT",
     "version": "0.1.1",
     "engines": {
-        "vscode": "^1.75.0"
+        "vscode": "^1.71.0"
     },
     "main": "./out/extension.js",
     "contributes": {
@@ -62,6 +62,9 @@
             }
         ]
     },
+    "activationEvents": [
+        "onLanguage:typst"
+    ],
     "scripts": {
         "build-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --target=node16",
         "vscode:prepublish": "npm run build-base -- --minify",
