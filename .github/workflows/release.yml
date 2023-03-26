@@ -161,6 +161,13 @@ jobs:
     if: success() && startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/download-artifact@v2
-      - run: npx vsce publish --packagePath $(find . -type f -iname '*.vsix')
+      
+      - name: Deploy to VS Code Marketplace
+        run: npx vsce publish --packagePath $(find . -type f -iname '*.vsix')
         env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          VSCE_PAT: ${{ secrets.VSCODE_MARKETPLACE_TOKEN }}
+      
+      - name: Deploy to OpenVSX
+        run: npx ovsx publish --packagePath $(find . -type f -iname '*.vsix')
+        env:
+          OVSX_PAT: ${{ secrets.OPENVSX_ACCESS_TOKEN }}
