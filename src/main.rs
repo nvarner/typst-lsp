@@ -127,13 +127,6 @@ impl LanguageServer for Backend {
         }
     }
 
-    async fn hover(&self, _: HoverParams) -> Result<Option<Hover>> {
-        Ok(Some(Hover {
-            contents: HoverContents::Scalar(MarkedString::String("You're hovering!".to_string())),
-            range: None,
-        }))
-    }
-
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
         let settings = params.settings;
         let mut config = self.config.write().await;
