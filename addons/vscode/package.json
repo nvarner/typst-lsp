@@ -12,13 +12,13 @@
     "license": "Apache-2.0 OR MIT",
     "version": "0.1.1",
     "engines": {
-        "vscode": "^1.75.0"
+        "vscode": "^1.71.0"
     },
     "main": "./out/extension.js",
     "contributes": {
         "configuration": {
             "type": "object",
-            "title": "Typst LSP configuration",
+            "title": "Typst LSP",
             "properties": {
                 "typst-lsp.exportPdf": {
                     "title": "Export PDF",
@@ -49,8 +49,8 @@
                     "Typst"
                 ],
                 "icon": {
-                    "light": "./icons/typst.svg",
-                    "dark": "./icons/typst.svg"
+                    "light": "./icons/typst-small.png",
+                    "dark": "./icons/typst-small.png"
                 }
             }
         ],
@@ -62,6 +62,9 @@
             }
         ]
     },
+    "activationEvents": [
+        "onLanguage:typst"
+    ],
     "scripts": {
         "build-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --target=node16",
         "vscode:prepublish": "npm run build-base -- --minify",
@@ -83,6 +86,7 @@
         "@typescript-eslint/eslint-plugin": "^5.56.0",
         "@typescript-eslint/parser": "^5.54.0",
         "@vscode/vsce": "^2.18.0",
+        "ovsx": "^0.8.0",
         "esbuild": "^0.17.12",
         "eslint": "^8.36.0",
         "eslint-config-prettier": "^8.8.0",

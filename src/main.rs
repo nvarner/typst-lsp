@@ -45,7 +45,6 @@ impl LanguageServer for Backend {
                         work_done_progress: None,
                     },
                 }),
-                hover_provider: Some(HoverProviderCapability::Simple(true)),
                 completion_provider: Some(CompletionOptions {
                     trigger_characters: Some(vec![
                         String::from("#"),
@@ -125,13 +124,6 @@ impl LanguageServer for Backend {
                 return Ok(None);
             }
         }
-    }
-
-    async fn hover(&self, _: HoverParams) -> Result<Option<Hover>> {
-        Ok(Some(Hover {
-            contents: HoverContents::Scalar(MarkedString::String("You're hovering!".to_string())),
-            range: None,
-        }))
     }
 
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
@@ -326,10 +318,7 @@ impl Backend {
             } else {
                 let n_positional = args
                     .items()
-                    .filter(|arg| match arg {
-                        ast::Arg::Pos(_) => true,
-                        _ => false,
-                    })
+                    .filter(|arg| matches!(arg, ast::Arg::Pos(_)))
                     .count();
                 completing_param = info
                     .params
@@ -346,7 +335,7 @@ impl Backend {
         let help = SignatureHelp {
             signatures: vec![SignatureInformation {
                 label,
-                documentation: Some(markdown_docs(info.docs.into())),
+                documentation: Some(markdown_docs(info.docs)),
                 parameters: Some(params),
                 active_parameter: completing_param.map(|i| i as u32),
             }],
@@ -434,7 +423,7 @@ fn format_cast_info(s: &mut String, info: &CastInfo) {
             let mut first = true;
             for option in options {
                 if !first {
-                    s.push_str(" ")
+                    s.push(' ')
                 };
                 first = false;
                 format_cast_info(s, option);
