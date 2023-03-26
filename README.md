@@ -37,7 +37,7 @@ Install:
     1. Run `npm install` to install extension dependencies
     2. Run `npm run compile` to build the extension
 4. Run through the development cycle once to initialize and test everything
-5. If you want to install the dev version of the extension: After finishing the
+5. (Optional: install the dev version of the extension) After finishing the
 last step in Development Cycle, then press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>,
 and choose `Developer: Install Extension from Location...` and choose the
 the directory for the extension: `addons/vscode/`. There will not be any messages, but
