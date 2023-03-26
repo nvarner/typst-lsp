@@ -49,8 +49,8 @@
                     "Typst"
                 ],
                 "icon": {
-                    "light": "./icons/typst.svg",
-                    "dark": "./icons/typst.svg"
+                    "light": "./icons/typst-small.png",
+                    "dark": "./icons/typst-small.png"
                 }
             }
         ],
