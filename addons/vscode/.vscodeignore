@@ -1,12 +1,11 @@
 **
 !language-configuration.json
 !typst.tmLanguage.json
-!syntaxes
 !out/extension.js
 !out/typst-lsp
 !out/typst-lsp.exe
 !package.json
 !package-lock.json
-!icons/typst.png
+!icons/**
 !README.md
 !LICENSE.md
