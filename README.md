@@ -3,17 +3,20 @@
 A brand-new language server for [Typst](https://typst.app/).
 
 ## Features
+
 - Syntax highlighting, error reporting, code completion, and function signature
     help
 - Compiles to PDF on save (configurable to as-you-type, or can be disabled)
 
 This repo consists of:
+
 - an LSP server, written in Rust
 - [a corresponding VS Code(ium) extension](https://github.com/nvarner/typst-lsp/tree/master/addons/vscode).
 The extension is available on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=nvarner.typst-lsp)
 and [OpenVSX](https://open-vsx.org/extension/nvarner/typst-lsp).
 
 ## Near future goals
+
 - Improved preview (e.g. built-in PDF viewer, render to image for speed)
 - Support for more editors
 
