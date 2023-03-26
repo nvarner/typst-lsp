@@ -5,9 +5,10 @@
         "type": "git",
         "url": "https://github.com/nvarner/typst-lsp"
     },
-    "displayName": "typst-lsp",
+    "displayName": "Typst LSP",
     "icon": "icons/typst.png",
     "author": "Nathan Varner",
+    "publisher": "nvarner",
     "license": "Apache-2.0 OR MIT",
     "version": "0.1.0",
     "engines": {
