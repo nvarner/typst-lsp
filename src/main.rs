@@ -3,6 +3,7 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
+use regex::{Captures, Regex};
 use serde_json::Value;
 use system_world::SystemWorld;
 use tokio::sync::RwLock;
@@ -10,8 +11,12 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 use typst::diag::SourceError;
+use typst::doc::Frame;
+use typst::ide::autocomplete;
+use typst::ide::CompletionKind::*;
 use typst::syntax::Source;
 use typst::World;
+use typst_library::prelude::EcoString;
 
 mod config;
 mod system_world;
@@ -33,7 +38,14 @@ impl LanguageServer for Backend {
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
-                completion_provider: Some(CompletionOptions::default()),
+                completion_provider: Some(CompletionOptions {
+                    trigger_characters: Some(vec![
+                        String::from("#"),
+                        String::from("."),
+                        String::from("@"),
+                    ]),
+                    ..Default::default()
+                }),
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     TextDocumentSyncKind::FULL,
                 )),
@@ -211,6 +223,68 @@ impl Backend {
             )
             .await;
     }
+
+    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        let position = params.text_document_position.position;
+        let world = self.world.read().await;
+        let source = world.as_ref().unwrap().main();
+
+        let cursor = source
+            .line_column_to_byte(position.line as _, position.character as _)
+            .unwrap();
+
+        let frames: [Frame; 0] = [];
+
+        let completions = autocomplete(world.as_ref().unwrap(), &frames, source, cursor, false);
+
+        match completions {
+            Some((_, c)) => {
+                let lsp_completions = c.iter().map(completion_to_lsp_completion).collect();
+                return Ok(Some(CompletionResponse::Array(lsp_completions)));
+            }
+            None => {
+                return Ok(None);
+            }
+        }
+    }
+
+    async fn hover(&self, _: HoverParams) -> Result<Option<Hover>> {
+        Ok(Some(Hover {
+            contents: HoverContents::Scalar(MarkedString::String("You're hovering!".to_string())),
+            range: None,
+        }))
+    }
+}
+
+/// Turn a `typst::ide::Completion` into a `lsp_types::CompletionItem`
+fn completion_to_lsp_completion(completion: &typst::ide::Completion) -> CompletionItem {
+    CompletionItem {
+        label: completion.label.to_string(),
+        kind: match completion.kind {
+            Syntax => Some(CompletionItemKind::SNIPPET),
+            Func => Some(CompletionItemKind::FUNCTION),
+            Param => Some(CompletionItemKind::VARIABLE),
+            Constant => Some(CompletionItemKind::CONSTANT),
+            Symbol(_) => Some(CompletionItemKind::TEXT),
+        },
+        detail: completion.detail.as_ref().map(String::from),
+        insert_text: completion.apply.as_ref().map(lsp_snippet),
+        insert_text_format: Some(InsertTextFormat::SNIPPET),
+        ..Default::default()
+    }
+}
+
+/// Add numbering to placeholders in snippets
+fn lsp_snippet(snippet: &EcoString) -> String {
+    let re = Regex::new(r"\$\{(.*?)\}").unwrap();
+    let mut counter = 1;
+    let result = re.replace_all(snippet.as_str(), |cap: &Captures| {
+        let substitution = format!("${{{}:{}}}", counter, &cap[1]);
+        counter += 1;
+        substitution
+    });
+
+    result.to_string()
 }
 
 // Message that is send to the client
