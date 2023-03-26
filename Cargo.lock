@@ -1603,6 +1603,7 @@ dependencies = [
  "parking_lot",
  "regex",
  "same-file",
+ "serde_json",
  "siphasher",
  "tokio",
  "tower-lsp",

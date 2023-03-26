@@ -1,9 +1,10 @@
-import { type ExtensionContext } from "vscode";
+import { type ExtensionContext, workspace } from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 
 import {
     LanguageClient,
+    DidChangeConfigurationNotification,
     type LanguageClientOptions,
     type ServerOptions,
 } from "vscode-languageclient/node";
@@ -22,6 +23,12 @@ export function activate(_context: ExtensionContext): Promise<void> {
     };
 
     client = new LanguageClient("typst-lsp", "Typst Language Server", serverOptions, clientOptions);
+
+    workspace.onDidChangeConfiguration(async (_) => {
+        await client?.sendNotification(DidChangeConfigurationNotification.type, {
+            settings: workspace.getConfiguration("typst-lsp"),
+        });
+    }, null);
 
     return client.start();
 }

@@ -8,7 +8,8 @@
 				"Build Debug LSP Binary",
 				"Copy Debug LSP Binary to VS Code Extension"
 			],
-			"dependsOrder": "sequence"
+			"dependsOrder": "sequence",
+			"problemMatcher": []
 		},
 		{
 			"label": "Compile VS Code Extension",
@@ -30,11 +31,27 @@
 		{
 			"label": "Copy Debug LSP Binary to VS Code Extension",
 			"type": "shell",
-			"command": "cp",
-			"args": [
-				"${workspaceFolder}/target/debug/typst-lsp",
-				"${workspaceFolder}/addons/vscode/out/"
-			]
+			"windows": {
+				"command": "cp",
+				"args": [
+					"${workspaceFolder}\\target\\debug\\typst-lsp.exe",
+					"${workspaceFolder}\\addons\\vscode\\out\\"
+				]
+			},
+			"linux": {
+				"command": "cp",
+				"args": [
+					"${workspaceFolder}/target/debug/typst-lsp",
+					"${workspaceFolder}/addons/vscode/out/"
+				]
+			},
+			"osx": {
+				"command": "cp",
+				"args": [
+					"${workspaceFolder}/target/debug/typst-lsp",
+					"${workspaceFolder}/addons/vscode/out/"
+				]
+			}
 		}
 	]
 }

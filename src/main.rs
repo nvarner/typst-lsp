@@ -1,8 +1,10 @@
+use std::fmt::Display;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
 use regex::{Captures, Regex};
+use serde_json::Value;
 use system_world::SystemWorld;
 use tokio::sync::RwLock;
 use tower_lsp::jsonrpc::Result;
@@ -16,11 +18,13 @@ use typst::syntax::Source;
 use typst::World;
 use typst_library::prelude::EcoString;
 
+mod config;
 mod system_world;
 
 struct Backend {
     client: Client,
     world: Arc<RwLock<Option<SystemWorld>>>,
+    config: Arc<RwLock<config::Config>>,
 }
 
 #[tower_lsp::async_trait]
@@ -77,6 +81,20 @@ impl LanguageServer for Backend {
         self.on_change(params.text_document.uri, text).await;
     }
 
+    async fn did_save(&self, params: DidSaveTextDocumentParams) {
+        let text = params.text.unwrap_or_else(|| {
+            fs::read_to_string(
+                params
+                    .text_document
+                    .uri
+                    .to_file_path()
+                    .expect("Could not convert URI to file path"),
+            )
+            .expect("Could not read file")
+        });
+        self.on_save(params.text_document.uri, text).await;
+    }
+
     async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
         Ok(Some(CompletionResponse::Array(vec![
             CompletionItem::new_simple("Hello".to_string(), "Some detail".to_string()),
@@ -90,16 +108,63 @@ impl LanguageServer for Backend {
             range: None,
         }))
     }
+
+    async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
+        let settings = params.settings;
+        let mut config = self.config.write().await;
+        if let Value::Object(settings) = settings {
+            let export_pdf = settings
+                .get("exportPdf")
+                .map(|val| match val {
+                    Value::String(val) => match val.as_str() {
+                        "never" => config::ExportPdfMode::Never,
+                        "onSave" => config::ExportPdfMode::OnSave,
+                        "onType" => config::ExportPdfMode::OnType,
+                        _ => config::ExportPdfMode::OnSave,
+                    },
+                    _ => config::ExportPdfMode::OnSave,
+                })
+                .unwrap_or_default();
+            config.export_pdf = export_pdf;
+            self.client
+                .log_message(MessageType::INFO, "New settings applied")
+                .await;
+        } else {
+            self.client
+                .log_message(MessageType::ERROR, "Got invalid configuration object")
+                .await;
+        }
+    }
 }
 
 impl Backend {
     async fn on_change(&self, uri: Url, text: String) {
-        let mut world = self.world.write().await;
-        let world = world.as_mut().unwrap();
+        let config = self.config.read().await;
+        self.compile_diags_export(
+            uri,
+            text,
+            matches!(config.export_pdf, config::ExportPdfMode::OnType),
+        )
+        .await;
+    }
+
+    async fn on_save(&self, uri: Url, text: String) {
+        let config = self.config.read().await;
+        self.compile_diags_export(
+            uri,
+            text,
+            matches!(config.export_pdf, config::ExportPdfMode::OnSave),
+        )
+        .await;
+    }
+
+    async fn compile_diags_export(&self, uri: Url, text: String, export: bool) {
+        let mut world_lock = self.world.write().await;
+        let world = world_lock.as_mut().unwrap();
 
         world.reset();
 
-        match world.resolve_with(Path::new(&uri.path()), &text) {
+        match world.resolve_with(Path::new(&uri.to_file_path().unwrap()), &text) {
             Ok(id) => {
                 world.main = id;
             }
@@ -111,16 +176,36 @@ impl Backend {
             }
         }
 
-        let output_path = uri.to_file_path().unwrap().with_extension("pdf");
+        let mut fs_message: Option<LogMessage<String>> = None; // log success or error of file write
         let messages: Vec<_> = match typst::compile(world) {
             Ok(document) => {
                 let buffer = typst::export::pdf(&document);
-                let _ = fs::write(output_path, buffer)
-                    .map_err(|_| "failed to write PDF file".to_string());
+                if export {
+                    let output_path = uri.to_file_path().unwrap().with_extension("pdf");
+                    fs_message = match fs::write(&output_path, buffer)
+                        .map_err(|_| "failed to write PDF file".to_string())
+                    {
+                        Ok(_) => Some(LogMessage {
+                            message_type: MessageType::INFO,
+                            message: format!("File written to {}", output_path.to_string_lossy()),
+                        }),
+                        Err(e) => Some(LogMessage {
+                            message_type: MessageType::ERROR,
+                            message: format!("{:?}", e),
+                        }),
+                    };
+                }
                 vec![]
             }
             Err(errors) => errors.iter().map(|x| error_to_range(x, world)).collect(),
         };
+        // release the lock early
+        drop(world_lock);
+
+        // we can't await while we hold a lock on the world so we do it now
+        if let Some(msg) = fs_message {
+            self.client.log_message(msg.message_type, msg.message).await;
+        }
 
         self.client
             .publish_diagnostics(
@@ -202,6 +287,13 @@ fn lsp_snippet(snippet: &EcoString) -> String {
     result.to_string()
 }
 
+// Message that is send to the client
+#[derive(Debug, Clone)]
+pub struct LogMessage<M: Display> {
+    pub message_type: MessageType,
+    pub message: M,
+}
+
 #[tokio::main]
 async fn main() {
     let stdin = tokio::io::stdin();
@@ -210,6 +302,7 @@ async fn main() {
     let (service, socket) = LspService::new(|client| Backend {
         client,
         world: Arc::new(RwLock::new(None)),
+        config: Arc::new(RwLock::new(config::Config::default())),
     });
     Server::new(stdin, stdout, socket).serve(service).await;
 }
