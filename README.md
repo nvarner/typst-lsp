@@ -27,7 +27,7 @@ Install:
 
 - [Rust](https://www.rust-lang.org/) for the LSP itself
 - [node](https://nodejs.org/en) for the VS Code extension; it may be easiest to
-    install via [nvm](https://github.com/nvm-sh/nvm)
+    install via [fnm](https://github.com/Schniz/fnm)
 
 ### First time setup
 

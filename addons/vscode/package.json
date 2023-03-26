@@ -5,11 +5,12 @@
         "type": "git",
         "url": "https://github.com/nvarner/typst-lsp"
     },
-    "displayName": "typst-lsp",
+    "displayName": "Typst LSP",
     "icon": "icons/typst.png",
     "author": "Nathan Varner",
+    "publisher": "nvarner",
     "license": "Apache-2.0 OR MIT",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "engines": {
         "vscode": "^1.75.0"
     },
@@ -18,7 +19,24 @@
         "configuration": {
             "type": "object",
             "title": "Typst LSP configuration",
-            "properties": {}
+            "properties": {
+                "typst-lsp.exportPdf": {
+                    "title": "Export PDF",
+                    "description": "The extension can export PDFs of your Typst files. This setting controls whether this feature is enabled and how often it runs.",
+                    "type": "string",
+                    "default": "onSave",
+                    "enum": [
+                        "never",
+                        "onSave",
+                        "onType"
+                    ],
+                    "enumDescriptions": [
+                        "Never export PDFs, you will manually run typst.",
+                        "Export PDFs when you save a file.",
+                        "Export PDFs as you type in a file."
+                    ]
+                }
+            }
         },
         "languages": [
             {
