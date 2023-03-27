@@ -63,7 +63,7 @@
         ],
         "commands": [
             {
-                "command": "typst.exportPdf",
+                "command": "typst-lsp.exportPdf",
                 "title": "Export current file as PDF"
             }
         ]
