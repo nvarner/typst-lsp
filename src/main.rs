@@ -37,10 +37,9 @@ impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
         let mut world = self.world.write().await;
         // Check if a folder is opened, if yes, use it as the root path
-        let root_path = if let Some(root) = params.root_uri {
-            root.to_file_path().unwrap()
-        } else {
-            PathBuf::new()
+        let root_path = match params.root_uri {
+            Some(root) => root.to_file_path().unwrap(),
+            None => PathBuf::new()
         };
         *world = Some(SystemWorld::new(root_path));
         
