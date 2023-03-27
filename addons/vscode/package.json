@@ -60,6 +60,12 @@
                 "scopeName": "source.typst",
                 "path": "./typst.tmLanguage.json"
             }
+        ],
+        "commands": [
+            {
+                "command": "typst.exportPdf",
+                "title": "Export current file as PDF"
+            }
         ]
     },
     "activationEvents": [
