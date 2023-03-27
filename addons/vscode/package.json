@@ -35,6 +35,12 @@
                         "Export PDFs when you save a file.",
                         "Export PDFs as you type in a file."
                     ]
+                },
+                "typst-lsp.outDir": {
+                    "title": "Output Directory",
+                    "description": "The directory where to export PDFs. Relative to workspace. Starting with %SOURCE_DIR% refers to the directory containing the current file",
+                    "type": "string",
+                    "default": "%SOURCE_DIR%"
                 }
             }
         },

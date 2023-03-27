@@ -1,6 +1,6 @@
 use std::fmt::Display;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use regex::{Captures, Regex};
@@ -166,7 +166,15 @@ impl LanguageServer for Backend {
                     _ => config::ExportPdfMode::OnSave,
                 })
                 .unwrap_or_default();
+            let out_dir = settings
+                .get("outDir")
+                .and_then(|x| x.as_str())
+                .unwrap_or_default()
+                .to_string();
+
             config.export_pdf = export_pdf;
+            config.out_dir = out_dir;
+
             self.client
                 .log_message(MessageType::INFO, "New settings applied")
                 .await;
@@ -196,6 +204,7 @@ impl Backend {
             uri,
             text,
             matches!(config.export_pdf, config::ExportPdfMode::OnType),
+            &config.out_dir,
         )
         .await;
     }
@@ -206,16 +215,18 @@ impl Backend {
             uri,
             text,
             matches!(config.export_pdf, config::ExportPdfMode::OnSave),
+            &config.out_dir,
         )
         .await;
     }
-    async fn compile_diags_export(&self, uri: Url, text: String, export: bool) {
+
+    async fn compile_diags_export(&self, file: Url, text: String, export: bool, out_dir: &str) {
         let mut world_lock = self.world.write().await;
         let world = world_lock.as_mut().unwrap();
 
         world.reset();
 
-        match world.resolve_with(Path::new(&uri.to_file_path().unwrap()), &text) {
+        match world.resolve_with(Path::new(&file.to_file_path().unwrap()), &text) {
             Ok(id) => {
                 world.main = id;
             }
@@ -232,7 +243,45 @@ impl Backend {
             Ok(document) => {
                 let buffer = typst::export::pdf(&document);
                 if export {
-                    let output_path = uri.to_file_path().unwrap().with_extension("pdf");
+                    let output_path = {
+                        let (root, middle) = if out_dir == "%SOURCE_DIR%" {
+                            let mut source_dir = file.to_file_path().unwrap();
+                            source_dir.pop(); // remove file from path
+                            (source_dir, "")
+                        } else if let Some(rest) = out_dir.strip_prefix("%SOURCE_DIR%/") {
+                            // remove leading '/' as a part of the prefix
+                            // so it's not interpreted as a root path
+                            let mut source_dir = file.to_file_path().unwrap();
+                            source_dir.pop();
+                            (source_dir, rest)
+                        } else {
+                            // path to workspace
+                            (world.root().to_path_buf(), out_dir)
+                        };
+
+                        let file_name = format!(
+                            "{}.pdf",
+                            file.to_file_path()
+                                .unwrap()
+                                .file_stem()
+                                .unwrap()
+                                .to_string_lossy()
+                        );
+
+                        let path: PathBuf = [root.to_str().unwrap(), middle, &file_name]
+                            .iter()
+                            .collect();
+
+                        // create intermediate dirs if missing
+                        if let Some(parent) = path.parent() {
+                            // discard result because if this failed and was necessary,
+                            // the save will fail and the error will be handled there
+                            let _ = fs::create_dir_all(parent);
+                        }
+
+                        path
+                    };
+
                     fs_message = match fs::write(&output_path, buffer)
                         .map_err(|_| "failed to write PDF file".to_string())
                     {
@@ -242,7 +291,7 @@ impl Backend {
                         }),
                         Err(e) => Some(LogMessage {
                             message_type: MessageType::ERROR,
-                            message: format!("{:?}", e),
+                            message: format!("{:?} (writing to: {:?})", e, output_path),
                         }),
                     };
                 }
@@ -260,7 +309,7 @@ impl Backend {
 
         self.client
             .publish_diagnostics(
-                uri.clone(),
+                file.clone(),
                 messages
                     .into_iter()
                     .map(|(message, range)| Diagnostic {

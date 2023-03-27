@@ -14,4 +14,5 @@ impl Default for ExportPdfMode {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Config {
     pub export_pdf: ExportPdfMode,
+    pub out_dir: String,
 }
