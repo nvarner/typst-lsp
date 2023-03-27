@@ -1,6 +1,6 @@
 use std::fmt::Display;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use regex::{Captures, Regex};
@@ -36,10 +36,14 @@ struct Backend {
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
         let mut world = self.world.write().await;
-        *world = Some(SystemWorld::new(
-            params.root_uri.unwrap().to_file_path().unwrap(),
-        ));
-
+        // Check if a folder is opened, if yes, use it as the root path
+        let root_path = if let Some(root) = params.root_uri {
+            root.to_file_path().unwrap()
+        } else {
+            PathBuf::new()
+        };
+        *world = Some(SystemWorld::new(root_path));
+        
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 signature_help_provider: Some(SignatureHelpOptions {
