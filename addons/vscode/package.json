@@ -69,7 +69,8 @@
         ]
     },
     "activationEvents": [
-        "onLanguage:typst"
+        "onLanguage:typst",
+        "onCommand:typst-lsp.exportPdf"
     ],
     "scripts": {
         "build-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --target=node16",
