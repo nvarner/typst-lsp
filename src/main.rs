@@ -7,7 +7,7 @@ use regex::{Captures, Regex};
 use serde_json::Value as JsonValue;
 use system_world::SystemWorld;
 use tokio::sync::RwLock;
-use tower_lsp::jsonrpc::Result;
+use tower_lsp::jsonrpc::{Error, Result};
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 use typst::diag::SourceError;
@@ -58,6 +58,12 @@ impl LanguageServer for Backend {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     TextDocumentSyncKind::FULL,
                 )),
+                execute_command_provider: Some(ExecuteCommandOptions {
+                    commands: vec!["typst.exportPdf".to_string()],
+                    work_done_progress_options: WorkDoneProgressOptions {
+                        work_done_progress: None,
+                    },
+                }),
                 ..Default::default()
             },
             ..Default::default()
@@ -102,6 +108,38 @@ impl LanguageServer for Backend {
             .expect("Could not read file")
         });
         self.on_save(params.text_document.uri, text).await;
+    }
+
+    async fn execute_command(&self, params: ExecuteCommandParams) -> Result<Option<JsonValue>> {
+        let ExecuteCommandParams {
+            command,
+            arguments,
+            work_done_progress_params: _,
+        } = params;
+        match command.as_str() {
+            "typst.exportPdf" => {
+                if arguments.is_empty() {
+                    return Err(Error::invalid_params("Missing file URI argument"));
+                }
+                let Some(file_uri) = arguments.first().and_then(|v| v.as_str()) else {
+                    return Err(Error::invalid_params(
+                        "Missing file URI as first argument",
+                    ));
+                };
+                let file_uri = Url::parse(file_uri)
+                    .map_err(|_| Error::invalid_params("Parameter is not a valid URI"))?;
+                let text =
+                    fs::read_to_string(file_uri.to_file_path().map_err(|_| {
+                        Error::invalid_params("Could not convert file URI to path")
+                    })?)
+                    .map_err(|_| Error::internal_error())?;
+                self.command_export_pdf(file_uri, text).await;
+            }
+            _ => {
+                return Err(Error::method_not_found());
+            }
+        };
+        Ok(None)
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
@@ -209,6 +247,11 @@ impl Backend {
         )
         .await;
     }
+
+    async fn command_export_pdf(&self, file: Url, text: String) {
+        self.compile_diags_export(file, text, true).await;
+    }
+
     async fn compile_diags_export(&self, uri: Url, text: String, export: bool) {
         let mut world_lock = self.world.write().await;
         let world = world_lock.as_mut().unwrap();
