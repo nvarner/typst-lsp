@@ -110,6 +110,8 @@ jobs:
           mkdir -p addons/vscode/out
           cp "target/$RUST_TARGET/release/typst-lsp" "addons/vscode/out/"
           cp "target/$RUST_TARGET/release/typst-lsp" "typst-lsp-alpine-x64"
+      - name: install VSCE
+        run: npm install --global @vscode/vsce
       - name: package extension
         run: npm run package -- --target ${{ env.target }} -o typst-lsp-${{ env.target }}.vsix
         working-directory: ./addons/vscode
@@ -161,12 +163,12 @@ jobs:
     if: success() && startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/download-artifact@v2
-      
+
       - name: Deploy to VS Code Marketplace
         run: npx vsce publish --packagePath $(find . -type f -iname '*.vsix')
         env:
           VSCE_PAT: ${{ secrets.VSCODE_MARKETPLACE_TOKEN }}
-      
+
       - name: Deploy to OpenVSX
         run: npx ovsx publish --packagePath $(find . -type f -iname '*.vsix')
         env:
