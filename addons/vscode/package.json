@@ -66,7 +66,15 @@
                 "command": "typst-lsp.exportPdf",
                 "title": "Export current file as PDF"
             }
-        ]
+        ],
+        "menus": {
+            "commandPalette": [
+                {
+                    "command": "typst-lsp.exportPdf",
+                    "when": "editorLangId == typst"
+                }
+            ]
+        }
     },
     "activationEvents": [
         "onLanguage:typst",
