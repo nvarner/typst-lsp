@@ -20,6 +20,9 @@ use typst::syntax::{ast, LinkedNode, Source, SyntaxKind};
 use typst::World;
 use typst_library::prelude::EcoString;
 
+use crate::command::LspCommand;
+
+mod command;
 mod config;
 mod system_world;
 
@@ -59,7 +62,7 @@ impl LanguageServer for Backend {
                     TextDocumentSyncKind::FULL,
                 )),
                 execute_command_provider: Some(ExecuteCommandOptions {
-                    commands: vec!["typst.exportPdf".to_string()],
+                    commands: LspCommand::all_as_string(),
                     work_done_progress_options: WorkDoneProgressOptions {
                         work_done_progress: None,
                     },
@@ -116,8 +119,8 @@ impl LanguageServer for Backend {
             arguments,
             work_done_progress_params: _,
         } = params;
-        match command.as_str() {
-            "typst.exportPdf" => {
+        match LspCommand::parse(&command) {
+            Some(LspCommand::ExportPdf) => {
                 if arguments.is_empty() {
                     return Err(Error::invalid_params("Missing file URI argument"));
                 }
@@ -135,7 +138,7 @@ impl LanguageServer for Backend {
                     .map_err(|_| Error::internal_error())?;
                 self.command_export_pdf(file_uri, text).await;
             }
-            _ => {
+            None => {
                 return Err(Error::method_not_found());
             }
         };
@@ -246,10 +249,6 @@ impl Backend {
             matches!(config.export_pdf, config::ExportPdfMode::OnSave),
         )
         .await;
-    }
-
-    async fn command_export_pdf(&self, file: Url, text: String) {
-        self.compile_diags_export(file, text, true).await;
     }
 
     async fn compile_diags_export(&self, uri: Url, text: String, export: bool) {
