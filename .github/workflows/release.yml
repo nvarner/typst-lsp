@@ -110,8 +110,8 @@ jobs:
           mkdir -p addons/vscode/out
           cp "target/$RUST_TARGET/release/typst-lsp" "addons/vscode/out/"
           cp "target/$RUST_TARGET/release/typst-lsp" "typst-lsp-alpine-x64"
-      - name: install VSCE
-        run: npm install --global @vscode/vsce
+      - run: npm install
+        working-directory: ./addons/vscode
       - name: package extension
         run: npm run package -- --target ${{ env.target }} -o typst-lsp-${{ env.target }}.vsix
         working-directory: ./addons/vscode
