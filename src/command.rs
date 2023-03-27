@@ -16,7 +16,7 @@ pub enum LspCommand {
 impl From<LspCommand> for String {
     fn from(command: LspCommand) -> Self {
         match command {
-            LspCommand::ExportPdf => "typst.exportPdf".to_string(),
+            LspCommand::ExportPdf => "typst-lsp.exportPdf".to_string(),
         }
     }
 }
@@ -24,7 +24,7 @@ impl From<LspCommand> for String {
 impl LspCommand {
     pub fn parse(command: &str) -> Option<Self> {
         match command {
-            "typst.exportPdf" => Some(Self::ExportPdf),
+            "typst-lsp.exportPdf" => Some(Self::ExportPdf),
             _ => None,
         }
     }
