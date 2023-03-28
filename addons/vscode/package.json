@@ -63,14 +63,14 @@
         ],
         "commands": [
             {
-                "command": "typst-lsp.exportPdf",
-                "title": "Export current file as PDF"
+                "command": "typst-lsp.exportCurrentPdf",
+                "title": "Export the currently open file as PDF"
             }
         ],
         "menus": {
             "commandPalette": [
                 {
-                    "command": "typst-lsp.exportPdf",
+                    "command": "typst-lsp.exportCurrentPdf",
                     "when": "editorLangId == typst"
                 }
             ]
@@ -78,7 +78,7 @@
     },
     "activationEvents": [
         "onLanguage:typst",
-        "onCommand:typst-lsp.exportPdf"
+        "onCommand:typst-lsp.exportCurrentPdf"
     ],
     "scripts": {
         "build-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --target=node16",

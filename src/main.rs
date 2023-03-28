@@ -119,6 +119,7 @@ impl LanguageServer for Backend {
             arguments,
             work_done_progress_params: _,
         } = params;
+        self.client.log_message(MessageType::INFO, &command).await;
         match LspCommand::parse(&command) {
             Some(LspCommand::ExportPdf) => {
                 self.command_export_pdf(arguments).await?;

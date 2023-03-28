@@ -30,7 +30,9 @@ export function activate(context: ExtensionContext): Promise<void> {
         });
     }, null);
 
-    context.subscriptions.push(commands.registerCommand("typst-lsp.exportPdf", commandExportPdf));
+    context.subscriptions.push(
+        commands.registerCommand("typst-lsp.exportCurrentPdf", commandExportCurrentPdf)
+    );
 
     return client.start();
 }
@@ -62,10 +64,10 @@ function fileExists(path: string): boolean {
     }
 }
 
-async function commandExportPdf() {
+async function commandExportCurrentPdf() {
     const activeEditor = window.activeTextEditor;
     if (!activeEditor) {
         return;
     }
-    await commands.executeCommand("typst.exportPdf", activeEditor.document.uri);
+    await commands.executeCommand("typst.doPdfExport", activeEditor.document.uri);
 }
