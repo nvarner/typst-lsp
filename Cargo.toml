@@ -7,7 +7,7 @@ license = "Apache-2.0 OR MIT"
 [dependencies]
 append-only-vec = "0.1.2"
 codespan-reporting = "0.11"
-comemo = { git = "https://github.com/typst/comemo", tag = "v0.2" }
+comemo = "0.2"
 dirs = "4"
 elsa = "1.7"
 memmap2 = "0.5"
