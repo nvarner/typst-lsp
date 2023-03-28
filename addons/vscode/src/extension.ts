@@ -64,10 +64,13 @@ function fileExists(path: string): boolean {
     }
 }
 
-async function commandExportCurrentPdf() {
+async function commandExportCurrentPdf(): Promise<void> {
     const activeEditor = window.activeTextEditor;
-    if (!activeEditor) {
+    if (activeEditor == null) {
         return;
     }
-    await commands.executeCommand("typst.doPdfExport", activeEditor.document.uri);
+
+    const uri = activeEditor.document.uri.toString();
+
+    await client?.sendRequest('workspace/executeCommand', { command: 'typst-lsp.doPdfExport', arguments: [uri] });
 }
