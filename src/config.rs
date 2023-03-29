@@ -14,7 +14,8 @@ impl Default for ExportPdfMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputRoot {
     Source,
-    Workspace
+    Workspace,
+    Absolute,
 }
 
 impl Default for OutputRoot {

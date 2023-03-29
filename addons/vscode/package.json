@@ -43,11 +43,13 @@
                     "default": "source",
                     "enum": [
                         "source",
-                        "workspace"
+                        "workspace",
+                        "absolute"
                     ],
                     "enumDescriptions": [
                         "The folder containing the source file",
-                        "The VSCode workspace"
+                        "The VSCode workspace",
+                        "Your home directory"
                     ]
                 },
                 "typst-lsp.outputPath": {

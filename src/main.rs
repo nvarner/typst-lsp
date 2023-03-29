@@ -173,6 +173,7 @@ impl LanguageServer for Backend {
                     JsonValue::String(val) => match val.as_str() {
                         "source" => config::OutputRoot::Source,
                         "workspace" => config::OutputRoot::Workspace,
+                        "absolute" => config::OutputRoot::Absolute,
                         _ => config::OutputRoot::default(),
                     },
                     _ => config::OutputRoot::default(),
@@ -272,6 +273,7 @@ impl Backend {
                                 file.to_file_path().unwrap().parent().unwrap().to_path_buf()
                             }
                             config::OutputRoot::Workspace => world.root().to_path_buf(),
+                            config::OutputRoot::Absolute => home::home_dir().unwrap(),
                         };
 
                         let file_name = format!(
