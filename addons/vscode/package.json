@@ -10,7 +10,7 @@
     "author": "Nathan Varner",
     "publisher": "nvarner",
     "license": "Apache-2.0 OR MIT",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "engines": {
         "vscode": "^1.71.0"
     },
@@ -60,6 +60,11 @@
                 }
             }
         },
+        "configurationDefaults": {
+            "[typst]": {
+                "editor.wordWrap": "on"
+            }
+        },
         "languages": [
             {
                 "id": "typst",
@@ -82,10 +87,25 @@
                 "scopeName": "source.typst",
                 "path": "./typst.tmLanguage.json"
             }
-        ]
+        ],
+        "commands": [
+            {
+                "command": "typst-lsp.exportCurrentPdf",
+                "title": "Export the currently open file as PDF"
+            }
+        ],
+        "menus": {
+            "commandPalette": [
+                {
+                    "command": "typst-lsp.exportCurrentPdf",
+                    "when": "editorLangId == typst"
+                }
+            ]
+        }
     },
     "activationEvents": [
-        "onLanguage:typst"
+        "onLanguage:typst",
+        "onCommand:typst-lsp.exportCurrentPdf"
     ],
     "scripts": {
         "build-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --target=node16",

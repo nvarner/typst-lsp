@@ -7,7 +7,7 @@ use regex::{Captures, Regex};
 use serde_json::Value as JsonValue;
 use system_world::SystemWorld;
 use tokio::sync::RwLock;
-use tower_lsp::jsonrpc::Result;
+use tower_lsp::jsonrpc::{Error, Result};
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 use typst::diag::SourceError;
@@ -20,6 +20,9 @@ use typst::syntax::{ast, LinkedNode, Source, SyntaxKind};
 use typst::World;
 use typst_library::prelude::EcoString;
 
+use crate::command::LspCommand;
+
+mod command;
 mod config;
 mod system_world;
 
@@ -33,9 +36,12 @@ struct Backend {
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
         let mut world = self.world.write().await;
-        *world = Some(SystemWorld::new(
-            params.root_uri.unwrap().to_file_path().unwrap(),
-        ));
+        // Check if a folder is opened, if yes, use it as the root path
+        let root_path = match params.root_uri {
+            Some(root) => root.to_file_path().unwrap(),
+            None => PathBuf::new(),
+        };
+        *world = Some(SystemWorld::new(root_path));
 
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
@@ -58,6 +64,12 @@ impl LanguageServer for Backend {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     TextDocumentSyncKind::FULL,
                 )),
+                execute_command_provider: Some(ExecuteCommandOptions {
+                    commands: LspCommand::all_as_string(),
+                    work_done_progress_options: WorkDoneProgressOptions {
+                        work_done_progress: None,
+                    },
+                }),
                 ..Default::default()
             },
             ..Default::default()
@@ -102,6 +114,24 @@ impl LanguageServer for Backend {
             .expect("Could not read file")
         });
         self.on_save(params.text_document.uri, text).await;
+    }
+
+    async fn execute_command(&self, params: ExecuteCommandParams) -> Result<Option<JsonValue>> {
+        let ExecuteCommandParams {
+            command,
+            arguments,
+            work_done_progress_params: _,
+        } = params;
+        self.client.log_message(MessageType::INFO, &command).await;
+        match LspCommand::parse(&command) {
+            Some(LspCommand::ExportPdf) => {
+                self.command_export_pdf(arguments).await?;
+            }
+            None => {
+                return Err(Error::method_not_found());
+            }
+        };
+        Ok(None)
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {

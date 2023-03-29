@@ -1,2 +1,10 @@
-**
-!addons/
+.git/**
+.github/**
+.vscode/**
+assets/**
+src/**
+target/**
+*.toml
+*.txt
+*.lock
+*.md
