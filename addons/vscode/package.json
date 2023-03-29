@@ -10,7 +10,7 @@
     "author": "Nathan Varner",
     "publisher": "nvarner",
     "license": "Apache-2.0 OR MIT",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "engines": {
         "vscode": "^1.71.0"
     },
@@ -82,7 +82,7 @@
     },
     "devDependencies": {
         "@types/node": "^16.11.7",
-        "@types/vscode": "^1.75.0",
+        "@types/vscode": "^1.71.0",
         "@typescript-eslint/eslint-plugin": "^5.56.0",
         "@typescript-eslint/parser": "^5.54.0",
         "@vscode/vsce": "^2.18.0",
