@@ -49,6 +49,8 @@ jobs:
 
     name: build (${{ matrix.platform }}-${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
+    env:
+      target: ${{ matrix.platform }}-${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v3
@@ -56,7 +58,6 @@ jobs:
           node-version: 16
       - run: npm install
         working-directory: ./addons/vscode
-
       - name: rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -67,10 +68,8 @@ jobs:
       - name: Install ARM target toolchain
         if: matrix.rust-target == 'arm-unknown-linux-gnueabihf'
         run: sudo apt-get install gcc-arm-linux-gnueabihf
-
       - shell: pwsh
         run: |
-          echo "target=${{ matrix.platform }}-${{ matrix.arch }}" >> $env:GITHUB_ENV
           cargo build --release -p typst-lsp --target ${{ matrix.rust-target }}
           mkdir -p addons/vscode/out
           cp "target/${{ matrix.rust-target }}/release/typst-lsp$(If ('${{ matrix.platform }}' -eq 'win32') { '.exe' } else { '' } )" "addons/vscode/out/"
@@ -95,9 +94,9 @@ jobs:
       volumes:
         - /usr/local/cargo/registry:/usr/local/cargo/registry
     env:
+      target: alpine-x64
       RUST_TARGET: x86_64-unknown-linux-musl
       RUSTFLAGS: "-C link-arg=-fuse-ld=lld -C target-feature=-crt-static"
-
     steps:
       - name: Install dependencies
         run: apk add --no-cache git clang lld musl-dev nodejs npm
@@ -105,7 +104,6 @@ jobs:
         uses: actions/checkout@v3
       - name: build server binary
         run: |
-          echo "target=alpine-x64" >> $env:GITHUB_ENV
           cargo build --release -p typst-lsp --target $RUST_TARGET
           mkdir -p addons/vscode/out
           cp "target/$RUST_TARGET/release/typst-lsp" "addons/vscode/out/"
