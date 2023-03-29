@@ -1605,7 +1605,7 @@ dependencies = [
 
 [[package]]
 name = "typst-lsp"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "append-only-vec",
  "codespan-reporting",
