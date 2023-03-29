@@ -166,14 +166,28 @@ impl LanguageServer for Backend {
                     _ => config::ExportPdfMode::OnSave,
                 })
                 .unwrap_or_default();
-            let out_dir = settings
-                .get("outDir")
+
+            let output_root = settings
+                .get("outputRoot")
+                .map(|val| match val {
+                    JsonValue::String(val) => match val.as_str() {
+                        "source" => config::OutputRoot::Source,
+                        "workspace" => config::OutputRoot::Workspace,
+                        _ => config::OutputRoot::default(),
+                    },
+                    _ => config::OutputRoot::default(),
+                })
+                .unwrap_or_default();
+
+            let output_path = settings
+                .get("outputPath")
                 .and_then(|x| x.as_str())
                 .unwrap_or_default()
                 .to_string();
 
             config.export_pdf = export_pdf;
-            config.out_dir = out_dir;
+            config.output_root = output_root;
+            config.output_path = output_path;
 
             self.client
                 .log_message(MessageType::INFO, "New settings applied")
@@ -204,7 +218,8 @@ impl Backend {
             uri,
             text,
             matches!(config.export_pdf, config::ExportPdfMode::OnType),
-            &config.out_dir,
+            config.output_root,
+            &config.output_path,
         )
         .await;
     }
@@ -215,12 +230,20 @@ impl Backend {
             uri,
             text,
             matches!(config.export_pdf, config::ExportPdfMode::OnSave),
-            &config.out_dir,
+            config.output_root,
+            &config.output_path,
         )
         .await;
     }
 
-    async fn compile_diags_export(&self, file: Url, text: String, export: bool, out_dir: &str) {
+    async fn compile_diags_export(
+        &self,
+        file: Url,
+        text: String,
+        export: bool,
+        output_root: config::OutputRoot,
+        relative_dir: &str,
+    ) {
         let mut world_lock = self.world.write().await;
         let world = world_lock.as_mut().unwrap();
 
@@ -244,19 +267,11 @@ impl Backend {
                 let buffer = typst::export::pdf(&document);
                 if export {
                     let output_path = {
-                        let (root, middle) = if out_dir == "%SOURCE_DIR%" {
-                            let mut source_dir = file.to_file_path().unwrap();
-                            source_dir.pop(); // remove file from path
-                            (source_dir, "")
-                        } else if let Some(rest) = out_dir.strip_prefix("%SOURCE_DIR%/") {
-                            // remove leading '/' as a part of the prefix
-                            // so it's not interpreted as a root path
-                            let mut source_dir = file.to_file_path().unwrap();
-                            source_dir.pop();
-                            (source_dir, rest)
-                        } else {
-                            // path to workspace
-                            (world.root().to_path_buf(), out_dir)
+                        let root_dir = match output_root {
+                            config::OutputRoot::Source => {
+                                file.to_file_path().unwrap().parent().unwrap().to_path_buf()
+                            }
+                            config::OutputRoot::Workspace => world.root().to_path_buf(),
                         };
 
                         let file_name = format!(
@@ -268,7 +283,7 @@ impl Backend {
                                 .to_string_lossy()
                         );
 
-                        let path: PathBuf = [root.to_str().unwrap(), middle, &file_name]
+                        let path: PathBuf = [root_dir.to_str().unwrap(), relative_dir, &file_name]
                             .iter()
                             .collect();
 

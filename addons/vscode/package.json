@@ -36,11 +36,25 @@
                         "Export PDFs as you type in a file."
                     ]
                 },
-                "typst-lsp.outDir": {
-                    "title": "Output Directory",
-                    "description": "The directory where to export PDFs. Relative to workspace. Starting with %SOURCE_DIR% refers to the directory containing the current file",
+                "typst-lsp.outputRoot": {
+                    "title": "Output Directory Root",
+                    "description": "The directory that your output directory path is relative to.",
                     "type": "string",
-                    "default": "%SOURCE_DIR%"
+                    "default": "source",
+                    "enum": [
+                        "source",
+                        "workspace"
+                    ],
+                    "enumDescriptions": [
+                        "The folder containing the source file",
+                        "The VSCode workspace"
+                    ]
+                },
+                "typst-lsp.outputPath": {
+                    "title": "Output Directory Path",
+                    "description": "The directory where to export PDFs. Relative to output directory root setting.",
+                    "type": "string",
+                    "default": ""
                 }
             }
         },

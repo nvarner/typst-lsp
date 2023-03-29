@@ -11,8 +11,21 @@ impl Default for ExportPdfMode {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OutputRoot {
+    Source,
+    Workspace
+}
+
+impl Default for OutputRoot {
+    fn default() -> Self {
+        Self::Source
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Config {
     pub export_pdf: ExportPdfMode,
-    pub out_dir: String,
+    pub output_root: OutputRoot,
+    pub output_path: String,
 }
