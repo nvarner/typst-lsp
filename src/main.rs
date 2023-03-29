@@ -1,8 +1,10 @@
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use futures::future::join_all;
 use regex::{Captures, Regex};
 use serde_json::Value as JsonValue;
 use system_world::SystemWorld;
@@ -244,11 +246,10 @@ impl Backend {
         let mut world_lock = self.world.write().await;
         let world = world_lock.as_mut().unwrap();
 
+        let mut file_diagnostics = HashMap::<Url, Vec<_>>::new();
         // Clear the previous diagnostics (could be done with the refresh notification when implemented by tower-lsp)
         for source in world.sources.iter() {
-            self.client
-                .publish_diagnostics(Url::from_file_path(source.path()).unwrap(), vec![], None)
-                .await;
+            file_diagnostics.insert(Url::from_file_path(source.path()).unwrap(), vec![]);
         }
 
         world.reset();
@@ -266,7 +267,7 @@ impl Backend {
         }
 
         let mut fs_message: Option<LogMessage<String>> = None; // log success or error of file write
-        let messages: Vec<_> = match typst::compile(world) {
+        match typst::compile(world) {
             Ok(document) => {
                 let buffer = typst::export::pdf(&document);
                 if export {
@@ -284,9 +285,16 @@ impl Backend {
                         }),
                     };
                 }
-                vec![]
             }
-            Err(errors) => errors.iter().map(|x| error_to_range(x, world)).collect(),
+            Err(errors) => {
+                for source_err in errors.iter() {
+                    let (uri, message, range) = error_to_range(source_err, world);
+                    file_diagnostics
+                        .entry(uri)
+                        .or_default()
+                        .push((message, range));
+                }
+            }
         };
         // release the lock early
         drop(world_lock);
@@ -296,20 +304,26 @@ impl Backend {
             self.client.log_message(msg.message_type, msg.message).await;
         }
 
-        for (uri, message, range) in messages.into_iter() {
-            self.client
-                .publish_diagnostics(
+        let mut notifications = vec![];
+
+        for (uri, diags) in file_diagnostics.into_iter() {
+            notifications.push(
+                self.client.publish_diagnostics(
                     uri,
-                    vec![Diagnostic {
-                        range,
-                        severity: Some(DiagnosticSeverity::ERROR),
-                        message,
-                        ..Default::default()
-                    }],
+                    diags
+                        .into_iter()
+                        .map(|(message, range)| Diagnostic {
+                            range,
+                            severity: Some(DiagnosticSeverity::ERROR),
+                            message,
+                            ..Default::default()
+                        })
+                        .collect(),
                     None,
-                )
-                .await;
+                ),
+            );
         }
+        join_all(notifications).await;
     }
 
     async fn signature_help(&self, _uri: Url, position: Position) -> Option<SignatureHelp> {
