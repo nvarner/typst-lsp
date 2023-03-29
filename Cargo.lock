@@ -77,6 +77,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
+name = "base64"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4a4ddaa51a5bc52a6948f74c06d20aaaddb71924eab79b8c97a8c556e942d6a"
+
+[[package]]
 name = "biblatex"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1608,6 +1614,7 @@ name = "typst-lsp"
 version = "0.3.0"
 dependencies = [
  "append-only-vec",
+ "base64 0.21.0",
  "codespan-reporting",
  "comemo",
  "dirs",
@@ -1750,7 +1757,7 @@ version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a261d60a7215fa339482047cc3dafd4e22e2bf34396aaebef2b707355bbb39c0"
 dependencies = [
- "base64",
+ "base64 0.13.1",
  "data-url",
  "flate2",
  "float-cmp",
