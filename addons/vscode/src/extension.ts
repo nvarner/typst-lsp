@@ -66,7 +66,7 @@ function fileExists(path: string): boolean {
 
 async function commandExportCurrentPdf(): Promise<void> {
     const activeEditor = window.activeTextEditor;
-    if (activeEditor == null) {
+    if (!activeEditor) {
         return;
     }
 
