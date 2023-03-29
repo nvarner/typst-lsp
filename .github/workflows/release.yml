@@ -73,7 +73,7 @@ jobs:
           cargo build --release -p typst-lsp --target ${{ matrix.rust-target }}
           mkdir -p addons/vscode/out
           cp "target/${{ matrix.rust-target }}/release/typst-lsp$(If ('${{ matrix.platform }}' -eq 'win32') { '.exe' } else { '' } )" "addons/vscode/out/"
-          cp "target/${{ matrix.rust-target }}/release/typst-lsp$(If ('${{ matrix.platform }}' -eq 'win32') { '.exe' } else { '' } )" "typst-lsp-${{ matrix.platform }}-${{ matrix.arch }}$(If ('${{ matrix.platform }}' -eq 'win32') { '.exe' } else { '' } )"
+          cp "target/${{ matrix.rust-target }}/release/typst-lsp$(If ('${{ matrix.platform }}' -eq 'win32') { '.exe' } else { '' } )" "typst-lsp-${{ env.target }}$(If ('${{ matrix.platform }}' -eq 'win32') { '.exe' } else { '' } )"
       - shell: pwsh
         run: npm run package -- --target ${{ env.target }} -o typst-lsp-${{ env.target }}.vsix
         working-directory: ./addons/vscode
@@ -84,7 +84,7 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: typst-lsp-${{ env.target }}
-          path: typst-lsp-${{ matrix.platform }}-${{ matrix.arch }}${{ fromJSON('["", ".exe"]')[matrix.platform == 'win32'] }}
+          path: typst-lsp-${{ env.target }}${{ fromJSON('["", ".exe"]')[matrix.platform == 'win32'] }}
 
   build_alpine:
     name: build (x86_64-unknown-linux-musl)
