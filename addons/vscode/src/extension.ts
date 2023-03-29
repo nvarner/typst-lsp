@@ -72,5 +72,8 @@ async function commandExportCurrentPdf(): Promise<void> {
 
     const uri = activeEditor.document.uri.toString();
 
-    await client?.sendRequest('workspace/executeCommand', { command: 'typst-lsp.doPdfExport', arguments: [uri] });
+    await client?.sendRequest("workspace/executeCommand", {
+        command: "typst-lsp.doPdfExport",
+        arguments: [uri],
+    });
 }
