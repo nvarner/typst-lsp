@@ -33,7 +33,7 @@ pub struct SystemWorld {
     fonts: Vec<FontSlot>,
     hashes: RwLock<HashMap<PathBuf, FileResult<PathHash>>>,
     paths: RwLock<HashMap<PathHash, PathSlot>>,
-    sources: AppendOnlyVec<Source>,
+    pub sources: AppendOnlyVec<Source>,
     pub main: SourceId,
 }
 

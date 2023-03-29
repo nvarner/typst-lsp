@@ -244,6 +244,13 @@ impl Backend {
         let mut world_lock = self.world.write().await;
         let world = world_lock.as_mut().unwrap();
 
+        // Clear the previous diagnostics (could be done with the refresh notification when implemented by tower-lsp)
+        for source in world.sources.iter() {
+            self.client
+                .publish_diagnostics(Url::from_file_path(source.path()).unwrap(), vec![], None)
+                .await;
+        }
+
         world.reset();
 
         match world.resolve_with(Path::new(&uri.to_file_path().unwrap()), &text) {
@@ -289,21 +296,20 @@ impl Backend {
             self.client.log_message(msg.message_type, msg.message).await;
         }
 
-        self.client
-            .publish_diagnostics(
-                uri.clone(),
-                messages
-                    .into_iter()
-                    .map(|(message, range)| Diagnostic {
+        for (uri, message, range) in messages.into_iter() {
+            self.client
+                .publish_diagnostics(
+                    uri,
+                    vec![Diagnostic {
                         range,
                         severity: Some(DiagnosticSeverity::ERROR),
                         message,
                         ..Default::default()
-                    })
-                    .collect(),
-                None,
-            )
-            .await;
+                    }],
+                    None,
+                )
+                .await;
+        }
     }
 
     async fn signature_help(&self, _uri: Url, position: Position) -> Option<SignatureHelp> {
@@ -543,9 +549,10 @@ async fn main() {
     Server::new(stdin, stdout, socket).serve(service).await;
 }
 
-fn error_to_range(error: &SourceError, world: &SystemWorld) -> (String, Range) {
+fn error_to_range(error: &SourceError, world: &SystemWorld) -> (Url, String, Range) {
     let source = world.source(error.span.source());
     let range = source.range(error.span);
     let range = range_to_lsp_range(range, source);
-    (error.message.to_string(), range)
+    let uri = Url::from_file_path(source.path()).expect("Unable to create Url from Path");
+    (uri, error.message.to_string(), range)
 }
