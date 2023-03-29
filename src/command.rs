@@ -54,7 +54,15 @@ impl Backend {
                 .map_err(|_| Error::invalid_params("Could not convert file URI to path"))?,
         )
         .map_err(|_| Error::internal_error())?;
-        self.compile_diags_export(file_uri, text, true).await;
+        let config = self.config.read().await;
+        self.compile_diags_export(
+            file_uri,
+            text,
+            true,
+            config.output_root,
+            &config.output_path,
+        )
+        .await;
         Ok(())
     }
 }
