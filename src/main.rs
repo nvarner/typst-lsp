@@ -39,10 +39,10 @@ impl LanguageServer for Backend {
         // Check if a folder is opened, if yes, use it as the root path
         let root_path = match params.root_uri {
             Some(root) => root.to_file_path().unwrap(),
-            None => PathBuf::new()
+            None => PathBuf::new(),
         };
         *world = Some(SystemWorld::new(root_path));
-        
+
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 signature_help_provider: Some(SignatureHelpOptions {
