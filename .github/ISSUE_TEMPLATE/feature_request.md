@@ -1,5 +1,5 @@
 ---
-name: "\U0001F381 Feature Request"
+name: "🎁 Feature Request"
 about: Do you have ideas for new features or improvements?
 title: ''
 assignees: ''

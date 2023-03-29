@@ -1,5 +1,5 @@
 ---
-name: "\U0001F41E Bug Report"
+name: "🐞 Bug Report"
 about: Did you find a bug?
 title: ''
 assignees: ''
