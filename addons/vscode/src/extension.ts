@@ -1,4 +1,4 @@
-import { type ExtensionContext, workspace } from "vscode";
+import { type ExtensionContext, workspace, window, commands } from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 
@@ -11,7 +11,7 @@ import {
 
 let client: LanguageClient | undefined = undefined;
 
-export function activate(_context: ExtensionContext): Promise<void> {
+export function activate(context: ExtensionContext): Promise<void> {
     const serverCommand = getServer();
     const serverOptions: ServerOptions = {
         run: { command: serverCommand },
@@ -29,6 +29,10 @@ export function activate(_context: ExtensionContext): Promise<void> {
             settings: workspace.getConfiguration("typst-lsp"),
         });
     }, null);
+
+    context.subscriptions.push(
+        commands.registerCommand("typst-lsp.exportCurrentPdf", commandExportCurrentPdf)
+    );
 
     return client.start();
 }
@@ -58,4 +62,18 @@ function fileExists(path: string): boolean {
     } catch (error) {
         return false;
     }
+}
+
+async function commandExportCurrentPdf(): Promise<void> {
+    const activeEditor = window.activeTextEditor;
+    if (activeEditor === undefined) {
+        return;
+    }
+
+    const uri = activeEditor.document.uri.toString();
+
+    await client?.sendRequest("workspace/executeCommand", {
+        command: "typst-lsp.doPdfExport",
+        arguments: [uri],
+    });
 }
