@@ -38,6 +38,11 @@
                 }
             }
         },
+        "configurationDefaults": {
+            "[typst]": {
+                "editor.wordWrap": "on"
+            }
+        },
         "languages": [
             {
                 "id": "typst",
