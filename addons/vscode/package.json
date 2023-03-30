@@ -49,7 +49,7 @@
                     "enumDescriptions": [
                         "The folder containing the source file",
                         "The VSCode workspace",
-                        "Your home directory"
+                        "The root of the filesystem"
                     ]
                 },
                 "typst-lsp.outputPath": {

@@ -297,13 +297,21 @@ impl Backend {
             Ok(document) => {
                 let buffer = typst::export::pdf(&document);
                 if export {
-                    let output_path = {
+                    let output_path: PathBuf = {
                         let root_dir = match output_root {
                             config::OutputRoot::Source => {
                                 file.to_file_path().unwrap().parent().unwrap().to_path_buf()
                             }
                             config::OutputRoot::Workspace => world.root().to_path_buf(),
-                            config::OutputRoot::Absolute => home::home_dir().unwrap(),
+                            config::OutputRoot::Absolute => PathBuf::new(),
+                        };
+
+                        // expand tilde if necessary
+                        let middle_dir = match output_root {
+                            config::OutputRoot::Absolute => {
+                                shellexpand::tilde(relative_dir).into_owned()
+                            }
+                            _ => relative_dir.to_string(),
                         };
 
                         let file_name = format!(
@@ -315,19 +323,17 @@ impl Backend {
                                 .to_string_lossy()
                         );
 
-                        let path: PathBuf = [root_dir.to_str().unwrap(), relative_dir, &file_name]
+                        [root_dir.to_str().unwrap(), &middle_dir, &file_name]
                             .iter()
-                            .collect();
-
-                        // create intermediate dirs if missing
-                        if let Some(parent) = path.parent() {
-                            // discard result because if this failed and was necessary,
-                            // the save will fail and the error will be handled there
-                            let _ = fs::create_dir_all(parent);
-                        }
-
-                        path
+                            .collect()
                     };
+
+                    // create intermediate dirs if missing
+                    if let Some(parent) = output_path.parent() {
+                        // discard result because if this failed and was necessary,
+                        // the save will fail and the error will be handled there
+                        let _ = fs::create_dir_all(parent);
+                    }
 
                     fs_message = match fs::write(&output_path, buffer)
                         .map_err(|_| "failed to write PDF file".to_string())
