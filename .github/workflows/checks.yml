@@ -15,12 +15,16 @@ jobs:
       
       - name: Tests
         run: cargo test
-
-      - name: Clippy
-        run: cargo clippy
       
       - name: Formatting
         run: cargo fmt --all -- --check
+  
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -Dwarnings
   
   vs-code-extension:
     runs-on: ubuntu-latest
