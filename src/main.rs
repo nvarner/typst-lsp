@@ -324,6 +324,10 @@ impl Backend {
             );
         }
         join_all(notifications).await;
+
+        // garbage collect incremental cache. this evicts all memoized results
+        // that haven't been used in the last 30 compilations.
+        comemo::evict(30);
     }
 
     async fn signature_help(&self, _uri: Url, position: Position) -> Option<SignatureHelp> {
