@@ -70,12 +70,25 @@
             {
                 "command": "typst-lsp.exportCurrentPdf",
                 "title": "Export the currently open file as PDF"
+            },
+            {
+                "command": "typst-lsp.showPdf",
+                "title": "Show the compiled PDF of the current typst file",
+                "category": "typst",
+                "icon": "$(open-preview)"
             }
         ],
         "menus": {
             "commandPalette": [
                 {
                     "command": "typst-lsp.exportCurrentPdf",
+                    "when": "editorLangId == typst"
+                }
+            ],
+            "editor/title": [
+                {
+                    "command": "typst-lsp.showPdf",
+                    "group": "navigation",
                     "when": "editorLangId == typst"
                 }
             ]
