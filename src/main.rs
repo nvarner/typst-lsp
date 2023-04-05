@@ -129,6 +129,9 @@ impl LanguageServer for Backend {
             Some(LspCommand::ExportPdf) => {
                 self.command_export_pdf(arguments).await?;
             }
+            Some(LspCommand::GeneratePreview) => {
+                return Ok(self.command_generate_preview(arguments).await?)
+            }
             None => {
                 return Err(Error::method_not_found());
             }
