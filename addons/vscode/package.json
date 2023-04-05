@@ -73,8 +73,8 @@
             },
             {
                 "command": "typst-lsp.showPdf",
-                "title": "Show the compiled PDF of the current typst file",
-                "category": "typst",
+                "title": "Show the compiled PDF of the currently opened typst file",
+                "category": "Typst",
                 "icon": "$(open-preview)"
             }
         ],
