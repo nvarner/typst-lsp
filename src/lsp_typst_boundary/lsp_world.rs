@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use comemo::Prehashed;
-use parking_lot::RwLockReadGuard;
+use tokio::sync::RwLockReadGuard;
 use typst::diag::{FileError, FileResult};
 use typst::eval::Library;
 use typst::font::{Font, FontBook};
