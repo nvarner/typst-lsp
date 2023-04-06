@@ -21,6 +21,7 @@ use typst::ide::{tooltip, Tooltip};
 use typst::syntax::{ast, LinkedNode, Source, SyntaxKind};
 use typst::World;
 use typst_library::prelude::EcoString;
+use workspace::resource_manager::ResourceManager;
 
 use crate::command::LspCommand;
 
@@ -28,6 +29,7 @@ mod command;
 mod config;
 mod lsp_typst_boundary;
 mod system_world;
+mod workspace;
 
 struct Backend {
     client: Client,
