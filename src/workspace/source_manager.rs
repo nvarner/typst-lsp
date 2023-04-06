@@ -28,6 +28,16 @@ pub struct SourceManager {
 }
 
 impl SourceManager {
+    pub fn uri_iter(&self) -> impl Iterator<Item = &Url> {
+        self.ids.keys()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&Url, &Source)> {
+        self.ids
+            .iter()
+            .map(|(uri, source_id)| (uri, self.get_source_by_id(*source_id)))
+    }
+
     pub fn get_id_by_uri(&self, uri: &Url) -> Option<SourceId> {
         self.ids.get(uri).copied()
     }
