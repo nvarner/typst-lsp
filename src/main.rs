@@ -26,6 +26,7 @@ use crate::command::LspCommand;
 
 mod command;
 mod config;
+mod lsp_typst_boundary;
 mod system_world;
 
 struct Backend {
