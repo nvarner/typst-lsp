@@ -12,7 +12,7 @@ use crate::workspace::font_manager::FontManager;
 use crate::workspace::resource_manager::ResourceManager;
 use crate::workspace::source_manager::{SourceId, SourceManager};
 
-use super::{lsp_to_typst, typst_to_lsp, LspUri, TypstPathOwned, TypstSource, TypstSourceId};
+use super::{typst_to_lsp, TypstSource, TypstSourceId};
 
 pub struct LspWorldBuilder {
     library: Prehashed<Library>,
@@ -20,13 +20,6 @@ pub struct LspWorldBuilder {
 }
 
 impl LspWorldBuilder {
-    pub fn new() -> Self {
-        Self {
-            library: Prehashed::new(typst_library::build()),
-            font_manager: FontManager::builder().with_system().with_embedded().build(),
-        }
-    }
-
     pub fn build<'a>(
         &'a self,
         main_id: SourceId,
@@ -39,6 +32,15 @@ impl LspWorldBuilder {
             sources,
             resources,
             font_manager: &self.font_manager,
+        }
+    }
+}
+
+impl Default for LspWorldBuilder {
+    fn default() -> Self {
+        Self {
+            library: Prehashed::new(typst_library::build()),
+            font_manager: FontManager::builder().with_system().with_embedded().build(),
         }
     }
 }

@@ -4,6 +4,7 @@ use tower_lsp::lsp_types::Url;
 
 use super::resource::Resource;
 
+#[derive(Debug, Default)]
 pub struct ResourceManager {
     resources: HashMap<Url, Resource>,
 }

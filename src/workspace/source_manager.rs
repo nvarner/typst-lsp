@@ -21,7 +21,7 @@ impl From<SourceId> for TypstSourceId {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SourceManager {
     ids: HashMap<Url, SourceId>,
     sources: Vec<Source>,
