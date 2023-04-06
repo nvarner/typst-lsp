@@ -2,7 +2,6 @@ use std::path::Path;
 
 use comemo::Prehashed;
 use parking_lot::Mutex;
-use tokio::sync::{RwLockReadGuard, RwLockWriteGuard};
 use typst::diag::{FileError, FileResult};
 use typst::eval::Library;
 use typst::font::{Font, FontBook};
@@ -24,8 +23,8 @@ impl LspWorldBuilder {
     pub fn build<'a>(
         &'a self,
         main_id: SourceId,
-        sources: RwLockReadGuard<'a, SourceManager>,
-        resources: RwLockWriteGuard<'a, ResourceManager>,
+        sources: &'a SourceManager,
+        resources: &'a mut ResourceManager,
     ) -> LspWorld<'a> {
         LspWorld {
             main_id,
@@ -49,8 +48,8 @@ impl Default for LspWorldBuilder {
 pub struct LspWorld<'a> {
     main_id: SourceId,
     library: &'a Prehashed<Library>,
-    sources: RwLockReadGuard<'a, SourceManager>,
-    resources: Mutex<RwLockWriteGuard<'a, ResourceManager>>,
+    sources: &'a SourceManager,
+    resources: Mutex<&'a mut ResourceManager>,
     font_manager: &'a FontManager,
 }
 
