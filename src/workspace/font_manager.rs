@@ -30,7 +30,7 @@ impl FontManager {
         &self.book
     }
 
-    pub fn font(&self, id: usize, resource_manager: &ResourceManager) -> Option<Font> {
+    pub fn font(&self, id: usize, resource_manager: &mut ResourceManager) -> Option<Font> {
         let slot = self.fonts.get(id)?;
         slot.get_font(resource_manager).as_ref().cloned().ok()
     }
@@ -45,14 +45,14 @@ struct FontSlot {
 }
 
 impl FontSlot {
-    pub fn get_font(&self, resource_manager: &ResourceManager) -> &anyhow::Result<Font> {
+    pub fn get_font(&self, resource_manager: &mut ResourceManager) -> &anyhow::Result<Font> {
         self.font.get_or_init(|| self.init(resource_manager))
     }
 
-    fn init(&self, resource_manager: &ResourceManager) -> anyhow::Result<Font> {
+    fn init(&self, resource_manager: &mut ResourceManager) -> anyhow::Result<Font> {
         let uri = self.uri.as_ref().context("could not get font url")?;
         let data = resource_manager
-            .get_resource_by_uri(uri)
+            .get_or_insert_resource(uri.clone())
             .context("could not load font")?;
         Font::new(data.into(), self.index).context("could not parse font")
     }

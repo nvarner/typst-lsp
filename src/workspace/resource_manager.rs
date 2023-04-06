@@ -1,6 +1,8 @@
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
 use tower_lsp::lsp_types::Url;
+use typst::diag::{FileError, FileResult};
 
 use super::resource::Resource;
 
@@ -10,7 +12,15 @@ pub struct ResourceManager {
 }
 
 impl ResourceManager {
-    pub fn get_resource_by_uri(&self, uri: &Url) -> Option<&Resource> {
-        self.resources.get(uri)
+    pub fn get_or_insert_resource<'a>(&'a mut self, uri: Url) -> FileResult<&'a Resource> {
+        match self.resources.entry(uri.clone()) {
+            Entry::Vacant(entry) => {
+                // TODO: ideally, we do this through the LSP client instead, and watch the file to
+                // avoid caching old data
+                let resource = Resource::read_file(&uri).map_err(|_| FileError::Other)?;
+                Ok(entry.insert(resource))
+            }
+            Entry::Occupied(entry) => Ok(entry.into_mut()),
+        }
     }
 }

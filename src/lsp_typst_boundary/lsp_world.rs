@@ -1,7 +1,8 @@
 use std::path::Path;
 
 use comemo::Prehashed;
-use tokio::sync::RwLockReadGuard;
+use parking_lot::Mutex;
+use tokio::sync::{RwLockReadGuard, RwLockWriteGuard};
 use typst::diag::{FileError, FileResult};
 use typst::eval::Library;
 use typst::font::{Font, FontBook};
@@ -24,13 +25,13 @@ impl LspWorldBuilder {
         &'a self,
         main_id: SourceId,
         sources: RwLockReadGuard<'a, SourceManager>,
-        resources: RwLockReadGuard<'a, ResourceManager>,
+        resources: RwLockWriteGuard<'a, ResourceManager>,
     ) -> LspWorld<'a> {
         LspWorld {
             main_id,
             library: &self.library,
             sources,
-            resources,
+            resources: Mutex::new(resources),
             font_manager: &self.font_manager,
         }
     }
@@ -49,7 +50,7 @@ pub struct LspWorld<'a> {
     main_id: SourceId,
     library: &'a Prehashed<Library>,
     sources: RwLockReadGuard<'a, SourceManager>,
-    resources: RwLockReadGuard<'a, ResourceManager>,
+    resources: Mutex<RwLockWriteGuard<'a, ResourceManager>>,
     font_manager: &'a FontManager,
 }
 
@@ -81,15 +82,14 @@ impl World for LspWorld<'_> {
     }
 
     fn font(&self, id: usize) -> Option<Font> {
-        self.font_manager.font(id, &self.resources)
+        let mut resources = self.resources.lock();
+        self.font_manager.font(id, &mut resources)
     }
 
     fn file(&self, typst_path: &Path) -> FileResult<Buffer> {
+        let mut resources = self.resources.lock();
         let lsp_uri = typst_to_lsp::path_to_uri(typst_path).unwrap();
-        let lsp_resource = self.resources.get_resource_by_uri(&lsp_uri);
-        match lsp_resource {
-            Some(lsp_resource) => Ok(lsp_resource.into()),
-            None => Err(FileError::NotFound(typst_path.to_owned())),
-        }
+        let lsp_resource = resources.get_or_insert_resource(lsp_uri)?;
+        Ok(lsp_resource.into())
     }
 }
