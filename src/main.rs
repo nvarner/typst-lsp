@@ -198,7 +198,30 @@ impl LanguageServer for Backend {
                     _ => config::ExportPdfMode::OnSave,
                 })
                 .unwrap_or_default();
+
+            let output_root = settings
+                .get("outputRoot")
+                .map(|val| match val {
+                    JsonValue::String(val) => match val.as_str() {
+                        "source" => config::OutputRoot::Source,
+                        "workspace" => config::OutputRoot::Workspace,
+                        "absolute" => config::OutputRoot::Absolute,
+                        _ => config::OutputRoot::default(),
+                    },
+                    _ => config::OutputRoot::default(),
+                })
+                .unwrap_or_default();
+
+            let output_path = settings
+                .get("outputPath")
+                .and_then(|x| x.as_str())
+                .unwrap_or_default()
+                .to_string();
+
             config.export_pdf = export_pdf;
+            config.output_root = output_root;
+            config.output_path = output_path;
+
             self.client
                 .log_message(MessageType::INFO, "New settings applied")
                 .await;
@@ -228,6 +251,8 @@ impl Backend {
             uri,
             text,
             matches!(config.export_pdf, config::ExportPdfMode::OnType),
+            config.output_root,
+            &config.output_path,
         )
         .await;
     }
@@ -238,11 +263,20 @@ impl Backend {
             uri,
             text,
             matches!(config.export_pdf, config::ExportPdfMode::OnSave),
+            config.output_root,
+            &config.output_path,
         )
         .await;
     }
 
-    async fn compile_diags_export(&self, uri: Url, text: String, export: bool) {
+    async fn compile_diags_export(
+        &self,
+        file: Url,
+        text: String,
+        export: bool,
+        output_root: config::OutputRoot,
+        relative_dir: &str,
+    ) {
         let mut world_lock = self.world.write().await;
         let world = world_lock.as_mut().unwrap();
 
@@ -254,7 +288,7 @@ impl Backend {
 
         world.reset();
 
-        match world.resolve_with(Path::new(&uri.to_file_path().unwrap()), &text) {
+        match world.resolve_with(Path::new(&file.to_file_path().unwrap()), &text) {
             Ok(id) => {
                 world.main = id;
             }
@@ -271,7 +305,44 @@ impl Backend {
             Ok(document) => {
                 let buffer = typst::export::pdf(&document);
                 if export {
-                    let output_path = uri.to_file_path().unwrap().with_extension("pdf");
+                    let output_path: PathBuf = {
+                        let root_dir = match output_root {
+                            config::OutputRoot::Source => {
+                                file.to_file_path().unwrap().parent().unwrap().to_path_buf()
+                            }
+                            config::OutputRoot::Workspace => world.root().to_path_buf(),
+                            config::OutputRoot::Absolute => PathBuf::new(),
+                        };
+
+                        // expand tilde if necessary
+                        let middle_dir = match output_root {
+                            config::OutputRoot::Absolute => {
+                                shellexpand::tilde(relative_dir).into_owned()
+                            }
+                            _ => relative_dir.to_string(),
+                        };
+
+                        let file_name = format!(
+                            "{}.pdf",
+                            file.to_file_path()
+                                .unwrap()
+                                .file_stem()
+                                .unwrap()
+                                .to_string_lossy()
+                        );
+
+                        [root_dir.to_str().unwrap(), &middle_dir, &file_name]
+                            .iter()
+                            .collect()
+                    };
+
+                    // create intermediate dirs if missing
+                    if let Some(parent) = output_path.parent() {
+                        // discard result because if this failed and was necessary,
+                        // the save will fail and the error will be handled there
+                        let _ = fs::create_dir_all(parent);
+                    }
+
                     fs_message = match fs::write(&output_path, buffer)
                         .map_err(|_| "failed to write PDF file".to_string())
                     {
@@ -281,7 +352,7 @@ impl Backend {
                         }),
                         Err(e) => Some(LogMessage {
                             message_type: MessageType::ERROR,
-                            message: format!("{:?}", e),
+                            message: format!("{:?} (writing to: {:?})", e, output_path),
                         }),
                     };
                 }

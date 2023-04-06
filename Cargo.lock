@@ -1201,6 +1201,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "shellexpand"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da03fa3b94cc19e3ebfc88c4229c49d8f08cdbd1228870a45f0ffdf84988e14b"
+dependencies = [
+ "dirs",
+]
+
+[[package]]
 name = "simplecss"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1632,6 +1641,7 @@ dependencies = [
  "regex",
  "same-file",
  "serde_json",
+ "shellexpand",
  "siphasher",
  "tokio",
  "tower-lsp",

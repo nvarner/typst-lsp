@@ -18,6 +18,7 @@ parking_lot = "0.12.1"
 regex = "1.7.2"
 same-file = "1"
 serde_json = "1.0.94"
+shellexpand = "3.1.0"
 siphasher = "0.3"
 tokio = { version = "1.26.0", features = [
     "macros",
