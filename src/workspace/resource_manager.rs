@@ -12,7 +12,7 @@ pub struct ResourceManager {
 }
 
 impl ResourceManager {
-    pub fn get_or_insert_resource<'a>(&'a mut self, uri: Url) -> FileResult<&'a Resource> {
+    pub fn get_or_insert_resource(&mut self, uri: Url) -> FileResult<&Resource> {
         match self.resources.entry(uri.clone()) {
             Entry::Vacant(entry) => {
                 // TODO: ideally, we do this through the LSP client instead, and watch the file to
