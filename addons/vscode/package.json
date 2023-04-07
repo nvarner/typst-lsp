@@ -69,7 +69,8 @@
         "commands": [
             {
                 "command": "typst-lsp.exportCurrentPdf",
-                "title": "Typst: Export the currently open file as PDF"
+                "title": "Export the currently open file as PDF",
+                "category": "Typst"
             }
         ],
         "menus": {
