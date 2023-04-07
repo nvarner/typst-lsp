@@ -1,3 +1,4 @@
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
 use tower_lsp::lsp_types::Url;
@@ -44,5 +45,34 @@ impl SourceManager {
 
     pub fn get_source_by_id(&self, id: SourceId) -> &Source {
         &self.sources[id.0 as usize]
+    }
+
+    fn get_mut_source_by_id(&mut self, id: SourceId) -> &mut Source {
+        &mut self.sources[id.0 as usize]
+    }
+
+    fn replace_source(&mut self, id: SourceId, replacement: Source) {
+        *self.get_mut_source_by_id(id) = replacement;
+    }
+
+    fn get_next_id(&self) -> SourceId {
+        SourceId(self.sources.len() as u16)
+    }
+
+    pub fn insert(&mut self, uri: &Url, text: String) {
+        let next_id = self.get_next_id();
+
+        match self.ids.entry(uri.clone()) {
+            Entry::Occupied(entry) => {
+                let existing_id = *entry.get();
+                let source = Source::new(existing_id, uri, text);
+                self.replace_source(existing_id, source);
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(next_id);
+                let source = Source::new(next_id, uri, text);
+                self.sources.push(source);
+            }
+        }
     }
 }
