@@ -47,6 +47,10 @@ impl SourceManager {
         &self.sources[id.0 as usize]
     }
 
+    pub fn get_source_by_uri(&self, uri: &Url) -> Option<&Source> {
+        self.get_id_by_uri(uri).map(|id| self.get_source_by_id(id))
+    }
+
     fn get_mut_source_by_id(&mut self, id: SourceId) -> &mut Source {
         &mut self.sources[id.0 as usize]
     }
