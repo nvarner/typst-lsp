@@ -8,6 +8,11 @@ pub enum ExportPdfMode {
     OnType,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Config {
+    pub export_pdf: ExportPdfMode,
+}
+
 /// What counts as "1 character" for string indexing. We should always prefer UTF-8, but support
 /// UTF-16 as long as it is standard. For more background on encodings and LSP, try
 /// ["The bottom emoji breaks rust-analyzer"](https://fasterthanli.me/articles/the-bottom-emoji-breaks-rust-analyzer),
@@ -34,8 +39,8 @@ impl From<PositionEncoding> for lsp_types::PositionEncodingKind {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Config {
-    pub export_pdf: ExportPdfMode,
+/// Configuration set at initialization that won't change within a single session
+#[derive(Debug)]
+pub struct ConstConfig {
     pub position_encoding: PositionEncoding,
 }

@@ -1,6 +1,6 @@
 use tower_lsp::lsp_types::Url;
 
-use crate::lsp_typst_boundary::{lsp_to_typst, TypstSource};
+use crate::lsp_typst_boundary::{lsp_to_typst, LspRange, TypstSource};
 
 use super::source_manager::SourceId;
 
@@ -17,6 +17,15 @@ impl Source {
         Self {
             inner: TypstSource::new(id.into(), &typst_path, text),
         }
+    }
+
+    pub fn edit(&mut self, replace: &LspRange, with: &str) {
+        let typst_replace = lsp_to_typst::range(replace, &self.inner);
+        self.inner.edit(typst_replace, with);
+    }
+
+    pub fn replace(&mut self, text: String) {
+        self.inner.replace(text);
     }
 }
 

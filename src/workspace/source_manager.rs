@@ -41,15 +41,20 @@ impl SourceManager {
         &self.sources[id.0 as usize]
     }
 
+    pub fn get_mut_source_by_id(&mut self, id: SourceId) -> &mut Source {
+        &mut self.sources[id.0 as usize]
+    }
+
     pub fn get_source_by_uri(&self, uri: &Url) -> Option<&Source> {
         self.get_id_by_uri(uri).map(|id| self.get_source_by_id(id))
     }
 
-    fn get_mut_source_by_id(&mut self, id: SourceId) -> &mut Source {
-        &mut self.sources[id.0 as usize]
+    pub fn get_mut_source_by_uri(&mut self, uri: &Url) -> Option<&mut Source> {
+        self.get_id_by_uri(uri)
+            .map(|id| self.get_mut_source_by_id(id))
     }
 
-    fn replace_source(&mut self, id: SourceId, replacement: Source) {
+    fn replace(&mut self, id: SourceId, replacement: Source) {
         *self.get_mut_source_by_id(id) = replacement;
     }
 
@@ -64,7 +69,7 @@ impl SourceManager {
             Entry::Occupied(entry) => {
                 let existing_id = *entry.get();
                 let source = Source::new(existing_id, uri, text);
-                self.replace_source(existing_id, source);
+                self.replace(existing_id, source);
             }
             Entry::Vacant(entry) => {
                 entry.insert(next_id);
