@@ -57,7 +57,7 @@ pub type TypstCompletionKind = typst::ide::CompletionKind;
 pub mod lsp_to_typst {
     use std::path::PathBuf;
 
-    use typst::syntax::Source;
+    use crate::workspace::source::Source;
 
     use super::*;
 
@@ -70,13 +70,14 @@ pub mod lsp_to_typst {
     pub fn position_to_offset(
         lsp_position: LspPosition,
         lsp_position_encoding: LspPositionEncoding,
-        typst_source: &Source,
+        source: &Source,
     ) -> TypstOffset {
         match lsp_position_encoding {
             LspPositionEncoding::Utf8 => {
                 let line_index = lsp_position.line as usize;
                 let column_index = lsp_position.character as usize;
-                typst_source
+                source
+                    .as_ref()
                     .line_column_to_byte(line_index, column_index)
                     .unwrap()
             }
@@ -100,21 +101,21 @@ pub mod lsp_to_typst {
                 let line_index = lsp_position.line as usize;
                 let utf16_offset_in_line = lsp_position.character as usize;
 
-                let byte_line_offset = typst_source.line_to_byte(line_index).unwrap();
-                let utf16_line_offset = typst_source.byte_to_utf16(byte_line_offset).unwrap();
+                let byte_line_offset = source.as_ref().line_to_byte(line_index).unwrap();
+                let utf16_line_offset = source.as_ref().byte_to_utf16(byte_line_offset).unwrap();
                 let utf16_offset = utf16_line_offset + utf16_offset_in_line;
 
-                typst_source.utf16_to_byte(utf16_offset).unwrap()
+                source.as_ref().utf16_to_byte(utf16_offset).unwrap()
             }
         }
     }
 
-    pub fn range(lsp_range: &LspRange, typst_source: &Source) -> TypstRange {
+    pub fn range(lsp_range: &LspRange, source: &Source) -> TypstRange {
         let lsp_start = lsp_range.raw_range.start;
-        let typst_start = position_to_offset(lsp_start, lsp_range.encoding, typst_source);
+        let typst_start = position_to_offset(lsp_start, lsp_range.encoding, source);
 
         let lsp_end = lsp_range.raw_range.end;
-        let typst_end = position_to_offset(lsp_end, lsp_range.encoding, typst_source);
+        let typst_end = position_to_offset(lsp_end, lsp_range.encoding, source);
 
         TypstRange {
             start: typst_start,
@@ -124,7 +125,18 @@ pub mod lsp_to_typst {
 }
 
 pub mod typst_to_lsp {
+    use itertools::Itertools;
+    use lazy_static::lazy_static;
+    use regex::{Captures, Regex};
+    use tower_lsp::lsp_types::{
+        DiagnosticSeverity, InsertTextFormat, LanguageString, MarkedString,
+    };
     use typst::syntax::Source;
+    use typst::World;
+    use typst_library::prelude::EcoString;
+
+    use crate::config::ConstConfig;
+    use crate::workspace::Workspace;
 
     use super::*;
 
@@ -180,5 +192,91 @@ pub mod typst_to_lsp {
 
         let raw_range = LspRawRange::new(lsp_start, lsp_end);
         LspRange::new(raw_range, lsp_position_encoding)
+    }
+
+    fn completion_kind(typst_completion_kind: TypstCompletionKind) -> LspCompletionKind {
+        match typst_completion_kind {
+            TypstCompletionKind::Syntax => LspCompletionKind::SNIPPET,
+            TypstCompletionKind::Func => LspCompletionKind::FUNCTION,
+            TypstCompletionKind::Param => LspCompletionKind::VARIABLE,
+            TypstCompletionKind::Constant => LspCompletionKind::CONSTANT,
+            TypstCompletionKind::Symbol(_) => LspCompletionKind::TEXT,
+        }
+    }
+
+    lazy_static! {
+        static ref TYPST_SNIPPET_PLACEHOLDER_RE: Regex = Regex::new(r"\$\{(.*?)\}").unwrap();
+    }
+
+    /// Adds numbering to placeholders in snippets
+    fn snippet(typst_snippet: &EcoString) -> String {
+        let mut counter = 1;
+        let result =
+            TYPST_SNIPPET_PLACEHOLDER_RE.replace_all(typst_snippet.as_str(), |cap: &Captures| {
+                let substitution = format!("${{{}:{}}}", counter, &cap[1]);
+                counter += 1;
+                substitution
+            });
+
+        result.to_string()
+    }
+
+    pub fn completion(typst_completion: &TypstCompletion) -> LspCompletion {
+        // TODO: provide `text_edit` instead of `insert_text` as recommended by the LSP spec
+        LspCompletion {
+            label: typst_completion.label.to_string(),
+            kind: Some(completion_kind(typst_completion.kind.clone())),
+            detail: typst_completion.detail.as_ref().map(String::from),
+            insert_text: typst_completion.apply.as_ref().map(snippet),
+            insert_text_format: Some(InsertTextFormat::SNIPPET),
+            ..Default::default()
+        }
+    }
+
+    pub fn source_error_to_diagnostic(
+        typst_error: &TypstSourceError,
+        workspace: &Workspace,
+        const_config: &ConstConfig,
+    ) -> (Url, LspDiagnostic) {
+        let typst_span = typst_error.span;
+        let typst_source = workspace.source(typst_span.source());
+
+        let typst_range = typst_source.range(typst_span);
+        let lsp_range = range(typst_range, typst_source, const_config.position_encoding);
+
+        let lsp_message = typst_error.message.to_string();
+
+        let diagnostic = LspDiagnostic {
+            range: lsp_range.raw_range,
+            severity: Some(DiagnosticSeverity::ERROR),
+            message: lsp_message,
+            ..Default::default()
+        };
+
+        let uri = path_to_uri(typst_source.path()).unwrap();
+
+        (uri, diagnostic)
+    }
+
+    pub fn source_errors_to_diagnostics<'a>(
+        errors: impl IntoIterator<Item = &'a TypstSourceError>,
+        workspace: &Workspace,
+        const_config: &ConstConfig,
+    ) -> LspDiagnostics {
+        errors
+            .into_iter()
+            .map(|error| typst_to_lsp::source_error_to_diagnostic(error, workspace, const_config))
+            .into_group_map()
+    }
+
+    pub fn tooltip(typst_tooltip: &TypstTooltip) -> LspHoverContents {
+        let lsp_marked_string = match typst_tooltip {
+            TypstTooltip::Text(text) => MarkedString::String(text.to_string()),
+            TypstTooltip::Code(code) => MarkedString::LanguageString(LanguageString {
+                language: "typst".to_owned(),
+                value: code.to_string(),
+            }),
+        };
+        LspHoverContents::Scalar(lsp_marked_string)
     }
 }
