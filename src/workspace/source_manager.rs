@@ -49,11 +49,6 @@ impl SourceManager {
         self.get_id_by_uri(uri).map(|id| self.get_source_by_id(id))
     }
 
-    pub fn get_mut_source_by_uri(&mut self, uri: &Url) -> Option<&mut Source> {
-        self.get_id_by_uri(uri)
-            .map(|id| self.get_mut_source_by_id(id))
-    }
-
     fn replace(&mut self, id: SourceId, replacement: Source) {
         *self.get_mut_source_by_id(id) = replacement;
     }
