@@ -109,7 +109,7 @@ pub mod lsp_to_typst {
         }
     }
 
-    pub fn range(lsp_range: LspRange, typst_source: &Source) -> TypstRange {
+    pub fn range(lsp_range: &LspRange, typst_source: &Source) -> TypstRange {
         let lsp_start = lsp_range.raw_range.start;
         let typst_start = position_to_offset(lsp_start, lsp_range.encoding, typst_source);
 

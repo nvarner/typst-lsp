@@ -43,12 +43,6 @@ impl World for Workspace {
         // invocations of `main` should be easy to catch and avoid during development, so this is
         // good enough.
         panic!("should not invoke `World`'s `main` on a `Workspace` because there is no reasonable default context")
-        // tokio::task::block_in_place(|| {
-        //     let lsp_source = self
-        //         .sources
-        //         .get_source_by_id(self.main_id.blocking_read().unwrap());
-        //     lsp_source.as_ref()
-        // })
     }
 
     fn resolve(&self, typst_path: &TypstPath) -> FileResult<TypstSourceId> {
