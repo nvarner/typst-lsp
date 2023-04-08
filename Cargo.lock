@@ -1647,6 +1647,7 @@ dependencies = [
  "dirs",
  "elsa",
  "futures",
+ "if_chain",
  "itertools",
  "lazy_static",
  "memmap2",
@@ -1661,6 +1662,7 @@ dependencies = [
  "tower-lsp",
  "typst",
  "typst-library",
+ "unscanny",
  "walkdir",
 ]
 

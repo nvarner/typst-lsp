@@ -11,6 +11,7 @@ pub mod command;
 pub mod diagnostics;
 pub mod document;
 pub mod export;
+pub mod hover;
 pub mod log;
 pub mod lsp;
 pub mod signature;

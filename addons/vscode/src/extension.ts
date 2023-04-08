@@ -14,8 +14,8 @@ let client: LanguageClient | undefined = undefined;
 export function activate(context: ExtensionContext): Promise<void> {
     const serverCommand = getServer();
     const serverOptions: ServerOptions = {
-        run: { command: serverCommand },
-        debug: { command: serverCommand },
+        run: { command: serverCommand, options: { env: { RUST_BACKTRACE: "1" } } },
+        debug: { command: serverCommand, options: { env: { RUST_BACKTRACE: "1" } } },
     };
 
     const clientOptions: LanguageClientOptions = {

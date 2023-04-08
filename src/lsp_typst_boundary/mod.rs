@@ -5,7 +5,7 @@ use std::io;
 
 use tower_lsp::lsp_types::{self, Url};
 
-pub mod typst_invoke;
+pub mod workaround;
 pub mod world;
 
 pub type LspUri = lsp_types::Url;
