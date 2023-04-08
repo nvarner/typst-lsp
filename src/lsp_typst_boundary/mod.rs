@@ -158,7 +158,7 @@ pub mod typst_to_lsp {
 
         let lsp_line = line_index as u32;
         let lsp_column = match lsp_position_encoding {
-            LspPositionEncoding::Utf8 => column_index as u32,
+            LspPositionEncoding::Utf8 => column_index as LspCharacterOffset,
             LspPositionEncoding::Utf16 => {
                 // See the implementation of `lsp_to_typst::position_to_offset` for discussion
                 // relevent to this function.
@@ -172,7 +172,7 @@ pub mod typst_to_lsp {
                 let utf16_line_offset = typst_source.byte_to_utf16(byte_line_offset).unwrap();
 
                 let utf16_column_offset = utf16_offset - utf16_line_offset;
-                utf16_column_offset as u32
+                utf16_column_offset as LspCharacterOffset
             }
         };
 

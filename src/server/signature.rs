@@ -8,7 +8,7 @@ use typst::syntax::{ast, LinkedNode, SyntaxKind};
 use typst::World;
 
 use crate::ext::StrExt;
-use crate::lsp_typst_boundary::{lsp_to_typst, LspPosition, TypstOffset};
+use crate::lsp_typst_boundary::{lsp_to_typst, LspCharacterOffset, LspPosition, TypstOffset};
 use crate::workspace::source::Source;
 use crate::workspace::Workspace;
 
@@ -192,7 +192,10 @@ impl TypstServer {
                 |start_of_label, label| {
                     let len = label.encoded_len(encoding);
                     let end_of_label = *start_of_label + len;
-                    let offsets = [*start_of_label as u32, end_of_label as u32];
+                    let offsets = [
+                        *start_of_label as LspCharacterOffset,
+                        end_of_label as LspCharacterOffset,
+                    ];
 
                     *start_of_label += len + param_joiner_len;
 
