@@ -3,7 +3,7 @@ use typst::doc::Document;
 use typst::eval::{Module, Route, Tracer};
 use typst::World;
 
-use crate::lsp_typst_boundary::typst_invoke::compile;
+use crate::lsp_typst_boundary::workaround::compile;
 use crate::lsp_typst_boundary::{typst_to_lsp, LspDiagnostics};
 use crate::workspace::source::Source;
 use crate::workspace::Workspace;
