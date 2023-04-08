@@ -20,7 +20,7 @@ impl Source {
     }
 
     pub fn edit(&mut self, replace: &LspRange, with: &str) {
-        let typst_replace = lsp_to_typst::range(replace, &self.inner);
+        let typst_replace = lsp_to_typst::range(replace, self);
         self.inner.edit(typst_replace, with);
     }
 
