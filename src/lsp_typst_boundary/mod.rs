@@ -56,8 +56,6 @@ pub type TypstCompletionKind = typst::ide::CompletionKind;
 pub mod lsp_to_typst {
     use std::path::PathBuf;
 
-    use crate::workspace::source::Source;
-
     use super::*;
 
     // TODO: these URL <-> Path functions are a quick hack to make things work. They should be
@@ -69,14 +67,13 @@ pub mod lsp_to_typst {
     pub fn position_to_offset(
         lsp_position: LspPosition,
         lsp_position_encoding: LspPositionEncoding,
-        source: &Source,
+        typst_source: &TypstSource,
     ) -> TypstOffset {
         match lsp_position_encoding {
             LspPositionEncoding::Utf8 => {
                 let line_index = lsp_position.line as usize;
                 let column_index = lsp_position.character as usize;
-                source
-                    .as_ref()
+                typst_source
                     .line_column_to_byte(line_index, column_index)
                     .unwrap()
             }
@@ -100,16 +97,16 @@ pub mod lsp_to_typst {
                 let line_index = lsp_position.line as usize;
                 let utf16_offset_in_line = lsp_position.character as usize;
 
-                let byte_line_offset = source.as_ref().line_to_byte(line_index).unwrap();
-                let utf16_line_offset = source.as_ref().byte_to_utf16(byte_line_offset).unwrap();
+                let byte_line_offset = typst_source.line_to_byte(line_index).unwrap();
+                let utf16_line_offset = typst_source.byte_to_utf16(byte_line_offset).unwrap();
                 let utf16_offset = utf16_line_offset + utf16_offset_in_line;
 
-                source.as_ref().utf16_to_byte(utf16_offset).unwrap()
+                typst_source.utf16_to_byte(utf16_offset).unwrap()
             }
         }
     }
 
-    pub fn range(lsp_range: &LspRange, source: &Source) -> TypstRange {
+    pub fn range(lsp_range: &LspRange, source: &TypstSource) -> TypstRange {
         let lsp_start = lsp_range.raw_range.start;
         let typst_start = position_to_offset(lsp_start, lsp_range.encoding, source);
 
@@ -130,7 +127,6 @@ pub mod typst_to_lsp {
     use tower_lsp::lsp_types::{
         DiagnosticSeverity, InsertTextFormat, LanguageString, MarkedString,
     };
-    use typst::syntax::Source;
     use typst::World;
     use typst_library::prelude::EcoString;
 
@@ -149,8 +145,8 @@ pub mod typst_to_lsp {
 
     pub fn offset_to_position(
         typst_offset: TypstOffset,
-        typst_source: &Source,
         lsp_position_encoding: LspPositionEncoding,
+        typst_source: &TypstSource,
     ) -> LspPosition {
         let line_index = typst_source.byte_to_line(typst_offset).unwrap();
         let column_index = typst_source.byte_to_column(typst_offset).unwrap();
@@ -160,7 +156,7 @@ pub mod typst_to_lsp {
             LspPositionEncoding::Utf8 => column_index as LspCharacterOffset,
             LspPositionEncoding::Utf16 => {
                 // See the implementation of `lsp_to_typst::position_to_offset` for discussion
-                // relevent to this function.
+                // relevant to this function.
 
                 // TODO: Typst's `Source` could easily provide an implementation of the method we
                 //   need here. Submit a PR to `typst` to add it, then update this if/when merged.
@@ -180,14 +176,14 @@ pub mod typst_to_lsp {
 
     pub fn range(
         typst_range: TypstRange,
-        typst_source: &Source,
+        typst_source: &TypstSource,
         lsp_position_encoding: LspPositionEncoding,
     ) -> LspRange {
         let typst_start = typst_range.start;
-        let lsp_start = offset_to_position(typst_start, typst_source, lsp_position_encoding);
+        let lsp_start = offset_to_position(typst_start, lsp_position_encoding, typst_source);
 
         let typst_end = typst_range.end;
-        let lsp_end = offset_to_position(typst_end, typst_source, lsp_position_encoding);
+        let lsp_end = offset_to_position(typst_end, lsp_position_encoding, typst_source);
 
         let raw_range = LspRawRange::new(lsp_start, lsp_end);
         LspRange::new(raw_range, lsp_position_encoding)
@@ -277,5 +273,99 @@ pub mod typst_to_lsp {
             }),
         };
         LspHoverContents::Scalar(lsp_marked_string)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::config::PositionEncoding;
+    use crate::lsp_typst_boundary::lsp_to_typst;
+
+    use super::*;
+
+    const ENCODING_TEST_STRING: &str = "test 🥺 test";
+
+    #[test]
+    fn utf16_position_to_utf8_offset() {
+        let source = TypstSource::detached(ENCODING_TEST_STRING);
+
+        let start = LspPosition {
+            line: 0,
+            character: 0,
+        };
+        let emoji = LspPosition {
+            line: 0,
+            character: 5,
+        };
+        let post_emoji = LspPosition {
+            line: 0,
+            character: 7,
+        };
+        let end = LspPosition {
+            line: 0,
+            character: 12,
+        };
+
+        let start_offset =
+            lsp_to_typst::position_to_offset(start, PositionEncoding::Utf16, &source);
+        let start_actual = 0;
+
+        let emoji_offset =
+            lsp_to_typst::position_to_offset(emoji, PositionEncoding::Utf16, &source);
+        let emoji_actual = 5;
+
+        let post_emoji_offset =
+            lsp_to_typst::position_to_offset(post_emoji, PositionEncoding::Utf16, &source);
+        let post_emoji_actual = 9;
+
+        let end_offset = lsp_to_typst::position_to_offset(end, PositionEncoding::Utf16, &source);
+        let end_actual = 14;
+
+        assert_eq!(start_offset, start_actual);
+        assert_eq!(emoji_offset, emoji_actual);
+        assert_eq!(post_emoji_offset, post_emoji_actual);
+        assert_eq!(end_offset, end_actual);
+    }
+
+    #[test]
+    fn utf8_offset_to_utf16_position() {
+        let source = TypstSource::detached(ENCODING_TEST_STRING);
+
+        let start = 0;
+        let emoji = 5;
+        let post_emoji = 9;
+        let end = 14;
+
+        let start_position = LspPosition {
+            line: 0,
+            character: 0,
+        };
+        let start_actual =
+            typst_to_lsp::offset_to_position(start, PositionEncoding::Utf16, &source);
+
+        let emoji_position = LspPosition {
+            line: 0,
+            character: 5,
+        };
+        let emoji_actual =
+            typst_to_lsp::offset_to_position(emoji, PositionEncoding::Utf16, &source);
+
+        let post_emoji_position = LspPosition {
+            line: 0,
+            character: 7,
+        };
+        let post_emoji_actual =
+            typst_to_lsp::offset_to_position(post_emoji, PositionEncoding::Utf16, &source);
+
+        let end_position = LspPosition {
+            line: 0,
+            character: 12,
+        };
+        let end_actual = typst_to_lsp::offset_to_position(end, PositionEncoding::Utf16, &source);
+
+        assert_eq!(start_position, start_actual);
+        assert_eq!(emoji_position, emoji_actual);
+        assert_eq!(post_emoji_position, post_emoji_actual);
+        assert_eq!(end_position, end_actual);
     }
 }
