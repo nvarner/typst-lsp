@@ -1,5 +1,5 @@
 use comemo::Prehashed;
-use tokio::sync::OwnedRwLockWriteGuard;
+use tokio::sync::OwnedRwLockReadGuard;
 use typst::diag::FileResult;
 use typst::eval::Library;
 use typst::font::{Font, FontBook};
@@ -12,16 +12,16 @@ use crate::workspace::Workspace;
 use super::{typst_to_lsp, TypstPath, TypstSource, TypstSourceId};
 
 pub struct WorkspaceWorld {
-    workspace: OwnedRwLockWriteGuard<Workspace>,
+    workspace: OwnedRwLockReadGuard<Workspace>,
     main: SourceId,
 }
 
 impl WorkspaceWorld {
-    pub fn new(workspace: OwnedRwLockWriteGuard<Workspace>, main: SourceId) -> Self {
+    pub fn new(workspace: OwnedRwLockReadGuard<Workspace>, main: SourceId) -> Self {
         Self { workspace, main }
     }
 
-    pub fn get_workspace(&self) -> &OwnedRwLockWriteGuard<Workspace> {
+    pub fn get_workspace(&self) -> &OwnedRwLockReadGuard<Workspace> {
         &self.workspace
     }
 }

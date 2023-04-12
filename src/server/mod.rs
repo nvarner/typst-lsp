@@ -55,6 +55,6 @@ impl TypstServer {
     }
 
     pub async fn get_world_with_main(&self, main: SourceId) -> WorkspaceWorld {
-        WorkspaceWorld::new(Arc::clone(&self.workspace).write_owned().await, main)
+        WorkspaceWorld::new(Arc::clone(&self.workspace).read_owned().await, main)
     }
 }
