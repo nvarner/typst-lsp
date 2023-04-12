@@ -1,14 +1,16 @@
 use std::collections::hash_map::Entry;
-use std::collections::HashMap;
-use std::mem;
+use std::{fmt, fs, io, mem};
 
+use elsa::sync::{FrozenMap, FrozenVec};
+use once_cell::sync::OnceCell;
 use tower_lsp::lsp_types::Url;
+use typst::diag::{FileError, FileResult};
 
-use crate::lsp_typst_boundary::TypstSourceId;
+use crate::lsp_typst_boundary::{lsp_to_typst, TypstSourceId};
 
 use super::source::Source;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SourceId(u16);
 
 impl From<TypstSourceId> for SourceId {
@@ -26,50 +28,57 @@ impl From<SourceId> for TypstSourceId {
 #[derive(Debug)]
 enum InnerSource {
     Open(Source),
-    ClosedUnmodified(Source),
-    ClosedModified(Url),
+    Closed(OnceCell<Source>),
 }
 
 impl InnerSource {
     pub fn get_source(&self) -> Option<&Source> {
         match self {
-            Self::Open(source) | Self::ClosedUnmodified(source) => Some(source),
-            Self::ClosedModified(_) => None,
+            Self::Open(source) => Some(source),
+            Self::Closed(cell) => cell.get(),
         }
     }
 
     pub fn get_mut_source(&mut self) -> Option<&mut Source> {
         match self {
-            Self::Open(source) | Self::ClosedUnmodified(source) => Some(source),
-            Self::ClosedModified(_) => None,
+            Self::Open(source) => Some(source),
+            Self::Closed(cell) => cell.get_mut(),
         }
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct SourceManager {
-    ids: HashMap<Url, SourceId>,
-    sources: Vec<InnerSource>,
+    ids: FrozenMap<Url, SourceId>,
+    sources: FrozenVec<Box<InnerSource>>,
 }
 
 impl SourceManager {
-    pub fn uri_iter(&self) -> impl Iterator<Item = &Url> {
-        self.ids.keys()
+    pub fn get_uris(&self) -> Vec<Url> {
+        self.ids.keys_cloned()
     }
 
     pub fn get_id_by_uri(&self, uri: &Url) -> Option<SourceId> {
-        self.ids.get(uri).copied()
+        self.ids.get_copy(uri)
+    }
+
+    fn get_inner_source(&self, id: SourceId) -> &InnerSource {
+        self.sources.get(id.0 as usize).unwrap()
+    }
+
+    fn get_mut_inner_source(&mut self, id: SourceId) -> &mut InnerSource {
+        self.sources.as_mut().get_mut(id.0 as usize).unwrap()
     }
 
     /// Gets a source which is known to be open in the LSP client
     pub fn get_open_source_by_id(&self, id: SourceId) -> &Source {
-        self.sources[id.0 as usize]
+        self.get_inner_source(id)
             .get_source()
             .expect("open source should exist")
     }
 
     pub fn get_mut_open_source_by_id(&mut self, id: SourceId) -> &mut Source {
-        self.sources[id.0 as usize]
+        self.get_mut_inner_source(id)
             .get_mut_source()
             .expect("open source should exist")
     }
@@ -78,14 +87,10 @@ impl SourceManager {
         SourceId(self.sources.len() as u16)
     }
 
-    fn get_mut_inner_source(&mut self, id: SourceId) -> &mut InnerSource {
-        &mut self.sources[id.0 as usize]
-    }
-
     pub fn insert_open(&mut self, uri: &Url, text: String) {
         let next_id = self.get_next_id();
 
-        match self.ids.entry(uri.clone()) {
+        match self.ids.as_mut().entry(uri.clone()) {
             Entry::Occupied(entry) => {
                 let existing_id = *entry.get();
                 let source = Source::new(existing_id, uri, text);
@@ -94,7 +99,7 @@ impl SourceManager {
             Entry::Vacant(entry) => {
                 entry.insert(next_id);
                 let source = Source::new(next_id, uri, text);
-                self.sources.push(InnerSource::Open(source));
+                self.sources.push(Box::new(InnerSource::Open(source)));
             }
         }
     }
@@ -104,17 +109,54 @@ impl SourceManager {
             let inner_source = self.get_mut_inner_source(id);
             if let InnerSource::Open(source) = inner_source {
                 let source = mem::replace(source, Source::new_detached());
-                *inner_source = InnerSource::ClosedUnmodified(source);
+                *inner_source = InnerSource::Closed(OnceCell::with_value(source));
             }
         }
     }
 
-    pub fn invalidate_closed(&mut self, uri: Url) {
-        if let Some(id) = self.get_id_by_uri(&uri) {
+    pub fn invalidate_closed(&mut self, uri: &Url) {
+        if let Some(id) = self.get_id_by_uri(uri) {
             let inner_source = self.get_mut_inner_source(id);
-            if let InnerSource::ClosedUnmodified(_) = *inner_source {
-                *inner_source = InnerSource::ClosedModified(uri);
+            if let InnerSource::Closed(cell) = inner_source {
+                cell.take();
             }
         }
+    }
+
+    fn read_source_from_file(id: SourceId, uri: &Url) -> FileResult<Source> {
+        let path = lsp_to_typst::uri_to_path(uri);
+        let text = fs::read_to_string(&path).map_err(|error| match error.kind() {
+            io::ErrorKind::NotFound => FileError::NotFound(path),
+            io::ErrorKind::PermissionDenied => FileError::AccessDenied,
+            _ => FileError::Other,
+        })?;
+        Ok(Source::new(id, uri, text))
+    }
+
+    pub fn cache(&self, uri: Url) -> FileResult<SourceId> {
+        let next_id = self.get_next_id();
+
+        let id = self.ids.get_copy_or_insert(uri.clone(), next_id);
+
+        // TODO: next_id could expire before the new source is inserted; lock across everything, or
+        // use a more appropriate structure which handles that automatically
+        if id == next_id {
+            let source = Self::read_source_from_file(id, &uri)?;
+            self.sources
+                .push(Box::new(InnerSource::Closed(OnceCell::with_value(source))));
+        } else {
+            let inner_source = self.get_inner_source(id);
+            if let InnerSource::Closed(cell) = inner_source {
+                cell.get_or_try_init(|| Self::read_source_from_file(id, &uri))?;
+            }
+        }
+
+        Ok(id)
+    }
+}
+
+impl fmt::Debug for SourceManager {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("SourceManager").finish_non_exhaustive()
     }
 }

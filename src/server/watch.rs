@@ -29,6 +29,6 @@ impl TypstServer {
     }
 
     pub fn handle_file_change_event(&self, workspace: &mut Workspace, event: FileEvent) {
-        workspace.sources.invalidate_closed(event.uri);
+        workspace.sources.invalidate_closed(&event.uri);
     }
 }
