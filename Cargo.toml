@@ -10,7 +10,7 @@ append-only-vec = "0.1.2"
 codespan-reporting = "0.11"
 comemo = "0.2"
 dirs = "4"
-elsa = "1.7"
+elsa = { git = "https://github.com/nvarner/elsa.git" }
 futures = "0.3"
 if_chain = "1"
 itertools = "0.10.5"
