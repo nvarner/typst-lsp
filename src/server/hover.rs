@@ -18,7 +18,7 @@ impl TypstServer {
         let typst_offset = lsp_to_typst::position_to_offset(
             position,
             self.get_const_config().position_encoding,
-            source,
+            source.as_ref(),
         );
 
         let typst_tooltip = tooltip(world, &[], source.as_ref(), typst_offset)?;
