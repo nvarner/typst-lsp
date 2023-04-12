@@ -2,9 +2,12 @@ use std::sync::Arc;
 
 use once_cell::sync::OnceCell;
 use tokio::sync::RwLock;
+use tower_lsp::lsp_types::Url;
 use tower_lsp::Client;
 
 use crate::config::{Config, ConstConfig};
+use crate::lsp_typst_boundary::world::WorkspaceWorld;
+use crate::workspace::source_manager::SourceId;
 use crate::workspace::Workspace;
 
 pub mod command;
@@ -19,7 +22,7 @@ pub mod typst_compiler;
 
 pub struct TypstServer {
     client: Client,
-    workspace: RwLock<Workspace>,
+    workspace: Arc<RwLock<Workspace>>,
     config: Arc<RwLock<Config>>,
     const_config: OnceCell<ConstConfig>,
 }
@@ -38,5 +41,19 @@ impl TypstServer {
         self.const_config
             .get()
             .expect("const config should be initialized")
+    }
+
+    pub async fn get_world_with_main_uri(&self, main: &Url) -> (WorkspaceWorld, SourceId) {
+        let workspace = self.workspace.read().await;
+        let source_id = workspace
+            .sources
+            .get_id_by_uri(main)
+            .expect("source should exist");
+        drop(workspace);
+        (self.get_world_with_main(source_id).await, source_id)
+    }
+
+    pub async fn get_world_with_main(&self, main: SourceId) -> WorkspaceWorld {
+        WorkspaceWorld::new(Arc::clone(&self.workspace).write_owned().await, main)
     }
 }

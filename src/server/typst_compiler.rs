@@ -4,19 +4,19 @@ use typst::eval::{Module, Route, Tracer};
 use typst::World;
 
 use crate::lsp_typst_boundary::workaround::compile;
+use crate::lsp_typst_boundary::world::WorkspaceWorld;
 use crate::lsp_typst_boundary::{typst_to_lsp, LspDiagnostics};
 use crate::workspace::source::Source;
-use crate::workspace::Workspace;
 
 use super::TypstServer;
 
 impl TypstServer {
     pub fn compile_source(
         &self,
-        workspace: &Workspace,
+        world: &WorkspaceWorld,
         source: &Source,
     ) -> (Option<Document>, LspDiagnostics) {
-        let result = compile(workspace, source.as_ref());
+        let result = compile(world, source.as_ref());
 
         let (document, errors) = match result {
             Ok(document) => (Some(document), Default::default()),
@@ -25,7 +25,7 @@ impl TypstServer {
 
         let diagnostics = typst_to_lsp::source_errors_to_diagnostics(
             errors.as_ref(),
-            workspace,
+            world,
             self.get_const_config(),
         );
 
@@ -38,13 +38,13 @@ impl TypstServer {
 
     pub fn eval_source(
         &self,
-        workspace: &Workspace,
+        world: &WorkspaceWorld,
         source: &Source,
     ) -> (Option<Module>, LspDiagnostics) {
         let route = Route::default();
         let mut tracer = Tracer::default();
         let result = typst::eval::eval(
-            (workspace as &dyn World).track(),
+            (world as &dyn World).track(),
             route.track(),
             tracer.track_mut(),
             source.as_ref(),
@@ -57,7 +57,7 @@ impl TypstServer {
 
         let diagnostics = typst_to_lsp::source_errors_to_diagnostics(
             errors.as_ref(),
-            workspace,
+            world,
             self.get_const_config(),
         );
 
