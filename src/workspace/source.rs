@@ -19,6 +19,12 @@ impl Source {
         }
     }
 
+    pub fn new_detached() -> Self {
+        Self {
+            inner: TypstSource::detached(""),
+        }
+    }
+
     pub fn edit(&mut self, replace: &LspRange, with: &str) {
         let typst_replace = lsp_to_typst::range(replace, self);
         self.inner.edit(typst_replace, with);

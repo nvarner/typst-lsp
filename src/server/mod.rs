@@ -19,6 +19,7 @@ pub mod log;
 pub mod lsp;
 pub mod signature;
 pub mod typst_compiler;
+pub mod watch;
 
 pub struct TypstServer {
     client: Client,

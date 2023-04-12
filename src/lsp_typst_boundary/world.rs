@@ -45,7 +45,10 @@ impl World for WorkspaceWorld {
     }
 
     fn source(&self, typst_id: TypstSourceId) -> &TypstSource {
-        let lsp_source = self.workspace.sources.get_source_by_id(typst_id.into());
+        let lsp_source = self
+            .workspace
+            .sources
+            .get_open_source_by_id(typst_id.into());
         lsp_source.as_ref()
     }
 
