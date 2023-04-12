@@ -85,12 +85,16 @@ impl LanguageServer for TypstServer {
         let workspace = workspace.downgrade();
         let config = self.config.read().await;
 
-        let source = workspace
+        let source_id = workspace
             .sources
-            .get_source_by_uri(&uri)
+            .get_id_by_uri(&uri)
             .expect("source should exist just after adding it");
 
-        self.on_source_changed(&workspace, &config, source).await;
+        drop(workspace);
+
+        let world = self.get_world_with_main(source_id).await;
+        let source = world.get_workspace().sources.get_source_by_id(source_id);
+        self.on_source_changed(&world, &config, source).await;
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
@@ -104,7 +108,6 @@ impl LanguageServer for TypstServer {
         let changes = params.content_changes;
 
         let mut workspace = self.workspace.write().await;
-
         let source_id = workspace
             .sources
             .get_id_by_uri(&uri)
@@ -115,27 +118,26 @@ impl LanguageServer for TypstServer {
             self.apply_single_document_change(source, change);
         }
 
-        let workspace = workspace.downgrade();
+        drop(workspace);
+
+        let world = self.get_world_with_main(source_id).await;
         let config = self.config.read().await;
 
-        let source = workspace.sources.get_source_by_id(source_id);
+        let source = world.get_workspace().sources.get_source_by_id(source_id);
 
-        self.on_source_changed(&workspace, &config, source).await;
+        self.on_source_changed(&world, &config, source).await;
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         let uri = params.text_document.uri;
 
-        let workspace = self.workspace.read().await;
+        let (world, source_id) = self.get_world_with_main_uri(&uri).await;
         let config = self.config.read().await;
 
-        let source = workspace
-            .sources
-            .get_source_by_uri(&uri)
-            .expect("source should exist after being saved");
+        let source = world.get_workspace().sources.get_source_by_id(source_id);
 
         if config.export_pdf == ExportPdfMode::OnSave {
-            self.run_diagnostics_and_export(&workspace, source).await;
+            self.run_diagnostics_and_export(&world, source).await;
         }
     }
 
@@ -143,8 +145,6 @@ impl LanguageServer for TypstServer {
         &self,
         params: ExecuteCommandParams,
     ) -> jsonrpc::Result<Option<JsonValue>> {
-        let workspace = self.workspace.read().await;
-
         let ExecuteCommandParams {
             command,
             arguments,
@@ -153,7 +153,7 @@ impl LanguageServer for TypstServer {
         self.client.log_message(MessageType::INFO, &command).await;
         match LspCommand::parse(&command) {
             Some(LspCommand::ExportPdf) => {
-                self.command_export_pdf(&workspace, arguments).await?;
+                self.command_export_pdf(arguments).await?;
             }
             None => {
                 return Err(jsonrpc::Error::method_not_found());
@@ -166,11 +166,10 @@ impl LanguageServer for TypstServer {
         let uri = &params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
 
-        let workspace = self.workspace.read().await;
+        let (world, source_id) = self.get_world_with_main_uri(uri).await;
+        let source = world.get_workspace().sources.get_source_by_id(source_id);
 
-        let source = workspace.sources.get_source_by_uri(uri).unwrap();
-
-        Ok(self.get_hover(&workspace, source, position))
+        Ok(self.get_hover(&world, source, position))
     }
 
     async fn completion(
@@ -184,9 +183,9 @@ impl LanguageServer for TypstServer {
             .map(|context| context.trigger_kind == CompletionTriggerKind::INVOKED)
             .unwrap_or(false);
 
-        let workspace = self.workspace.read().await;
+        let (world, source_id) = self.get_world_with_main_uri(uri).await;
 
-        let source = workspace.sources.get_source_by_uri(uri).unwrap();
+        let source = world.get_workspace().sources.get_source_by_id(source_id);
 
         let typst_offset = lsp_to_typst::position_to_offset(
             position,
@@ -194,7 +193,7 @@ impl LanguageServer for TypstServer {
             source,
         );
 
-        let completions = autocomplete(&*workspace, &[], source.as_ref(), typst_offset, explicit);
+        let completions = autocomplete(&world, &[], source.as_ref(), typst_offset, explicit);
 
         match completions {
             Some((_, c)) => {
@@ -214,11 +213,11 @@ impl LanguageServer for TypstServer {
         let uri = &params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
 
-        let workspace = self.workspace.read().await;
+        let (world, source_id) = self.get_world_with_main_uri(uri).await;
 
-        let source = workspace.sources.get_source_by_uri(uri).unwrap();
+        let source = world.get_workspace().sources.get_source_by_id(source_id);
 
-        Ok(self.get_signature_at_position(&workspace, source, position))
+        Ok(self.get_signature_at_position(&world, source, position))
     }
 
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {

@@ -8,20 +8,20 @@ use typst::syntax::{ast, LinkedNode, SyntaxKind};
 use typst::World;
 
 use crate::ext::StrExt;
+use crate::lsp_typst_boundary::world::WorkspaceWorld;
 use crate::lsp_typst_boundary::{lsp_to_typst, LspCharacterOffset, LspPosition, TypstOffset};
 use crate::workspace::source::Source;
-use crate::workspace::Workspace;
 
 use super::TypstServer;
 
 impl TypstServer {
     pub fn get_signature_at_position(
         &self,
-        workspace: &Workspace,
+        world: &WorkspaceWorld,
         source: &Source,
         position: LspPosition,
     ) -> Option<SignatureHelp> {
-        let global = workspace.library().global.scope();
+        let global = world.library().global.scope();
 
         let typst_offset = lsp_to_typst::position_to_offset(
             position,

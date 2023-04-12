@@ -4,13 +4,12 @@ use tower_lsp::lsp_types::MessageType;
 use typst::doc::Document;
 
 use crate::workspace::source::Source;
-use crate::workspace::Workspace;
 
 use super::log::LogMessage;
 use super::TypstServer;
 
 impl TypstServer {
-    pub async fn export_pdf(&self, _workspace: &Workspace, source: &Source, document: &Document) {
+    pub async fn export_pdf(&self, source: &Source, document: &Document) {
         let buffer = typst::export::pdf(document);
         let output_path = source.as_ref().path().with_extension("pdf");
 

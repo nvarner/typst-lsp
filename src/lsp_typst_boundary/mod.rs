@@ -136,8 +136,8 @@ pub mod typst_to_lsp {
     use typst_library::prelude::EcoString;
 
     use crate::config::ConstConfig;
-    use crate::workspace::Workspace;
 
+    use super::world::WorkspaceWorld;
     use super::*;
 
     // TODO: these URL <-> Path functions are a quick hack to make things work. They should be
@@ -235,11 +235,11 @@ pub mod typst_to_lsp {
 
     pub fn source_error_to_diagnostic(
         typst_error: &TypstSourceError,
-        workspace: &Workspace,
+        world: &WorkspaceWorld,
         const_config: &ConstConfig,
     ) -> (Url, LspDiagnostic) {
         let typst_span = typst_error.span;
-        let typst_source = workspace.source(typst_span.source());
+        let typst_source = world.source(typst_span.source());
 
         let typst_range = typst_source.range(typst_span);
         let lsp_range = range(typst_range, typst_source, const_config.position_encoding);
@@ -260,12 +260,12 @@ pub mod typst_to_lsp {
 
     pub fn source_errors_to_diagnostics<'a>(
         errors: impl IntoIterator<Item = &'a TypstSourceError>,
-        workspace: &Workspace,
+        world: &WorkspaceWorld,
         const_config: &ConstConfig,
     ) -> LspDiagnostics {
         errors
             .into_iter()
-            .map(|error| typst_to_lsp::source_error_to_diagnostic(error, workspace, const_config))
+            .map(|error| typst_to_lsp::source_error_to_diagnostic(error, world, const_config))
             .into_group_map()
     }
 

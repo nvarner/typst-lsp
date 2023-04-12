@@ -2,16 +2,16 @@ use tower_lsp::lsp_types::Hover;
 use typst::syntax::LinkedNode;
 
 use crate::lsp_typst_boundary::workaround::ide::tooltip::tooltip;
+use crate::lsp_typst_boundary::world::WorkspaceWorld;
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp, LspPosition};
 use crate::workspace::source::Source;
-use crate::workspace::Workspace;
 
 use super::TypstServer;
 
 impl TypstServer {
     pub fn get_hover(
         &self,
-        workspace: &Workspace,
+        world: &WorkspaceWorld,
         source: &Source,
         position: LspPosition,
     ) -> Option<Hover> {
@@ -21,7 +21,7 @@ impl TypstServer {
             source,
         );
 
-        let typst_tooltip = tooltip(workspace, &[], source.as_ref(), typst_offset)?;
+        let typst_tooltip = tooltip(world, &[], source.as_ref(), typst_offset)?;
         let lsp_tooltip = typst_to_lsp::tooltip(&typst_tooltip);
 
         let typst_hovered_node = LinkedNode::new(source.as_ref().root()).leaf_at(typst_offset)?;
