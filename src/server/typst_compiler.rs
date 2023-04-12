@@ -3,7 +3,6 @@ use typst::doc::Document;
 use typst::eval::{Module, Route, Tracer};
 use typst::World;
 
-use crate::lsp_typst_boundary::workaround::compile;
 use crate::lsp_typst_boundary::world::WorkspaceWorld;
 use crate::lsp_typst_boundary::{typst_to_lsp, LspDiagnostics};
 use crate::workspace::source::Source;
@@ -11,12 +10,8 @@ use crate::workspace::source::Source;
 use super::TypstServer;
 
 impl TypstServer {
-    pub fn compile_source(
-        &self,
-        world: &WorkspaceWorld,
-        source: &Source,
-    ) -> (Option<Document>, LspDiagnostics) {
-        let result = compile(world, source.as_ref());
+    pub fn compile_source(&self, world: &WorkspaceWorld) -> (Option<Document>, LspDiagnostics) {
+        let result = typst::compile(world);
 
         let (document, errors) = match result {
             Ok(document) => (Some(document), Default::default()),

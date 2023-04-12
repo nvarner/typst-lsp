@@ -1,7 +1,7 @@
 use tower_lsp::lsp_types::Hover;
+use typst::ide::tooltip;
 use typst::syntax::LinkedNode;
 
-use crate::lsp_typst_boundary::workaround::ide::tooltip::tooltip;
 use crate::lsp_typst_boundary::world::WorkspaceWorld;
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp, LspPosition};
 use crate::workspace::source::Source;
