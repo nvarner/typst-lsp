@@ -5,7 +5,7 @@ use typst::ide::autocomplete;
 
 use crate::config::{ConstConfig, ExportPdfMode, PositionEncoding};
 use crate::ext::InitializeParamsExt;
-use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp, TypstPathOwned};
+use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
 
 use super::command::LspCommand;
 use super::TypstServer;
@@ -13,12 +13,6 @@ use super::TypstServer;
 #[tower_lsp::async_trait]
 impl LanguageServer for TypstServer {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
-        // Check if a folder is opened, if yes, use it as the root path
-        let root_path = match &params.root_uri {
-            Some(root) => root.to_file_path().unwrap(),
-            None => TypstPathOwned::new(),
-        };
-
         let position_encoding = if params
             .position_encodings()
             .contains(&PositionEncodingKind::UTF8)
@@ -66,6 +60,21 @@ impl LanguageServer for TypstServer {
     }
 
     async fn initialized(&self, _: InitializedParams) {
+        let watch_files_error = self
+            .client
+            .register_capability(vec![self.get_watcher_registration()])
+            .await
+            .err();
+
+        if let Some(error) = watch_files_error {
+            self.client
+                .log_message(
+                    MessageType::ERROR,
+                    format!("could not register to watch Typst files: {error}"),
+                )
+                .await;
+        }
+
         self.client
             .log_message(MessageType::INFO, "server initialized!")
             .await;
@@ -80,7 +89,7 @@ impl LanguageServer for TypstServer {
         let text = params.text_document.text;
 
         let mut workspace = self.workspace.write().await;
-        workspace.sources.insert(&uri, text);
+        workspace.sources.insert_open(&uri, text);
 
         let workspace = workspace.downgrade();
         let config = self.config.read().await;
@@ -93,14 +102,20 @@ impl LanguageServer for TypstServer {
         drop(workspace);
 
         let world = self.get_world_with_main(source_id).await;
-        let source = world.get_workspace().sources.get_source_by_id(source_id);
+        let source = world
+            .get_workspace()
+            .sources
+            .get_open_source_by_id(source_id);
         self.on_source_changed(&world, &config, source).await;
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
-        self.client
-            .publish_diagnostics(params.text_document.uri, Vec::new(), None)
-            .await;
+        let uri = params.text_document.uri;
+
+        let mut workspace = self.workspace.write().await;
+        workspace.sources.close(&uri);
+
+        self.client.publish_diagnostics(uri, Vec::new(), None).await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
@@ -113,7 +128,7 @@ impl LanguageServer for TypstServer {
             .get_id_by_uri(&uri)
             .expect("source should exist after being changed");
 
-        let source = workspace.sources.get_mut_source_by_id(source_id);
+        let source = workspace.sources.get_mut_open_source_by_id(source_id);
         for change in changes {
             self.apply_single_document_change(source, change);
         }
@@ -123,7 +138,10 @@ impl LanguageServer for TypstServer {
         let world = self.get_world_with_main(source_id).await;
         let config = self.config.read().await;
 
-        let source = world.get_workspace().sources.get_source_by_id(source_id);
+        let source = world
+            .get_workspace()
+            .sources
+            .get_open_source_by_id(source_id);
 
         self.on_source_changed(&world, &config, source).await;
     }
@@ -134,10 +152,23 @@ impl LanguageServer for TypstServer {
         let (world, source_id) = self.get_world_with_main_uri(&uri).await;
         let config = self.config.read().await;
 
-        let source = world.get_workspace().sources.get_source_by_id(source_id);
+        let source = world
+            .get_workspace()
+            .sources
+            .get_open_source_by_id(source_id);
 
         if config.export_pdf == ExportPdfMode::OnSave {
             self.run_diagnostics_and_export(&world, source).await;
+        }
+    }
+
+    async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
+        let changes = params.changes;
+
+        let mut workspace = self.workspace.write().await;
+
+        for change in changes {
+            self.handle_file_change_event(&mut workspace, change);
         }
     }
 
@@ -167,7 +198,10 @@ impl LanguageServer for TypstServer {
         let position = params.text_document_position_params.position;
 
         let (world, source_id) = self.get_world_with_main_uri(uri).await;
-        let source = world.get_workspace().sources.get_source_by_id(source_id);
+        let source = world
+            .get_workspace()
+            .sources
+            .get_open_source_by_id(source_id);
 
         Ok(self.get_hover(&world, source, position))
     }
@@ -185,7 +219,10 @@ impl LanguageServer for TypstServer {
 
         let (world, source_id) = self.get_world_with_main_uri(uri).await;
 
-        let source = world.get_workspace().sources.get_source_by_id(source_id);
+        let source = world
+            .get_workspace()
+            .sources
+            .get_open_source_by_id(source_id);
 
         let typst_offset = lsp_to_typst::position_to_offset(
             position,
@@ -215,7 +252,10 @@ impl LanguageServer for TypstServer {
 
         let (world, source_id) = self.get_world_with_main_uri(uri).await;
 
-        let source = world.get_workspace().sources.get_source_by_id(source_id);
+        let source = world
+            .get_workspace()
+            .sources
+            .get_open_source_by_id(source_id);
 
         Ok(self.get_signature_at_position(&world, source, position))
     }

@@ -48,7 +48,10 @@ impl TypstServer {
             .map_err(|_| Error::invalid_params("Parameter is not a valid URI"))?;
 
         let (world, source_id) = self.get_world_with_main_uri(&file_uri).await;
-        let source = world.get_workspace().sources.get_source_by_id(source_id);
+        let source = world
+            .get_workspace()
+            .sources
+            .get_open_source_by_id(source_id);
 
         self.run_export(&world, source).await;
 
