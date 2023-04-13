@@ -1,4 +1,4 @@
-import { type ExtensionContext, workspace, window, commands, ViewColumn, Uri, TextDocument } from "vscode";
+import { type ExtensionContext, workspace, window, commands, ViewColumn, Uri } from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 
