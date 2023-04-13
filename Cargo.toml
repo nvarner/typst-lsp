@@ -7,7 +7,7 @@ license = "Apache-2.0 OR MIT"
 [dependencies]
 anyhow = "1.0.70"
 comemo = "0.2"
-dirs = "4"
+dirs = "5"
 elsa = { git = "https://github.com/nvarner/elsa.git" }
 futures = "0.3"
 if_chain = "1"
