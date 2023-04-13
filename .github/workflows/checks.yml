@@ -26,6 +26,12 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets --all-features -- -Dwarnings
   
+  cargo-deny:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: EmbarkStudios/cargo-deny-action@v1
+  
   vs-code-extension:
     runs-on: ubuntu-latest
     name: VS Code Extension
