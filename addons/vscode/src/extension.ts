@@ -1,4 +1,4 @@
-import { type ExtensionContext, workspace, window, commands } from "vscode";
+import { type ExtensionContext, workspace, window, commands, ViewColumn, Uri } from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 
@@ -32,6 +32,9 @@ export function activate(context: ExtensionContext): Promise<void> {
 
     context.subscriptions.push(
         commands.registerCommand("typst-lsp.exportCurrentPdf", commandExportCurrentPdf)
+    );
+    context.subscriptions.push(
+        commands.registerCommand("typst-lsp.showPdf", commandShowPdf)
     );
 
     return client.start();
@@ -76,4 +79,36 @@ async function commandExportCurrentPdf(): Promise<void> {
         command: "typst-lsp.doPdfExport",
         arguments: [uri],
     });
+}
+
+/**
+ * Implements the functionality for the 'Show PDF' button shown in the editor title
+ * if a `.typ` file is opened.
+ * 
+ */
+async function commandShowPdf(): Promise<void> {
+    const activeEditor = window.activeTextEditor;
+    if (activeEditor === undefined) {
+        return;
+    }
+
+    const uri = activeEditor.document.uri;
+    // change the file extension to `.pdf` as we want to open the pdf file
+    // and not the currently opened `.typ` file.
+    const n = uri.toString().lastIndexOf(".");
+    const pdf_uri =  Uri.parse(uri.toString().slice(0, n) + ".pdf");
+
+    try {
+        await workspace.fs.stat(pdf_uri);
+    } catch {
+        // only create pdf if it does not exist yet
+        await commandExportCurrentPdf();
+    } finally {
+        // here we can be sure that the pdf exists
+        await commands.executeCommand(
+            "vscode.open",
+            pdf_uri,
+            ViewColumn.Beside
+        );
+    }
 }
