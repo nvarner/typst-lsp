@@ -1971,6 +1971,7 @@ dependencies = [
  "same-file",
  "serde_json",
  "siphasher",
+ "strum",
  "tokio",
  "tower-lsp",
  "typst",

@@ -54,6 +54,14 @@ impl LanguageServer for TypstServer {
                         ..Default::default()
                     },
                 )),
+                semantic_tokens_provider: Some(
+                    SemanticTokensServerCapabilities::SemanticTokensOptions(
+                        SemanticTokensOptions {
+                            legend: todo!(),
+                            ..Default::default()
+                        },
+                    ),
+                ),
                 execute_command_provider: Some(ExecuteCommandOptions {
                     commands: LspCommand::all_as_string(),
                     work_done_progress_options: WorkDoneProgressOptions {
@@ -326,6 +334,22 @@ impl LanguageServer for TypstServer {
             symbols.append(&mut document_symbols);
         }
         Ok(Some(symbols))
+    }
+
+    async fn semantic_tokens_full(
+        &self,
+        params: SemanticTokensParams,
+    ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
+        let uri = &params.text_document.uri;
+
+        let (world, source_id) = self.get_world_with_main_uri(uri).await;
+
+        let source = world
+            .get_workspace()
+            .sources
+            .get_open_source_by_id(source_id);
+
+        todo!()
     }
 
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {

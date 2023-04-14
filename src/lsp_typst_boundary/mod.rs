@@ -122,12 +122,14 @@ pub mod typst_to_lsp {
     use lazy_static::lazy_static;
     use regex::{Captures, Regex};
     use tower_lsp::lsp_types::{
-        DiagnosticSeverity, InsertTextFormat, LanguageString, MarkedString,
+        DiagnosticSeverity, InsertTextFormat, LanguageString, MarkedString, SemanticTokenType,
     };
+    use typst::ide::Tag;
     use typst::World;
     use typst_library::prelude::EcoString;
 
     use crate::config::ConstConfig;
+    use crate::server::semantic_tokens::TypstSemanticTokenType;
 
     use super::world::WorkspaceWorld;
     use super::*;
@@ -271,6 +273,32 @@ pub mod typst_to_lsp {
             }),
         };
         LspHoverContents::Scalar(lsp_marked_string)
+    }
+
+    pub fn tag_to_token_type(tag: Tag) -> TypstSemanticTokenType {
+        match tag {
+            Tag::Comment => TypstSemanticTokenType::Comment,
+            Tag::Punctuation => todo!(),
+            Tag::Escape => todo!(),
+            Tag::Strong => todo!(),
+            Tag::Emph => todo!(),
+            Tag::Link => todo!(),
+            Tag::Raw => todo!(),
+            Tag::Label => todo!(),
+            Tag::Ref => todo!(),
+            Tag::Heading => todo!(),
+            Tag::ListMarker => todo!(),
+            Tag::ListTerm => todo!(),
+            Tag::MathDelimiter => todo!(),
+            Tag::MathOperator => todo!(),
+            Tag::Keyword => TypstSemanticTokenType::Keyword,
+            Tag::Operator => TypstSemanticTokenType::Operator,
+            Tag::Number => TypstSemanticTokenType::Number,
+            Tag::String => TypstSemanticTokenType::String,
+            Tag::Function => TypstSemanticTokenType::Function,
+            Tag::Interpolated => todo!(),
+            Tag::Error => todo!(),
+        }
     }
 }
 
