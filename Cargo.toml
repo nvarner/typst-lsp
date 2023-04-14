@@ -30,3 +30,4 @@ typst = { git = "https://github.com/typst/typst.git", tag = "v0.2.0" }
 typst-library = { git = "https://github.com/typst/typst.git", tag = "v0.2.0" }
 unscanny = "0.1"
 walkdir = "2"
+typst-fmt = {git = "https://github.com/astrale-sharp/typst-fmt", rev = "93fe2d"}

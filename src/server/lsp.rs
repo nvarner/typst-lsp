@@ -28,6 +28,7 @@ impl LanguageServer for TypstServer {
 
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
+                document_formatting_provider: Some(OneOf::Left(true)),
                 signature_help_provider: Some(SignatureHelpOptions {
                     trigger_characters: Some(vec!["(".to_string(), ",".to_string()]),
                     retrigger_characters: None,
@@ -285,5 +286,24 @@ impl LanguageServer for TypstServer {
                 .log_message(MessageType::ERROR, "Got invalid configuration object")
                 .await;
         }
+    }
+    async fn formatting(
+        &self,
+        params: DocumentFormattingParams,
+    ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
+        // hope main is the currently edited file.
+        let (world, source) = self
+            .get_world_with_main_uri(&params.text_document.uri)
+            .await;
+        let source = world.get_workspace().sources.get_open_source_by_id(source);
+        let replace = typst_fmt::typst_format(source.as_ref().text());
+        Ok(Some(vec![TextEdit {
+            new_text: replace,
+            range: typst_to_lsp::range(
+                source.as_ref().range(source.as_ref().root().span()),
+                source.as_ref(),
+                PositionEncoding::Utf8,
+            ).raw_range,
+        }]))
     }
 }
