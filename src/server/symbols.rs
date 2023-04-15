@@ -1,9 +1,7 @@
 use tower_lsp::lsp_types::*;
 use typst::syntax::{ast, LinkedNode, Source, SyntaxKind};
 
-use crate::{
-    config::PositionEncoding, lsp_typst_boundary::typst_to_lsp, workspace::source_manager::SourceId,
-};
+use crate::{config::PositionEncoding, lsp_typst_boundary::typst_to_lsp};
 
 use super::TypstServer;
 
