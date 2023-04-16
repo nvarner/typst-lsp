@@ -127,6 +127,7 @@ pub mod typst_to_lsp {
     use tower_lsp::lsp_types::{
         DiagnosticSeverity, InsertTextFormat, LanguageString, MarkedString,
     };
+    use typst::util::PathExt;
     use typst::World;
     use typst_library::prelude::EcoString;
 
@@ -138,8 +139,8 @@ pub mod typst_to_lsp {
     // TODO: these URL <-> Path functions are a quick hack to make things work. They should be
     // replaced by a more comprehensive system to reliably convert `LspUri`s to `TypstPath`s
     pub fn path_to_uri(typst_path: &TypstPath) -> io::Result<LspUri> {
-        let canonical_path = typst_path.canonicalize()?;
-        let lsp_uri = Url::from_file_path(canonical_path).unwrap();
+        let normalized_path = typst_path.normalize();
+        let lsp_uri = Url::from_file_path(normalized_path).unwrap();
         Ok(lsp_uri)
     }
 
