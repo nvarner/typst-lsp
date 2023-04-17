@@ -182,9 +182,11 @@ impl Builder {
         if let Ok(file) = File::open(&path) {
             if let Ok(mmap) = unsafe { Mmap::map(&file) } {
                 for (i, info) in FontInfo::iter(&mmap).enumerate() {
+                    let Ok(uri) = Url::from_file_path(&path) else { continue; };
+
                     self.book.push(info);
                     self.fonts.push(FontSlot {
-                        uri: Some(Url::from_file_path(&path).unwrap()),
+                        uri: Some(uri),
                         index: i as u32,
                         font: OnceCell::new(),
                     });

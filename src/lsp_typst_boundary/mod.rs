@@ -1,9 +1,8 @@
 //! Conversions between Typst and LSP types and representations
 
 use std::collections::HashMap;
-use std::io;
 
-use tower_lsp::lsp_types::{self, Url};
+use tower_lsp::lsp_types;
 
 pub mod world;
 
@@ -54,14 +53,12 @@ pub type TypstCompletion = typst::ide::Completion;
 pub type TypstCompletionKind = typst::ide::CompletionKind;
 
 pub mod lsp_to_typst {
-    use std::path::PathBuf;
-
     use super::*;
 
-    // TODO: these URL <-> Path functions are a quick hack to make things work. They should be
-    // replaced by a more comprehensive system to reliably convert `LspUri`s to `TypstPath`s
-    pub fn uri_to_path(lsp_uri: &LspUri) -> TypstPathOwned {
-        lsp_uri.to_file_path().unwrap_or_else(|_| PathBuf::new())
+    pub fn uri_to_path(lsp_uri: &LspUri) -> anyhow::Result<TypstPathOwned> {
+        lsp_uri
+            .to_file_path()
+            .map_err(|()| anyhow::anyhow!("could not get path for URI {lsp_uri}"))
     }
 
     pub fn position_to_offset(
@@ -127,7 +124,6 @@ pub mod typst_to_lsp {
     use tower_lsp::lsp_types::{
         DiagnosticSeverity, InsertTextFormat, LanguageString, MarkedString,
     };
-    use typst::util::PathExt;
     use typst::World;
     use typst_library::prelude::EcoString;
 
@@ -136,12 +132,11 @@ pub mod typst_to_lsp {
     use super::world::WorkspaceWorld;
     use super::*;
 
-    // TODO: these URL <-> Path functions are a quick hack to make things work. They should be
-    // replaced by a more comprehensive system to reliably convert `LspUri`s to `TypstPath`s
-    pub fn path_to_uri(typst_path: &TypstPath) -> io::Result<LspUri> {
-        let normalized_path = typst_path.normalize();
-        let lsp_uri = Url::from_file_path(normalized_path).unwrap();
-        Ok(lsp_uri)
+    pub fn path_to_uri(typst_path: &TypstPath) -> anyhow::Result<LspUri> {
+        LspUri::from_file_path(typst_path).map_err(|()| {
+            let path = typst_path.to_string_lossy();
+            anyhow::anyhow!("could not get URI for path {path}")
+        })
     }
 
     pub fn offset_to_position(
@@ -233,7 +228,7 @@ pub mod typst_to_lsp {
         typst_error: &TypstSourceError,
         world: &WorkspaceWorld,
         const_config: &ConstConfig,
-    ) -> (Url, LspDiagnostic) {
+    ) -> Option<(LspUri, LspDiagnostic)> {
         let typst_span = typst_error.span;
         let typst_source = world.source(typst_span.source());
 
@@ -249,9 +244,9 @@ pub mod typst_to_lsp {
             ..Default::default()
         };
 
-        let uri = path_to_uri(typst_source.path()).unwrap();
+        let uri = path_to_uri(typst_source.path()).ok()?;
 
-        (uri, diagnostic)
+        Some((uri, diagnostic))
     }
 
     pub fn source_errors_to_diagnostics<'a>(
@@ -261,7 +256,9 @@ pub mod typst_to_lsp {
     ) -> LspDiagnostics {
         errors
             .into_iter()
-            .map(|error| typst_to_lsp::source_error_to_diagnostic(error, world, const_config))
+            .filter_map(|error| {
+                typst_to_lsp::source_error_to_diagnostic(error, world, const_config)
+            })
             .into_group_map()
     }
 

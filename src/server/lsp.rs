@@ -89,7 +89,10 @@ impl LanguageServer for TypstServer {
         let text = params.text_document.text;
 
         let mut workspace = self.workspace.write().await;
-        workspace.sources.insert_open(&uri, text);
+        if let Err(error) = workspace.sources.insert_open(&uri, text) {
+            self.client.log_message(MessageType::ERROR, error).await;
+            return;
+        }
 
         let workspace = workspace.downgrade();
         let config = self.config.read().await;
