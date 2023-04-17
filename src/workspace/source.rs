@@ -11,12 +11,12 @@ pub struct Source {
 }
 
 impl Source {
-    pub fn new(id: SourceId, uri: &Url, text: String) -> Self {
-        let typst_path = lsp_to_typst::uri_to_path(uri);
+    pub fn new(id: SourceId, uri: &Url, text: String) -> anyhow::Result<Self> {
+        let typst_path = lsp_to_typst::uri_to_path(uri)?;
 
-        Self {
+        Ok(Self {
             inner: TypstSource::new(id.into(), &typst_path, text),
-        }
+        })
     }
 
     pub fn new_detached() -> Self {

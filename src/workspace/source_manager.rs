@@ -87,21 +87,23 @@ impl SourceManager {
         SourceId(self.sources.len() as u16)
     }
 
-    pub fn insert_open(&mut self, uri: &Url, text: String) {
+    pub fn insert_open(&mut self, uri: &Url, text: String) -> anyhow::Result<()> {
         let next_id = self.get_next_id();
 
         match self.ids.as_mut().entry(uri.clone()) {
             Entry::Occupied(entry) => {
                 let existing_id = *entry.get();
-                let source = Source::new(existing_id, uri, text);
+                let source = Source::new(existing_id, uri, text)?;
                 *self.get_mut_inner_source(existing_id) = InnerSource::Open(source);
             }
             Entry::Vacant(entry) => {
                 entry.insert(next_id);
-                let source = Source::new(next_id, uri, text);
+                let source = Source::new(next_id, uri, text)?;
                 self.sources.push(Box::new(InnerSource::Open(source)));
             }
         }
+
+        Ok(())
     }
 
     pub fn close(&mut self, uri: &Url) {
@@ -124,13 +126,13 @@ impl SourceManager {
     }
 
     fn read_source_from_file(id: SourceId, uri: &Url) -> FileResult<Source> {
-        let path = lsp_to_typst::uri_to_path(uri);
+        let path = lsp_to_typst::uri_to_path(uri).map_err(|_| FileError::Other)?;
         let text = fs::read_to_string(&path).map_err(|error| match error.kind() {
             io::ErrorKind::NotFound => FileError::NotFound(path),
             io::ErrorKind::PermissionDenied => FileError::AccessDenied,
             _ => FileError::Other,
         })?;
-        Ok(Source::new(id, uri, text))
+        Source::new(id, uri, text).map_err(|_| FileError::Other)
     }
 
     pub fn cache(&self, uri: Url) -> FileResult<SourceId> {
