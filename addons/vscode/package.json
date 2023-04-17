@@ -130,7 +130,7 @@
         "@typescript-eslint/parser": "^5.58.0",
         "@vscode/vsce": "^2.19.0",
         "ovsx": "^0.8.0",
-        "esbuild": "^0.17.12",
+        "esbuild": "^0.17.17",
         "eslint": "^8.36.0",
         "eslint-config-prettier": "^8.8.0",
         "eslint-plugin-import": "^2.27.5",
