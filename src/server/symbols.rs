@@ -23,8 +23,8 @@ pub fn get_symbols(
     }
     // in case the current node is a symbol, add it to the list.
     let Some(symbol) = get_ident(node, source, uri, query_string, position_encoding) else {
-    return vec;
-};
+        return vec;
+    };
     vec.push(symbol);
     vec
 }
