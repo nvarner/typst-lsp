@@ -2,13 +2,15 @@ use std::sync::Arc;
 
 use once_cell::sync::OnceCell;
 use tokio::sync::RwLock;
-use tower_lsp::lsp_types::{InitializeParams, Url};
+use tower_lsp::lsp_types::{InitializeParams, MessageType, Url};
 use tower_lsp::{jsonrpc, Client};
 
 use crate::config::{Config, ConstConfig};
 use crate::lsp_typst_boundary::world::WorkspaceWorld;
 use crate::workspace::source_manager::SourceId;
 use crate::workspace::Workspace;
+
+use self::log::LogMessage;
 
 pub mod command;
 pub mod diagnostics;
@@ -71,6 +73,11 @@ impl TypstServer {
                             "failed to register workspace files: {e:#}"
                         ))
                     })?;
+                self.log_to_client(LogMessage {
+                    message_type: MessageType::INFO,
+                    message: format!("Folder added to workspace: {}", &workspace_folder.uri),
+                })
+                .await;
             }
         }
         if let Some(root_uri) = &params.root_uri {
@@ -81,6 +88,11 @@ impl TypstServer {
                         "failed to register workspace files: {e:#}"
                     ))
                 })?;
+            self.log_to_client(LogMessage {
+                message_type: MessageType::INFO,
+                message: format!("Folder added to workspace: {}", &root_uri),
+            })
+            .await;
         }
         Ok(())
     }
