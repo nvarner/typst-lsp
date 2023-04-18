@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use tower_lsp::lsp_types::*;
 use typst::syntax::{ast, LinkedNode, Source, SyntaxKind};
 
@@ -13,21 +13,25 @@ pub fn get_symbols(
     uri: &Url,
     query_string: Option<&str>,
     position_encoding: PositionEncoding,
-) -> Vec<SymbolInformation> {
-    let mut vec = Vec::new();
+) -> Result<Vec<SymbolInformation>> {
+    let mut vec: Vec<SymbolInformation> = Vec::new();
     if node.children().len() > 0 {
         // recursively get identifiers for all children of the current node
-        vec.extend(
-            node.children()
-                .flat_map(|c| get_symbols(&c, source, uri, query_string, position_encoding)),
-        );
+        let mut children_symbols: Vec<SymbolInformation> = node
+            .children()
+            .map(|c| get_symbols(&c, source, uri, query_string, position_encoding))
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .flatten()
+            .collect();
+        vec.append(&mut children_symbols);
     }
     // in case the current node is a symbol, add it to the list.
-    let Some(symbol) = get_ident(node, source, uri, query_string, position_encoding) else {
-        return vec;
+    let Some(symbol) = get_ident(node, source, uri, query_string, position_encoding)? else {
+        return Ok(vec);
     };
     vec.push(symbol);
-    vec
+    Ok(vec)
 }
 
 /// Get symbol for a leaf node of a valid type, or `None` if the node is an invalid type.
@@ -38,14 +42,16 @@ fn get_ident(
     uri: &Url,
     query_string: Option<&str>,
     position_encoding: PositionEncoding,
-) -> Option<SymbolInformation> {
+) -> Result<Option<SymbolInformation>> {
     match node.kind() {
         SyntaxKind::Label => {
-            let ast_node = node.cast::<ast::Label>()?;
+            let ast_node = node
+                .cast::<ast::Label>()
+                .ok_or_else(|| anyhow!("cast to ast node failed: {:?}", node))?;
             let name = ast_node.get().to_string();
             if let Some(query) = query_string {
                 if !name.contains(query) {
-                    return None;
+                    return Ok(None);
                 }
             }
             let symbol = SymbolInformation {
@@ -59,22 +65,26 @@ fn get_ident(
                 },
                 container_name: None,
             };
-            Some(symbol)
+            Ok(Some(symbol))
         }
         SyntaxKind::Ident => {
-            let ast_node = node.cast::<ast::Ident>()?;
+            let ast_node = node
+                .cast::<ast::Ident>()
+                .ok_or_else(|| anyhow!("cast to ast node failed: {:?}", node))?;
             let name = ast_node.get().to_string();
             if let Some(query) = query_string {
                 if !name.contains(query) {
-                    return None;
+                    return Ok(None);
                 }
             }
-            let parent = node.parent()?;
+            let Some(parent) = node.parent() else {
+                return Ok(None);
+            };
             let kind = match parent.kind() {
-                SyntaxKind::LetBinding => Some(SymbolKind::VARIABLE),
-                SyntaxKind::Closure => Some(SymbolKind::FUNCTION),
-                _ => return None,
-            }?;
+                SyntaxKind::LetBinding => SymbolKind::VARIABLE,
+                SyntaxKind::Closure => SymbolKind::FUNCTION,
+                _ => return Ok(None),
+            };
             let symbol = SymbolInformation {
                 name,
                 kind,
@@ -86,23 +96,25 @@ fn get_ident(
                 },
                 container_name: None,
             };
-            Some(symbol)
+            Ok(Some(symbol))
         }
         SyntaxKind::Markup => {
             let name = node.get().to_owned().into_text().to_string();
             if name.is_empty() {
-                return None;
+                return Ok(None);
             }
             if let Some(query) = query_string {
                 if !name.contains(query) {
-                    return None;
+                    return Ok(None);
                 }
             }
-            let parent = node.parent()?;
+            let Some(parent) = node.parent() else {
+                return Ok(None);
+            };
             let kind = match parent.kind() {
-                SyntaxKind::Heading => Some(SymbolKind::NAMESPACE),
-                _ => return None,
-            }?;
+                SyntaxKind::Heading => SymbolKind::NAMESPACE,
+                _ => return Ok(None),
+            };
             let symbol = SymbolInformation {
                 name,
                 kind,
@@ -114,9 +126,9 @@ fn get_ident(
                 },
                 container_name: None,
             };
-            Some(symbol)
+            Ok(Some(symbol))
         }
-        _ => None,
+        _ => Ok(None),
     }
 }
 
@@ -136,12 +148,12 @@ impl TypstServer {
         };
         let source = workspace.sources.get_open_source_by_id(source_id);
         let root = LinkedNode::new(source.as_ref().root());
-        Ok(get_symbols(
+        get_symbols(
             &root,
             source.as_ref(),
             document,
             query_string,
             config.position_encoding,
-        ))
+        )
     }
 }
