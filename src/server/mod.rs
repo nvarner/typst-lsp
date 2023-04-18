@@ -7,10 +7,9 @@ use tower_lsp::{jsonrpc, Client};
 
 use crate::config::{Config, ConstConfig};
 use crate::lsp_typst_boundary::world::WorkspaceWorld;
+use crate::server::log::LogMessage;
 use crate::workspace::source_manager::SourceId;
 use crate::workspace::Workspace;
-
-use self::log::LogMessage;
 
 pub mod command;
 pub mod diagnostics;
