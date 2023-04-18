@@ -2,12 +2,14 @@ use serde_json::Value as JsonValue;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, LanguageServer};
 use typst::ide::autocomplete;
+use typst::syntax::LinkedNode;
 
 use crate::config::{ConstConfig, ExportPdfMode, PositionEncoding};
 use crate::ext::InitializeParamsExt;
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
 
 use super::command::LspCommand;
+use super::log::LogMessage;
 use super::TypstServer;
 
 #[tower_lsp::async_trait]
@@ -113,6 +115,17 @@ impl LanguageServer for TypstServer {
             .get_workspace()
             .sources
             .get_open_source_by_id(source_id);
+
+        // the following is useful to debug AST stuff
+        /* let message = {
+            let root = LinkedNode::new(source.as_ref().root());
+            LogMessage {
+                message_type: MessageType::LOG,
+                message: format!("{root:#?}"),
+            }
+        };
+        self.log_to_client(message).await; */
+
         self.on_source_changed(&world, &config, source).await;
     }
 
