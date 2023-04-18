@@ -271,11 +271,15 @@ impl LanguageServer for TypstServer {
         &self,
         params: DocumentSymbolParams,
     ) -> jsonrpc::Result<Option<DocumentSymbolResponse>> {
-        Ok(Some(
-            self.get_document_symbols(&params.text_document.uri, None)
-                .await
-                .into(),
-        ))
+        let symbols = self
+            .get_document_symbols(&params.text_document.uri, None)
+            .await
+            .map_err(|e| jsonrpc::Error {
+                code: jsonrpc::ErrorCode::InternalError,
+                message: format!("Failed to get document symbols: {:#}", e),
+                data: None,
+            })?;
+        Ok(Some(symbols.into()))
     }
 
     async fn symbol(
@@ -291,7 +295,14 @@ impl LanguageServer for TypstServer {
             if !params.query.is_empty() {
                 query = Some(params.query.as_str());
             }
-            let mut document_symbols = self.get_document_symbols(source_uri, query).await;
+            let mut document_symbols =
+                self.get_document_symbols(source_uri, query)
+                    .await
+                    .map_err(|e| jsonrpc::Error {
+                        code: jsonrpc::ErrorCode::InternalError,
+                        message: format!("Failed to get document symbols: {:#}", e),
+                        data: None,
+                    })?;
             symbols.append(&mut document_symbols);
         }
         Ok(Some(symbols))

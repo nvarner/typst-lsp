@@ -1,3 +1,4 @@
+use anyhow::{bail, Result};
 use tower_lsp::lsp_types::*;
 use typst::syntax::{ast, LinkedNode, Source, SyntaxKind};
 
@@ -124,23 +125,23 @@ impl TypstServer {
         &self,
         document: &Url,
         query_string: Option<&str>,
-    ) -> Vec<SymbolInformation> {
+    ) -> Result<Vec<SymbolInformation>> {
         let config = self
             .const_config
             .get()
             .expect("const_config not initialized");
         let workspace = self.workspace.read().await;
         let Some(source_id) = workspace.sources.get_id_by_uri(document) else {
-            return vec![];
+            bail!("no source found for uri: {document}");
         };
         let source = workspace.sources.get_open_source_by_id(source_id);
         let root = LinkedNode::new(source.as_ref().root());
-        get_symbols(
+        Ok(get_symbols(
             &root,
             source.as_ref(),
             document,
             query_string,
             config.position_encoding,
-        )
+        ))
     }
 }
