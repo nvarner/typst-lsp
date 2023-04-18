@@ -1,6 +1,6 @@
 use comemo::Prehashed;
 use tokio::sync::OwnedRwLockReadGuard;
-use typst::diag::FileResult;
+use typst::diag::{FileError, FileResult};
 use typst::eval::Library;
 use typst::font::{Font, FontBook};
 use typst::util::Buffer;
@@ -37,7 +37,8 @@ impl World for WorkspaceWorld {
     }
 
     fn resolve(&self, typst_path: &TypstPath) -> FileResult<TypstSourceId> {
-        let lsp_uri = typst_to_lsp::path_to_uri(typst_path).unwrap();
+        let lsp_uri = typst_to_lsp::path_to_uri(typst_path)
+            .map_err(|_| FileError::NotFound(typst_path.to_owned()))?;
         self.get_workspace().sources.cache(lsp_uri).map(Into::into)
     }
 
@@ -59,7 +60,8 @@ impl World for WorkspaceWorld {
     }
 
     fn file(&self, typst_path: &TypstPath) -> FileResult<Buffer> {
-        let lsp_uri = typst_to_lsp::path_to_uri(typst_path).unwrap();
+        let lsp_uri = typst_to_lsp::path_to_uri(typst_path)
+            .map_err(|_| FileError::NotFound(typst_path.to_owned()))?;
         let mut resources = self.get_workspace().resources.write();
         let lsp_resource = resources.get_or_insert_resource(lsp_uri)?;
         Ok(lsp_resource.into())
