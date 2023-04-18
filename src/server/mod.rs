@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use once_cell::sync::OnceCell;
 use tokio::sync::RwLock;
-use tower_lsp::lsp_types::Url;
-use tower_lsp::Client;
+use tower_lsp::lsp_types::{InitializeParams, Url};
+use tower_lsp::{jsonrpc, Client};
 
 use crate::config::{Config, ConstConfig};
 use crate::lsp_typst_boundary::world::WorkspaceWorld;
@@ -57,5 +57,31 @@ impl TypstServer {
 
     pub async fn get_world_with_main(&self, main: SourceId) -> WorkspaceWorld {
         WorkspaceWorld::new(Arc::clone(&self.workspace).read_owned().await, main)
+    }
+
+    pub async fn register_workspace_files(&self, params: &InitializeParams) -> jsonrpc::Result<()> {
+        let workspace = self.workspace.read().await;
+        let source_manager = &workspace.sources;
+        if let Some(workspace_folders) = &params.workspace_folders {
+            for workspace_folder in workspace_folders {
+                source_manager
+                    .register_workspace_files(&workspace_folder.uri)
+                    .map_err(|e| {
+                        jsonrpc::Error::invalid_params(format!(
+                            "failed to register workspace files: {e:#}"
+                        ))
+                    })?;
+            }
+        }
+        if let Some(root_uri) = &params.root_uri {
+            source_manager
+                .register_workspace_files(root_uri)
+                .map_err(|e| {
+                    jsonrpc::Error::invalid_params(format!(
+                        "failed to register workspace files: {e:#}"
+                    ))
+                })?;
+        }
+        Ok(())
     }
 }

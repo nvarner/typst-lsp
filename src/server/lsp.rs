@@ -26,6 +26,8 @@ impl LanguageServer for TypstServer {
             .set(ConstConfig { position_encoding })
             .expect("const config should not yet be initialized");
 
+        self.register_workspace_files(&params).await?;
+
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 signature_help_provider: Some(SignatureHelpOptions {

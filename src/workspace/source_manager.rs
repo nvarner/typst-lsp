@@ -5,8 +5,9 @@ use elsa::sync::{FrozenMap, FrozenVec};
 use once_cell::sync::OnceCell;
 use tower_lsp::lsp_types::Url;
 use typst::diag::{FileError, FileResult};
+use walkdir::WalkDir;
 
-use crate::lsp_typst_boundary::{lsp_to_typst, TypstSourceId};
+use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp, TypstSourceId};
 
 use super::source::Source;
 
@@ -154,6 +155,23 @@ impl SourceManager {
         }
 
         Ok(id)
+    }
+
+    pub fn register_workspace_files(&self, workspace: &Url) -> anyhow::Result<()> {
+        let workspace_path = lsp_to_typst::uri_to_path(workspace)?;
+        let walker = WalkDir::new(workspace_path).into_iter();
+        for entry in walker.filter_map(|e| e.ok()) {
+            if entry.file_type().is_file() {
+                let path = entry.path();
+                let ext = path.extension().unwrap_or_default();
+                if ext != "typ" {
+                    continue;
+                }
+                let uri = typst_to_lsp::path_to_uri(path)?;
+                self.cache(uri)?;
+            }
+        }
+        Ok(())
     }
 }
 
