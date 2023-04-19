@@ -60,7 +60,8 @@
         },
         "configurationDefaults": {
             "[typst]": {
-                "editor.wordWrap": "on"
+                "editor.wordWrap": "on",
+                "editor.semanticHighlighting.enabled": true
             }
         },
         "languages": [
