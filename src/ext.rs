@@ -1,4 +1,4 @@
-use tower_lsp::lsp_types::{InitializeParams, PositionEncodingKind};
+use tower_lsp::lsp_types::{InitializeParams, Position, PositionEncodingKind};
 use typst::util::StrExt as TypstStrExt;
 
 use crate::config::PositionEncoding;
@@ -29,6 +29,29 @@ impl StrExt for str {
         match encoding {
             PositionEncoding::Utf8 => self.len(),
             PositionEncoding::Utf16 => self.len_utf16(),
+        }
+    }
+}
+
+pub trait PositionExt {
+    fn delta(&self, to: &Self) -> Self;
+}
+
+impl PositionExt for Position {
+    /// Calculates the delta from `self` to `to`. This is in the `SemanticToken` sense, so the
+    /// delta's `character` is relative to `self`'s `character` iff `self` and `to` are on the same
+    /// line. Otherwise, it's relative to the start of the line `to` is on.
+    fn delta(&self, to: &Self) -> Self {
+        let line_delta = to.line - self.line;
+        let char_delta = if line_delta == 0 {
+            to.character - self.character
+        } else {
+            to.character
+        };
+
+        Self {
+            line: line_delta,
+            character: char_delta,
         }
     }
 }

@@ -8,6 +8,7 @@ use crate::ext::InitializeParamsExt;
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
 
 use super::command::LspCommand;
+use super::semantic_tokens::get_legend;
 use super::TypstServer;
 
 #[tower_lsp::async_trait]
@@ -55,12 +56,12 @@ impl LanguageServer for TypstServer {
                     },
                 )),
                 semantic_tokens_provider: Some(
-                    SemanticTokensServerCapabilities::SemanticTokensOptions(
-                        SemanticTokensOptions {
-                            legend: todo!(),
-                            ..Default::default()
-                        },
-                    ),
+                    SemanticTokensOptions {
+                        legend: get_legend(),
+                        full: Some(SemanticTokensFullOptions::Bool(true)),
+                        ..Default::default()
+                    }
+                    .into(),
                 ),
                 execute_command_provider: Some(ExecuteCommandOptions {
                     commands: LspCommand::all_as_string(),
@@ -174,6 +175,8 @@ impl LanguageServer for TypstServer {
             .get_workspace()
             .sources
             .get_open_source_by_id(source_id);
+
+        self.client.semantic_tokens_refresh().await.unwrap();
 
         self.on_source_changed(&world, &config, source).await;
     }
@@ -340,16 +343,28 @@ impl LanguageServer for TypstServer {
         &self,
         params: SemanticTokensParams,
     ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
+        self.client
+            .log_message(MessageType::LOG, "requested semantic tokens")
+            .await;
+
         let uri = &params.text_document.uri;
 
-        let (world, source_id) = self.get_world_with_main_uri(uri).await;
-
-        let source = world
-            .get_workspace()
+        let workspace = self.workspace.read().await;
+        let source = workspace
             .sources
-            .get_open_source_by_id(source_id);
+            .get_id_by_uri(uri)
+            .map(|id| workspace.sources.get_open_source_by_id(id))
+            .ok_or_else(jsonrpc::Error::internal_error)?;
 
-        todo!()
+        let tokens = self
+            .get_semantic_tokens_full(source)
+            .map(|tokens| SemanticTokens {
+                data: tokens,
+                ..Default::default()
+            })
+            .map(SemanticTokensResult::Tokens);
+
+        Ok(tokens)
     }
 
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {

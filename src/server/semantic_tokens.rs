@@ -1,14 +1,16 @@
-use lazy_static::lazy_static;
 use strum::{EnumIter, IntoEnumIterator};
-use tower_lsp::lsp_types::{SemanticTokenType, SemanticTokensLegend};
+use tower_lsp::lsp_types::{
+    Position, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokensLegend,
+};
+use typst::ide::highlight;
 use typst::syntax::LinkedNode;
+use typst::util::StrExt;
 
-use crate::lsp_typst_boundary::world::WorkspaceWorld;
+use crate::ext::PositionExt;
+use crate::lsp_typst_boundary::typst_to_lsp;
 use crate::workspace::source::Source;
 
 use super::TypstServer;
-
-pub const RAW: SemanticTokenType = SemanticTokenType::new("raw");
 
 #[derive(EnumIter)]
 #[repr(u32)]
@@ -19,6 +21,7 @@ pub enum TypstSemanticTokenType {
     Operator,
     Number,
     Function,
+    Decorator,
 }
 
 impl From<TypstSemanticTokenType> for SemanticTokenType {
@@ -30,21 +33,50 @@ impl From<TypstSemanticTokenType> for SemanticTokenType {
             TypstSemanticTokenType::Operator => Self::OPERATOR,
             TypstSemanticTokenType::Number => Self::NUMBER,
             TypstSemanticTokenType::Function => Self::FUNCTION,
+            TypstSemanticTokenType::Decorator => Self::DECORATOR,
         }
     }
 }
 
-lazy_static! {
-    static ref LEGEND: SemanticTokensLegend = SemanticTokensLegend {
+pub fn get_legend() -> SemanticTokensLegend {
+    SemanticTokensLegend {
         token_types: TypstSemanticTokenType::iter().map(Into::into).collect(),
-        token_modifiers: vec![],
-    };
+        token_modifiers: vec![SemanticTokenModifier::DEFAULT_LIBRARY],
+    }
 }
 
 impl TypstServer {
-    pub fn get_semantic_tokens_full(&self, world: &WorkspaceWorld, source: &Source) -> Option<()> {
-        let root = LinkedNode::new(source.as_ref().root());
+    pub fn get_semantic_tokens_full(&self, source: &Source) -> Option<Vec<SemanticToken>> {
+        let encoding = self.get_const_config().position_encoding;
 
-        todo!()
+        let mut tokens = Vec::new();
+        let mut last_position = Position::new(0, 0);
+
+        let root = LinkedNode::new(source.as_ref().root());
+        let mut leaf = root.leftmost_leaf();
+
+        while let Some(node) = &leaf {
+            let token_type = highlight(node).and_then(typst_to_lsp::tag_to_token_type);
+            if let Some(token_type) = token_type {
+                let position =
+                    typst_to_lsp::offset_to_position(node.offset(), encoding, source.as_ref());
+                let delta = last_position.delta(&position);
+                last_position = position;
+
+                let length = node.text().len_utf16();
+
+                tokens.push(SemanticToken {
+                    delta_line: delta.line,
+                    delta_start: delta.character,
+                    length: length as u32,
+                    token_type: token_type as u32,
+                    token_modifiers_bitset: 0,
+                });
+            }
+
+            leaf = node.next_leaf();
+        }
+
+        Some(tokens)
     }
 }

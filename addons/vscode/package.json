@@ -79,13 +79,6 @@
                 }
             }
         ],
-        "grammars": [
-            {
-                "language": "typst",
-                "scopeName": "source.typst",
-                "path": "./typst.tmLanguage.json"
-            }
-        ],
         "commands": [
             {
                 "command": "typst-lsp.exportCurrentPdf",

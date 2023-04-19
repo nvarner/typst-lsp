@@ -122,7 +122,7 @@ pub mod typst_to_lsp {
     use lazy_static::lazy_static;
     use regex::{Captures, Regex};
     use tower_lsp::lsp_types::{
-        DiagnosticSeverity, InsertTextFormat, LanguageString, MarkedString, SemanticTokenType,
+        DiagnosticSeverity, InsertTextFormat, LanguageString, MarkedString,
     };
     use typst::ide::Tag;
     use typst::World;
@@ -275,29 +275,29 @@ pub mod typst_to_lsp {
         LspHoverContents::Scalar(lsp_marked_string)
     }
 
-    pub fn tag_to_token_type(tag: Tag) -> TypstSemanticTokenType {
+    pub fn tag_to_token_type(tag: Tag) -> Option<TypstSemanticTokenType> {
         match tag {
-            Tag::Comment => TypstSemanticTokenType::Comment,
-            Tag::Punctuation => todo!(),
-            Tag::Escape => todo!(),
-            Tag::Strong => todo!(),
-            Tag::Emph => todo!(),
-            Tag::Link => todo!(),
-            Tag::Raw => todo!(),
-            Tag::Label => todo!(),
-            Tag::Ref => todo!(),
-            Tag::Heading => todo!(),
-            Tag::ListMarker => todo!(),
-            Tag::ListTerm => todo!(),
-            Tag::MathDelimiter => todo!(),
-            Tag::MathOperator => todo!(),
-            Tag::Keyword => TypstSemanticTokenType::Keyword,
-            Tag::Operator => TypstSemanticTokenType::Operator,
-            Tag::Number => TypstSemanticTokenType::Number,
-            Tag::String => TypstSemanticTokenType::String,
-            Tag::Function => TypstSemanticTokenType::Function,
-            Tag::Interpolated => todo!(),
-            Tag::Error => todo!(),
+            Tag::Comment => Some(TypstSemanticTokenType::Comment),
+            Tag::Punctuation => Some(TypstSemanticTokenType::Operator),
+            Tag::Escape => Some(TypstSemanticTokenType::String),
+            Tag::Strong => Some(TypstSemanticTokenType::String),
+            Tag::Emph => Some(TypstSemanticTokenType::String),
+            Tag::Link => Some(TypstSemanticTokenType::String),
+            Tag::Raw => Some(TypstSemanticTokenType::String),
+            Tag::Label => Some(TypstSemanticTokenType::Decorator),
+            Tag::Ref => Some(TypstSemanticTokenType::Decorator),
+            Tag::Heading => Some(TypstSemanticTokenType::String),
+            Tag::ListMarker => Some(TypstSemanticTokenType::Operator),
+            Tag::ListTerm => Some(TypstSemanticTokenType::String),
+            Tag::MathDelimiter => Some(TypstSemanticTokenType::String),
+            Tag::MathOperator => Some(TypstSemanticTokenType::Operator),
+            Tag::Keyword => Some(TypstSemanticTokenType::Keyword),
+            Tag::Operator => Some(TypstSemanticTokenType::Operator),
+            Tag::Number => Some(TypstSemanticTokenType::Number),
+            Tag::String => Some(TypstSemanticTokenType::String),
+            Tag::Function => Some(TypstSemanticTokenType::Function),
+            Tag::Interpolated => Some(TypstSemanticTokenType::Operator),
+            Tag::Error => None,
         }
     }
 }
