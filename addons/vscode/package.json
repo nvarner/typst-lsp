@@ -80,6 +80,122 @@
                 }
             }
         ],
+        "semanticTokenTypes": [
+            {
+                "id": "punct",
+                "description": "Punctuation in code"
+            },
+            {
+                "id": "escape",
+                "description": "Escape sequence"
+            },
+            {
+                "id": "strong",
+                "description": "Strong (usually bold) markup"
+            },
+            {
+                "id": "emph",
+                "description": "Emphasized (usually italics) markup"
+            },
+            {
+                "id": "link",
+                "description": "Hyperlink"
+            },
+            {
+                "id": "raw",
+                "description": "Raw text"
+            },
+            {
+                "id": "label",
+                "description": "Label"
+            },
+            {
+                "id": "ref",
+                "description": "Reference to a label"
+            },
+            {
+                "id": "heading",
+                "description": "Heading"
+            },
+            {
+                "id": "marker",
+                "description": "List, enum, or term list marker"
+            },
+            {
+                "id": "term",
+                "description": "Term in a term list"
+            },
+            {
+                "id": "delim",
+                "description": "Delimiter of a different type of markup"
+            },
+            {
+                "id": "pol",
+                "description": "Interpolated variable"
+            },
+            {
+                "id": "error",
+                "description": "Syntax error"
+            }
+        ],
+        "semanticTokenModifiers": [
+            {
+                "id": "math",
+                "description": "Math mode markup"
+            }
+        ],
+        "semanticTokenScopes": [
+            {
+                "language": "typst",
+                "scopes": {
+                    "punct": [
+                        "punctuation.typst"
+                    ],
+                    "escape": [
+                        "constant.character.escape.typst"
+                    ],
+                    "strong": [
+                        "markup.bold.typst"
+                    ],
+                    "emph": [
+                        "markup.italic.typst"
+                    ],
+                    "link": [
+                        "markup.underline.link.typst"
+                    ],
+                    "raw": [
+                        "markup.raw.typst"
+                    ],
+                    "delim.math": [
+                        "punctuation.definition.math.typst"
+                    ],
+                    "operator.math": [
+                        "keyword.operator.math.typst"
+                    ],
+                    "heading": [
+                        "markup.heading.typst"
+                    ],
+                    "marker": [
+                        "punctuation.definition.list.typst"
+                    ],
+                    "term": [
+                        "markup.list.term.typst"
+                    ],
+                    "label": [
+                        "entity.name.label.typst"
+                    ],
+                    "ref": [
+                        "markup.other.reference.typst"
+                    ],
+                    "pol": [
+                        "meta.interpolation.typst"
+                    ],
+                    "error": [
+                        "invalid.typst"
+                    ]
+                }
+            }
+        ],
         "commands": [
             {
                 "command": "typst-lsp.exportCurrentPdf",

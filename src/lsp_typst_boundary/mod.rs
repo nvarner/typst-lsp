@@ -129,7 +129,7 @@ pub mod typst_to_lsp {
     use typst_library::prelude::EcoString;
 
     use crate::config::ConstConfig;
-    use crate::server::semantic_tokens::TypstSemanticTokenType;
+    use crate::server::semantic_tokens;
 
     use super::world::WorkspaceWorld;
     use super::*;
@@ -275,29 +275,39 @@ pub mod typst_to_lsp {
         LspHoverContents::Scalar(lsp_marked_string)
     }
 
-    pub fn tag_to_token_type(tag: Tag) -> Option<TypstSemanticTokenType> {
+    pub fn tag_to_token(tag: Tag) -> (semantic_tokens::TokenType, semantic_tokens::ModifierSet) {
+        use semantic_tokens::Modifier::*;
+        use semantic_tokens::ModifierSet;
+        use semantic_tokens::TokenType::*;
+
         match tag {
-            Tag::Comment => Some(TypstSemanticTokenType::Comment),
-            Tag::Punctuation => Some(TypstSemanticTokenType::Operator),
-            Tag::Escape => Some(TypstSemanticTokenType::String),
-            Tag::Strong => Some(TypstSemanticTokenType::String),
-            Tag::Emph => Some(TypstSemanticTokenType::String),
-            Tag::Link => Some(TypstSemanticTokenType::String),
-            Tag::Raw => Some(TypstSemanticTokenType::String),
-            Tag::Label => Some(TypstSemanticTokenType::Decorator),
-            Tag::Ref => Some(TypstSemanticTokenType::Decorator),
-            Tag::Heading => Some(TypstSemanticTokenType::String),
-            Tag::ListMarker => Some(TypstSemanticTokenType::Operator),
-            Tag::ListTerm => Some(TypstSemanticTokenType::String),
-            Tag::MathDelimiter => Some(TypstSemanticTokenType::String),
-            Tag::MathOperator => Some(TypstSemanticTokenType::Operator),
-            Tag::Keyword => Some(TypstSemanticTokenType::Keyword),
-            Tag::Operator => Some(TypstSemanticTokenType::Operator),
-            Tag::Number => Some(TypstSemanticTokenType::Number),
-            Tag::String => Some(TypstSemanticTokenType::String),
-            Tag::Function => Some(TypstSemanticTokenType::Function),
-            Tag::Interpolated => Some(TypstSemanticTokenType::Operator),
-            Tag::Error => None,
+            Tag::Comment => (Comment, ModifierSet::empty()),
+
+            Tag::Punctuation => (Punctuation, ModifierSet::empty()),
+            Tag::Escape => (Escape, ModifierSet::empty()),
+
+            Tag::Strong => (Strong, ModifierSet::empty()),
+            Tag::Emph => (Emph, ModifierSet::empty()),
+
+            Tag::Link => (Link, ModifierSet::empty()),
+            Tag::Raw => (Raw, ModifierSet::empty()),
+            Tag::Label => (Label, ModifierSet::empty()),
+            Tag::Ref => (Ref, ModifierSet::empty()),
+            Tag::Heading => (Heading, ModifierSet::empty()),
+            Tag::ListMarker => (ListMarker, ModifierSet::empty()),
+            Tag::ListTerm => (ListTerm, ModifierSet::empty()),
+
+            Tag::MathDelimiter => (Delimiter, ModifierSet::new(&[Math])),
+            Tag::MathOperator => (Operator, ModifierSet::new(&[Math])),
+
+            Tag::Keyword => (Keyword, ModifierSet::empty()),
+            Tag::Operator => (Operator, ModifierSet::empty()),
+            Tag::Number => (Number, ModifierSet::empty()),
+            Tag::String => (String, ModifierSet::empty()),
+            Tag::Function => (Function, ModifierSet::empty()),
+            Tag::Interpolated => (Interpolated, ModifierSet::empty()),
+
+            Tag::Error => (Error, ModifierSet::empty()),
         }
     }
 }
