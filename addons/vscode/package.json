@@ -131,7 +131,8 @@
             },
             {
                 "id": "pol",
-                "description": "Interpolated variable"
+                "description": "Interpolated variable",
+                "superType": "keyword"
             },
             {
                 "id": "error",
@@ -149,10 +150,13 @@
                 "language": "typst",
                 "scopes": {
                     "punct": [
-                        "punctuation.typst"
+                        "punctuation.typst",
+                        "punctuation.definition.typst"
                     ],
                     "escape": [
-                        "constant.character.escape.typst"
+                        "constant.character.escape.typst",
+                        "keyword.operator.typst",
+                        "punctuation.definition.typst"
                     ],
                     "strong": [
                         "markup.bold.typst"
@@ -164,10 +168,13 @@
                         "markup.underline.link.typst"
                     ],
                     "raw": [
-                        "markup.raw.typst"
+                        "markup.inline.raw.typst",
+                        "markup.raw.inline.typst"
                     ],
                     "delim.math": [
-                        "punctuation.definition.math.typst"
+                        "punctuation.definition.math.typst",
+                        "punctuation.definition.string.end.math.typst",
+                        "string.quoted.other.typst"
                     ],
                     "operator.math": [
                         "keyword.operator.math.typst"
@@ -176,16 +183,19 @@
                         "markup.heading.typst"
                     ],
                     "marker": [
-                        "punctuation.definition.list.typst"
+                        "markup.list.typst",
+                        "punctuation.definition.list.begin.typst"
                     ],
                     "term": [
-                        "markup.list.term.typst"
+                        "markup.list.term.typst",
+                        "markup.bold.term.typst"
                     ],
                     "label": [
                         "entity.name.label.typst"
                     ],
                     "ref": [
-                        "markup.other.reference.typst"
+                        "markup.other.reference.typst",
+                        "entity.name.label.typst"
                     ],
                     "pol": [
                         "meta.interpolation.typst"

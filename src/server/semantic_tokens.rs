@@ -1,12 +1,13 @@
+use lazy_static::__Deref;
 use strum::{EnumIter, IntoEnumIterator};
 use tower_lsp::lsp_types::{
     Position, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokensLegend,
 };
 use typst::ide::highlight;
-use typst::syntax::LinkedNode;
-use typst::util::StrExt;
+use typst::syntax::{LinkedNode, SyntaxKind};
+use typst_library::prelude::EcoString;
 
-use crate::ext::PositionExt;
+use crate::ext::{PositionExt, StrExt};
 use crate::lsp_typst_boundary::typst_to_lsp;
 use crate::workspace::source::Source;
 
@@ -144,38 +145,83 @@ pub fn get_legend() -> SemanticTokensLegend {
     }
 }
 
+struct TokenInfo {
+    pub token_type: TokenType,
+    pub modifiers: ModifierSet,
+    pub offset: usize,
+    pub source: EcoString,
+}
+
+impl TokenInfo {
+    pub fn new(token_type: TokenType, node: &LinkedNode) -> Self {
+        Self::new_with_modifiers(token_type, ModifierSet::empty(), node)
+    }
+
+    pub fn new_with_modifiers(
+        token_type: TokenType,
+        modifiers: ModifierSet,
+        node: &LinkedNode,
+    ) -> Self {
+        let owned_node = node.deref().clone();
+        let source = owned_node.into_text();
+
+        Self {
+            token_type,
+            modifiers,
+            offset: node.offset(),
+            source,
+        }
+    }
+}
+
 impl TypstServer {
     pub fn get_semantic_tokens_full(&self, source: &Source) -> Option<Vec<SemanticToken>> {
         let encoding = self.get_const_config().position_encoding;
 
-        let mut tokens = Vec::new();
+        let mut output_tokens = Vec::new();
         let mut last_position = Position::new(0, 0);
 
         let root = LinkedNode::new(source.as_ref().root());
-        let mut leaf = root.leftmost_leaf();
 
-        while let Some(node) = &leaf {
-            let token_type = highlight(node).map(typst_to_lsp::tag_to_token);
-            if let Some((token_type, modifiers)) = token_type {
-                let position =
-                    typst_to_lsp::offset_to_position(node.offset(), encoding, source.as_ref());
-                let delta = last_position.delta(&position);
-                last_position = position;
+        let tokens = self.tokenize_node(&root);
+        for token in tokens {
+            let position =
+                typst_to_lsp::offset_to_position(token.offset, encoding, source.as_ref());
+            let delta = last_position.delta(&position);
+            last_position = position;
 
-                let length = node.text().len_utf16();
+            let length = token.source.as_str().encoded_len(encoding);
 
-                tokens.push(SemanticToken {
-                    delta_line: delta.line,
-                    delta_start: delta.character,
-                    length: length as u32,
-                    token_type: token_type as u32,
-                    token_modifiers_bitset: modifiers.bitset(),
-                });
-            }
-
-            leaf = node.next_leaf();
+            output_tokens.push(SemanticToken {
+                delta_line: delta.line,
+                delta_start: delta.character,
+                length: length as u32,
+                token_type: token.token_type as u32,
+                token_modifiers_bitset: token.modifiers.bitset(),
+            });
         }
 
-        Some(tokens)
+        Some(output_tokens)
+    }
+
+    fn tokenize_single_node(&self, node: &LinkedNode) -> Option<TokenInfo> {
+        match node.kind() {
+            SyntaxKind::Emph => Some(TokenInfo::new(TokenType::Emph, node)),
+            SyntaxKind::Strong => Some(TokenInfo::new(TokenType::Strong, node)),
+            _ => highlight(node)
+                .map(typst_to_lsp::tag_to_token)
+                .map(|(token_type, modifiers)| {
+                    TokenInfo::new_with_modifiers(token_type, modifiers, node)
+                }),
+        }
+    }
+
+    fn tokenize_node<'a>(
+        &'a self,
+        node: &LinkedNode<'a>,
+    ) -> Box<dyn Iterator<Item = TokenInfo> + 'a> {
+        let root = self.tokenize_single_node(node);
+        let children = node.children().flat_map(|child| self.tokenize_node(&child));
+        Box::new(root.into_iter().chain(children))
     }
 }

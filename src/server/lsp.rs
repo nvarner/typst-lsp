@@ -343,10 +343,6 @@ impl LanguageServer for TypstServer {
         &self,
         params: SemanticTokensParams,
     ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
-        self.client
-            .log_message(MessageType::LOG, "requested semantic tokens")
-            .await;
-
         let uri = &params.text_document.uri;
 
         let workspace = self.workspace.read().await;
