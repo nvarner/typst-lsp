@@ -1,3 +1,5 @@
+use std::ops;
+
 use lazy_static::__Deref;
 use strum::{EnumIter, IntoEnumIterator};
 use tower_lsp::lsp_types::{
@@ -15,8 +17,6 @@ use super::TypstServer;
 
 const PUNCTUATION: SemanticTokenType = SemanticTokenType::new("punct");
 const ESCAPE: SemanticTokenType = SemanticTokenType::new("escape");
-const STRONG: SemanticTokenType = SemanticTokenType::new("strong");
-const EMPH: SemanticTokenType = SemanticTokenType::new("emph");
 const LINK: SemanticTokenType = SemanticTokenType::new("link");
 const RAW: SemanticTokenType = SemanticTokenType::new("raw");
 const LABEL: SemanticTokenType = SemanticTokenType::new("label");
@@ -27,6 +27,7 @@ const LIST_TERM: SemanticTokenType = SemanticTokenType::new("term");
 const DELIMITER: SemanticTokenType = SemanticTokenType::new("delim");
 const INTERPOLATED: SemanticTokenType = SemanticTokenType::new("pol");
 const ERROR: SemanticTokenType = SemanticTokenType::new("error");
+const STYLED: SemanticTokenType = SemanticTokenType::new("styled");
 
 /// Very similar to [`typst::ide::Tag`], but with convenience traits, and extensible if we want
 /// to further customize highlighting.
@@ -44,8 +45,6 @@ pub enum TokenType {
     // Custom types
     Punctuation,
     Escape,
-    Strong,
-    Emph,
     Link,
     Raw,
     Label,
@@ -56,6 +55,7 @@ pub enum TokenType {
     Delimiter,
     Interpolated,
     Error,
+    Styled,
 }
 
 impl From<TokenType> for SemanticTokenType {
@@ -72,8 +72,6 @@ impl From<TokenType> for SemanticTokenType {
             Decorator => Self::DECORATOR,
             Punctuation => PUNCTUATION,
             Escape => ESCAPE,
-            Strong => STRONG,
-            Emph => EMPH,
             Link => LINK,
             Raw => RAW,
             Label => LABEL,
@@ -84,15 +82,20 @@ impl From<TokenType> for SemanticTokenType {
             Delimiter => DELIMITER,
             Interpolated => INTERPOLATED,
             Error => ERROR,
+            Styled => STYLED,
         }
     }
 }
 
+const STRONG: SemanticTokenModifier = SemanticTokenModifier::new("strong");
+const EMPH: SemanticTokenModifier = SemanticTokenModifier::new("emph");
 const MATH: SemanticTokenModifier = SemanticTokenModifier::new("math");
 
 #[derive(Clone, Copy, EnumIter)]
 #[repr(u8)]
 pub enum Modifier {
+    Strong,
+    Emph,
     Math,
 }
 
@@ -111,6 +114,8 @@ impl From<Modifier> for SemanticTokenModifier {
         use Modifier::*;
 
         match modifier {
+            Strong => STRONG,
+            Emph => EMPH,
             Math => MATH,
         }
     }
@@ -138,6 +143,14 @@ impl ModifierSet {
     }
 }
 
+impl ops::BitOr for ModifierSet {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        Self(self.0 | rhs.0)
+    }
+}
+
 pub fn get_legend() -> SemanticTokensLegend {
     SemanticTokensLegend {
         token_types: TokenType::iter().map(Into::into).collect(),
@@ -153,15 +166,7 @@ struct TokenInfo {
 }
 
 impl TokenInfo {
-    pub fn new(token_type: TokenType, node: &LinkedNode) -> Self {
-        Self::new_with_modifiers(token_type, ModifierSet::empty(), node)
-    }
-
-    pub fn new_with_modifiers(
-        token_type: TokenType,
-        modifiers: ModifierSet,
-        node: &LinkedNode,
-    ) -> Self {
+    pub fn new(token_type: TokenType, modifiers: ModifierSet, node: &LinkedNode) -> Self {
         let owned_node = node.deref().clone();
         let source = owned_node.into_text();
 
@@ -183,7 +188,7 @@ impl TypstServer {
 
         let root = LinkedNode::new(source.as_ref().root());
 
-        let tokens = self.tokenize_node(&root);
+        let tokens = self.tokenize_node(&root, ModifierSet::empty());
         for token in tokens {
             let position =
                 typst_to_lsp::offset_to_position(token.offset, encoding, source.as_ref());
@@ -204,24 +209,33 @@ impl TypstServer {
         Some(output_tokens)
     }
 
-    fn tokenize_single_node(&self, node: &LinkedNode) -> Option<TokenInfo> {
+    fn modifiers_from_node(&self, node: &LinkedNode) -> ModifierSet {
         match node.kind() {
-            SyntaxKind::Emph => Some(TokenInfo::new(TokenType::Emph, node)),
-            SyntaxKind::Strong => Some(TokenInfo::new(TokenType::Strong, node)),
-            _ => highlight(node)
-                .map(typst_to_lsp::tag_to_token)
-                .map(|(token_type, modifiers)| {
-                    TokenInfo::new_with_modifiers(token_type, modifiers, node)
-                }),
+            SyntaxKind::Emph => ModifierSet::new(&[Modifier::Emph]),
+            SyntaxKind::Strong => ModifierSet::new(&[Modifier::Strong]),
+            SyntaxKind::Math => ModifierSet::new(&[Modifier::Math]),
+            _ => ModifierSet::empty(),
         }
+    }
+
+    fn tokenize_single_node(&self, node: &LinkedNode, modifiers: ModifierSet) -> Option<TokenInfo> {
+        highlight(node)
+            .and_then(typst_to_lsp::tag_to_token)
+            .map(|token_type| TokenInfo::new(token_type, modifiers, node))
     }
 
     fn tokenize_node<'a>(
         &'a self,
         node: &LinkedNode<'a>,
+        parent_modifiers: ModifierSet,
     ) -> Box<dyn Iterator<Item = TokenInfo> + 'a> {
-        let root = self.tokenize_single_node(node);
-        let children = node.children().flat_map(|child| self.tokenize_node(&child));
-        Box::new(root.into_iter().chain(children))
+        let root_modifiers = self.modifiers_from_node(node);
+        let modifiers = parent_modifiers | root_modifiers;
+
+        let token = self.tokenize_single_node(node, modifiers).into_iter();
+        let children = node
+            .children()
+            .flat_map(move |child| self.tokenize_node(&child, modifiers));
+        Box::new(token.chain(children))
     }
 }

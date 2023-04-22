@@ -275,39 +275,37 @@ pub mod typst_to_lsp {
         LspHoverContents::Scalar(lsp_marked_string)
     }
 
-    pub fn tag_to_token(tag: Tag) -> (semantic_tokens::TokenType, semantic_tokens::ModifierSet) {
-        use semantic_tokens::Modifier::*;
-        use semantic_tokens::ModifierSet;
+    pub fn tag_to_token(tag: Tag) -> Option<semantic_tokens::TokenType> {
         use semantic_tokens::TokenType::*;
 
         match tag {
-            Tag::Comment => (Comment, ModifierSet::empty()),
+            Tag::Comment => Some(Comment),
 
-            Tag::Punctuation => (Punctuation, ModifierSet::empty()),
-            Tag::Escape => (Escape, ModifierSet::empty()),
+            Tag::Punctuation => Some(Punctuation),
+            Tag::Escape => Some(Escape),
 
-            Tag::Strong => (Strong, ModifierSet::empty()),
-            Tag::Emph => (Emph, ModifierSet::empty()),
+            Tag::Strong => Some(Styled),
+            Tag::Emph => Some(Styled),
 
-            Tag::Link => (Link, ModifierSet::empty()),
-            Tag::Raw => (Raw, ModifierSet::empty()),
-            Tag::Label => (Label, ModifierSet::empty()),
-            Tag::Ref => (Ref, ModifierSet::empty()),
-            Tag::Heading => (Heading, ModifierSet::empty()),
-            Tag::ListMarker => (ListMarker, ModifierSet::empty()),
-            Tag::ListTerm => (ListTerm, ModifierSet::empty()),
+            Tag::Link => Some(Link),
+            Tag::Raw => Some(Raw),
+            Tag::Label => Some(Label),
+            Tag::Ref => Some(Ref),
+            Tag::Heading => Some(Heading),
+            Tag::ListMarker => Some(ListMarker),
+            Tag::ListTerm => Some(ListTerm),
 
-            Tag::MathDelimiter => (Delimiter, ModifierSet::new(&[Math])),
-            Tag::MathOperator => (Operator, ModifierSet::new(&[Math])),
+            Tag::MathDelimiter => Some(Delimiter),
+            Tag::MathOperator => Some(Operator),
 
-            Tag::Keyword => (Keyword, ModifierSet::empty()),
-            Tag::Operator => (Operator, ModifierSet::empty()),
-            Tag::Number => (Number, ModifierSet::empty()),
-            Tag::String => (String, ModifierSet::empty()),
-            Tag::Function => (Function, ModifierSet::empty()),
-            Tag::Interpolated => (Interpolated, ModifierSet::empty()),
+            Tag::Keyword => Some(Keyword),
+            Tag::Operator => Some(Operator),
+            Tag::Number => Some(Number),
+            Tag::String => Some(String),
+            Tag::Function => Some(Function),
+            Tag::Interpolated => Some(Interpolated),
 
-            Tag::Error => (Error, ModifierSet::empty()),
+            Tag::Error => Some(Error),
         }
     }
 }
