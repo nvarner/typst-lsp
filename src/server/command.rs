@@ -9,12 +9,14 @@ use super::TypstServer;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LspCommand {
     ExportPdf,
+    ClearCache,
 }
 
 impl From<LspCommand> for String {
     fn from(command: LspCommand) -> Self {
         match command {
             LspCommand::ExportPdf => "typst-lsp.doPdfExport".to_string(),
+            LspCommand::ClearCache => "typst-lsp.doClearCache".to_string(),
         }
     }
 }
@@ -23,12 +25,13 @@ impl LspCommand {
     pub fn parse(command: &str) -> Option<Self> {
         match command {
             "typst-lsp.doPdfExport" => Some(Self::ExportPdf),
+            "typst-lsp.doClearCache" => Some(Self::ClearCache),
             _ => None,
         }
     }
 
     pub fn all_as_string() -> Vec<String> {
-        vec![Self::ExportPdf.into()]
+        vec![Self::ExportPdf.into(), Self::ClearCache.into()]
     }
 }
 
@@ -53,6 +56,14 @@ impl TypstServer {
 
         self.run_export(&world, source).await;
 
+        Ok(())
+    }
+
+    /// Clear all cached resources.
+    pub async fn command_clear_cache(&self, _arguments: Vec<Value>) -> Result<()> {
+        let workspace = self.workspace.write().await;
+        workspace.resources.write().clear();
+        drop(workspace);
         Ok(())
     }
 }

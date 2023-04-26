@@ -43,6 +43,9 @@ export function activate(context: ExtensionContext): Promise<void> {
         commands.registerCommand("typst-lsp.exportCurrentPdf", commandExportCurrentPdf)
     );
     context.subscriptions.push(commands.registerCommand("typst-lsp.showPdf", commandShowPdf));
+    context.subscriptions.push(
+        commands.registerCommand("typst-lsp.clearCache", commandClearCache)
+    );
 
     return client.start();
 }
@@ -118,4 +121,18 @@ async function commandShowPdf(): Promise<void> {
         // here we can be sure that the pdf exists
         await commands.executeCommand("vscode.open", pdf_uri, ViewColumn.Beside);
     }
+}
+
+async function commandClearCache(): Promise<void> {
+    const activeEditor = window.activeTextEditor;
+    if (activeEditor === undefined) {
+        return;
+    }
+
+    const uri = activeEditor.document.uri.toString();
+
+    await client?.sendRequest("workspace/executeCommand", {
+        command: "typst-lsp.doClearCache",
+        arguments: [uri],
+    });
 }

@@ -12,6 +12,10 @@ pub struct ResourceManager {
 }
 
 impl ResourceManager {
+    pub fn clear(&mut self) {
+        self.resources.clear();
+    }
+
     pub fn get_or_insert_resource(&mut self, uri: Url) -> FileResult<&Resource> {
         match self.resources.entry(uri.clone()) {
             Entry::Vacant(entry) => {
