@@ -86,12 +86,21 @@
                 "title": "Show the compiled PDF of the currently opened typst file",
                 "category": "Typst",
                 "icon": "$(open-preview)"
+            },
+            {
+                "command": "typst-lsp.clearCache",
+                "title": "Clear all cached resources",
+                "category": "Typst"
             }
         ],
         "menus": {
             "commandPalette": [
                 {
                     "command": "typst-lsp.exportCurrentPdf",
+                    "when": "editorLangId == typst"
+                },
+                {
+                    "command": "typst-lsp.clearCache",
                     "when": "editorLangId == typst"
                 }
             ],
@@ -106,7 +115,8 @@
     },
     "activationEvents": [
         "onLanguage:typst",
-        "onCommand:typst-lsp.exportCurrentPdf"
+        "onCommand:typst-lsp.exportCurrentPdf",
+        "onCommand:typst-lsp.clearCache"
     ],
     "scripts": {
         "build-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --target=node16",

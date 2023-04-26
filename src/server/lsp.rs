@@ -189,6 +189,9 @@ impl LanguageServer for TypstServer {
             Some(LspCommand::ExportPdf) => {
                 self.command_export_pdf(arguments).await?;
             }
+            Some(LspCommand::ClearCache) => {
+                self.command_clear_cache(arguments).await?;
+            }
             None => {
                 return Err(jsonrpc::Error::method_not_found());
             }
