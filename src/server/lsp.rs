@@ -44,8 +44,13 @@ impl LanguageServer for TypstServer {
                     ]),
                     ..Default::default()
                 }),
-                text_document_sync: Some(TextDocumentSyncCapability::Kind(
-                    TextDocumentSyncKind::INCREMENTAL,
+                text_document_sync: Some(TextDocumentSyncCapability::Options(
+                    TextDocumentSyncOptions {
+                        open_close: Some(true),
+                        change: Some(TextDocumentSyncKind::INCREMENTAL),
+                        save: Some(TextDocumentSyncSaveOptions::Supported(true)),
+                        ..Default::default()
+                    },
                 )),
                 execute_command_provider: Some(ExecuteCommandOptions {
                     commands: LspCommand::all_as_string(),
