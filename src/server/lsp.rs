@@ -26,6 +26,8 @@ impl LanguageServer for TypstServer {
             .set(ConstConfig { position_encoding })
             .expect("const config should not yet be initialized");
 
+        self.register_workspace_files(&params).await?;
+
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 signature_help_provider: Some(SignatureHelpOptions {
@@ -53,6 +55,8 @@ impl LanguageServer for TypstServer {
                         work_done_progress: None,
                     },
                 }),
+                document_symbol_provider: Some(OneOf::Left(true)),
+                workspace_symbol_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
             ..Default::default()
@@ -109,6 +113,17 @@ impl LanguageServer for TypstServer {
             .get_workspace()
             .sources
             .get_open_source_by_id(source_id);
+
+        // the following is useful to debug AST stuff
+        /* let message = {
+            let root = LinkedNode::new(source.as_ref().root());
+            LogMessage {
+                message_type: MessageType::LOG,
+                message: format!("{root:#?}"),
+            }
+        };
+        self.log_to_client(message).await; */
+
         self.on_source_changed(&world, &config, source).await;
     }
 
@@ -261,6 +276,47 @@ impl LanguageServer for TypstServer {
             .get_open_source_by_id(source_id);
 
         Ok(self.get_signature_at_position(&world, source, position))
+    }
+
+    async fn document_symbol(
+        &self,
+        params: DocumentSymbolParams,
+    ) -> jsonrpc::Result<Option<DocumentSymbolResponse>> {
+        let symbols = self
+            .get_document_symbols(&params.text_document.uri, None)
+            .await
+            .map_err(|e| jsonrpc::Error {
+                code: jsonrpc::ErrorCode::InternalError,
+                message: format!("Failed to get document symbols: {:#}", e),
+                data: None,
+            })?;
+        Ok(Some(symbols.into()))
+    }
+
+    async fn symbol(
+        &self,
+        params: WorkspaceSymbolParams,
+    ) -> jsonrpc::Result<Option<Vec<SymbolInformation>>> {
+        let workspace = self.workspace.read().await;
+        let source_manager = &workspace.sources;
+
+        let mut symbols = Vec::new();
+        for source_uri in source_manager.get_uris().iter() {
+            let mut query = None;
+            if !params.query.is_empty() {
+                query = Some(params.query.as_str());
+            }
+            let mut document_symbols =
+                self.get_document_symbols(source_uri, query)
+                    .await
+                    .map_err(|e| jsonrpc::Error {
+                        code: jsonrpc::ErrorCode::InternalError,
+                        message: format!("Failed to get document symbols: {:#}", e),
+                        data: None,
+                    })?;
+            symbols.append(&mut document_symbols);
+        }
+        Ok(Some(symbols))
     }
 
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
