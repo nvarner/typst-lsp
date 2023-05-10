@@ -5,7 +5,7 @@ edition = "2021"
 license = "Apache-2.0 OR MIT"
 
 [dependencies]
-anyhow = "1.0.70"
+anyhow = "1.0.71"
 comemo = "0.2"
 dirs = "5"
 elsa = { git = "https://github.com/nvarner/elsa.git" }
