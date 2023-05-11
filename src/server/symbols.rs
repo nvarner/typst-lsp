@@ -81,8 +81,8 @@ fn get_ident(
                 return Ok(None);
             };
             let kind = match parent.kind() {
-                // in case we have a Pattern holding an Ident, we need to check the parent of the Pattern
-                SyntaxKind::Pattern => {
+                // in case we have a Destructuring pattern holding an Ident, we need to check the parent of the pattern
+                SyntaxKind::Destructuring => {
                     let Some(parent) = parent.parent() else {
                         return Ok(None);
                     };
