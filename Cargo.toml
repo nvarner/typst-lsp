@@ -6,7 +6,9 @@ license = "Apache-2.0 OR MIT"
 
 [dependencies]
 anyhow = "1.0.71"
-comemo = "0.2"
+# TODO: In development, Typst depends on comemo as a git dependency. Update this
+# to use crates.io when we can use a stable Typst version.
+comemo = { git = "https://github.com/typst/comemo.git" }
 dirs = "5"
 elsa = { git = "https://github.com/nvarner/elsa.git" }
 futures = "0.3"
@@ -26,7 +28,8 @@ tokio = { version = "1.26.0", features = [
     "io-std",
 ] }
 tower-lsp = "0.19.0"
-typst = { git = "https://github.com/typst/typst.git", tag = "v0.2.0" }
-typst-library = { git = "https://github.com/typst/typst.git", tag = "v0.2.0" }
+# TODO: Update comemo alongside typst
+typst = { git = "https://github.com/typst/typst.git", rev = "27771bc329ab23cc551637fb3feac7b5689e64c7" }
+typst-library = { git = "https://github.com/typst/typst.git", rev = "27771bc329ab23cc551637fb3feac7b5689e64c7" }
 unscanny = "0.1"
 walkdir = "2"
