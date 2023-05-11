@@ -124,12 +124,10 @@ pub mod typst_to_lsp {
     use tower_lsp::lsp_types::{
         DiagnosticSeverity, InsertTextFormat, LanguageString, MarkedString,
     };
-    use typst::ide::Tag;
     use typst::World;
     use typst_library::prelude::EcoString;
 
     use crate::config::ConstConfig;
-    use crate::server::semantic_tokens;
 
     use super::world::WorkspaceWorld;
     use super::*;
@@ -273,40 +271,6 @@ pub mod typst_to_lsp {
             }),
         };
         LspHoverContents::Scalar(lsp_marked_string)
-    }
-
-    pub fn tag_to_token(tag: Tag) -> Option<semantic_tokens::TokenType> {
-        use semantic_tokens::TokenType::*;
-
-        match tag {
-            Tag::Comment => Some(Comment),
-
-            Tag::Punctuation => Some(Punctuation),
-            Tag::Escape => Some(Escape),
-
-            Tag::Strong => Some(Styled),
-            Tag::Emph => Some(Styled),
-
-            Tag::Link => Some(Link),
-            Tag::Raw => Some(Raw),
-            Tag::Label => Some(Label),
-            Tag::Ref => Some(Ref),
-            Tag::Heading => Some(Heading),
-            Tag::ListMarker => Some(ListMarker),
-            Tag::ListTerm => Some(ListTerm),
-
-            Tag::MathDelimiter => Some(Delimiter),
-            Tag::MathOperator => Some(Operator),
-
-            Tag::Keyword => Some(Keyword),
-            Tag::Operator => Some(Operator),
-            Tag::Number => Some(Number),
-            Tag::String => Some(String),
-            Tag::Function => Some(Function),
-            Tag::Interpolated => Some(Interpolated),
-
-            Tag::Error => Some(Error),
-        }
     }
 }
 
