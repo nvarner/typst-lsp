@@ -197,6 +197,7 @@
                         "markup.heading.typst"
                     ],
                     "marker": [
+                        "markup.list.typst punctuation.definition.list.begin.typst",
                         "markup.list.typst",
                         "punctuation.definition.list.begin.typst"
                     ],

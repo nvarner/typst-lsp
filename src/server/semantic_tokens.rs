@@ -226,58 +226,51 @@ fn modifiers_from_node(node: &LinkedNode) -> ModifierSet {
     }
 }
 
-/// Determines the best [`TokenType`] for a node. Usually, this is called on a leaf node.
-fn token_from_node(node: &LinkedNode) -> TokenType {
+/// Determines the best [`TokenType`] for an entire node and its children, if any. If there is no
+/// single `TokenType`, or none better than `Text`, returns `None`.
+///
+/// In tokenization, returning `Some` stops recursion, while returning `None` continues and attempts
+/// to tokenize each of `node`'s children. If there are no children, `Text` is taken as the default.
+fn token_from_node(node: &LinkedNode) -> Option<TokenType> {
     use SyntaxKind::*;
 
     match node.kind() {
-        Star if node.parent_kind() == Some(Strong) => TokenType::Punctuation,
-        Star if node.parent_kind() == Some(ModuleImport) => TokenType::Operator,
-        Star => TokenType::Text,
+        Star if node.parent_kind() == Some(Strong) => Some(TokenType::Punctuation),
+        Star if node.parent_kind() == Some(ModuleImport) => Some(TokenType::Operator),
 
-        Underscore if node.parent_kind() == Some(Emph) => TokenType::Punctuation,
-        Underscore if node.parent_kind() == Some(MathAttach) => TokenType::Operator,
-        Underscore => TokenType::Text,
+        Underscore if node.parent_kind() == Some(Emph) => Some(TokenType::Punctuation),
+        Underscore if node.parent_kind() == Some(MathAttach) => Some(TokenType::Operator),
 
-        MathIdent => token_from_math_ident(node),
+        MathIdent | Ident => Some(token_from_ident(node)),
         Hashtag => token_from_hashtag(node),
 
-        // TODO: differentiate between variables and functions using tokens in scope and context
-        Ident => TokenType::Function,
-
-        Text | Markup | Space | Parbreak | SmartQuote | Strong | Emph | ListItem | EnumItem
-        | TermItem | Equation | Math | MathDelimited | MathAttach | MathFrac | Code => {
-            TokenType::Text
-        }
         LeftBrace | RightBrace | LeftBracket | RightBracket | LeftParen | RightParen | Comma
-        | Semicolon | Colon => TokenType::Punctuation,
-        Linebreak | Escape | Shorthand => TokenType::Escape,
-        Link => TokenType::Link,
-        Raw => TokenType::Raw,
-        Label => TokenType::Label,
-        Ref | RefMarker => TokenType::Ref,
-        Heading | HeadingMarker => TokenType::Heading,
-        ListMarker | EnumMarker | TermMarker => TokenType::ListMarker,
+        | Semicolon | Colon => Some(TokenType::Punctuation),
+        Linebreak | Escape | Shorthand => Some(TokenType::Escape),
+        Link => Some(TokenType::Link),
+        Raw => Some(TokenType::Raw),
+        Label => Some(TokenType::Label),
+        RefMarker => Some(TokenType::Ref),
+        Heading | HeadingMarker => Some(TokenType::Heading),
+        ListMarker | EnumMarker | TermMarker => Some(TokenType::ListMarker),
         MathAlignPoint | Plus | Minus | Slash | Hat | Dot | Eq | EqEq | ExclEq | Lt | LtEq | Gt
         | GtEq | PlusEq | HyphEq | StarEq | SlashEq | Dots | Arrow | Not | And | Or | Unary
-        | Binary => TokenType::Operator,
-        Dollar => TokenType::Delimiter,
+        | Binary => Some(TokenType::Operator),
+        Dollar => Some(TokenType::Delimiter),
         None | Auto | Let | Show | If | Else | For | In | While | Break | Continue | Return
-        | Import | Include | As | Set | LoopBreak | LoopContinue | FuncReturn => TokenType::Keyword,
-        Bool => TokenType::Bool,
-        Int | Float | Numeric => TokenType::Number,
-        Str => TokenType::String,
-        LineComment | BlockComment => TokenType::Comment,
-        Error => TokenType::Error,
+        | Import | Include | As | Set => Some(TokenType::Keyword),
+        Bool => Some(TokenType::Bool),
+        Int | Float | Numeric => Some(TokenType::Number),
+        Str => Some(TokenType::String),
+        LineComment | BlockComment => Some(TokenType::Comment),
+        Error => Some(TokenType::Error),
 
-        // These aren't leaf nodes, but need to be assigned some `TokenType` anyway
-        CodeBlock | ContentBlock | Parenthesized | Array | Dict | Named | Keyed | FieldAccess
-        | FuncCall | Args | Spread | Closure | Params | LetBinding | SetRule | ShowRule
-        | Conditional | WhileLoop | ForLoop | ModuleImport | ImportItems | ModuleInclude
-        | Pattern | ForPattern | Eof => TokenType::Text,
+        // Disambiguate from `SyntaxKind::None`
+        _ => Option::None,
     }
 }
 
+// TODO: differentiate also using tokens in scope, not just context
 fn is_function_ident(ident: &LinkedNode) -> bool {
     let Some(next) = ident.next_leaf() else { return false; };
     let function_call = matches!(next.kind(), SyntaxKind::LeftParen)
@@ -290,7 +283,7 @@ fn is_function_ident(ident: &LinkedNode) -> bool {
     function_call || function_content
 }
 
-fn token_from_math_ident(ident: &LinkedNode) -> TokenType {
+fn token_from_ident(ident: &LinkedNode) -> TokenType {
     if is_function_ident(ident) {
         TokenType::Function
     } else {
@@ -308,31 +301,25 @@ fn get_expr_following_hashtag<'a>(hashtag: &LinkedNode<'a>) -> Option<LinkedNode
         .and_then(|node| node.leftmost_leaf())
 }
 
-fn token_from_hashtag(hashtag: &LinkedNode) -> TokenType {
-    if let Some(expr) = get_expr_following_hashtag(hashtag) {
-        token_from_node(&expr)
-    } else {
-        TokenType::Text
-    }
+fn token_from_hashtag(hashtag: &LinkedNode) -> Option<TokenType> {
+    get_expr_following_hashtag(hashtag)
+        .as_ref()
+        .and_then(token_from_node)
 }
 
 fn tokenize_single_node(node: &LinkedNode, modifiers: ModifierSet) -> Option<TokenInfo> {
-    // Ideally, we would pattern match on `SyntaxNode`'s `Repr`, but it is private
-    // TODO: investigate submitting a PR to Typst to allow this
-    if node.children().next().is_some() {
-        None
-    } else {
-        let token_type = token_from_node(node);
-        Some(TokenInfo::new(token_type, modifiers, node))
-    }
+    let is_leaf = node.children().next().is_none();
+
+    token_from_node(node)
+        .or_else(|| is_leaf.then_some(TokenType::Text))
+        .map(|token_type| TokenInfo::new(token_type, modifiers, node))
 }
 
 fn tokenize_node<'a>(
     node: &LinkedNode<'a>,
     parent_modifiers: ModifierSet,
 ) -> Box<dyn Iterator<Item = TokenInfo> + 'a> {
-    let root_modifiers = modifiers_from_node(node);
-    let modifiers = parent_modifiers | root_modifiers;
+    let modifiers = parent_modifiers | modifiers_from_node(node);
 
     let token = tokenize_single_node(node, modifiers).into_iter();
     let children = node
