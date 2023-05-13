@@ -1,6 +1,5 @@
 use std::ops;
 
-use lazy_static::__Deref;
 use strum::{EnumIter, IntoEnumIterator};
 use tower_lsp::lsp_types::{
     Position, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokensLegend,
@@ -174,8 +173,7 @@ struct TokenInfo {
 
 impl TokenInfo {
     pub fn new(token_type: TokenType, modifiers: ModifierSet, node: &LinkedNode) -> Self {
-        let owned_node = node.deref().clone();
-        let source = owned_node.into_text();
+        let source = node.get().clone().into_text();
 
         Self {
             token_type,
