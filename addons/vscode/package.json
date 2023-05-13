@@ -82,20 +82,16 @@
         ],
         "semanticTokenTypes": [
             {
+                "id": "bool",
+                "description": "A boolean literal"
+            },
+            {
                 "id": "punct",
                 "description": "Punctuation in code"
             },
             {
                 "id": "escape",
                 "description": "Escape sequence"
-            },
-            {
-                "id": "strong",
-                "description": "Strong (usually bold) markup"
-            },
-            {
-                "id": "emph",
-                "description": "Emphasized (usually italics) markup"
             },
             {
                 "id": "link",
@@ -139,20 +135,31 @@
                 "description": "Syntax error"
             },
             {
-                "id": "styled",
-                "description": "Styled markup"
+                "id": "text",
+                "description": "Text"
             }
         ],
         "semanticTokenModifiers": [
             {
                 "id": "math",
                 "description": "Math mode markup"
+            },
+            {
+                "id": "strong",
+                "description": "Strong (usually bolded) text"
+            },
+            {
+                "id": "emph",
+                "description": "Emphasized (usually italicized) text"
             }
         ],
         "semanticTokenScopes": [
             {
                 "language": "typst",
                 "scopes": {
+                    "bool": [
+                        "constant.language.boolean.typst"
+                    ],
                     "punct": [
                         "punctuation.typst",
                         "punctuation.definition.typst"
@@ -161,6 +168,9 @@
                         "constant.character.escape.typst",
                         "keyword.operator.typst",
                         "punctuation.definition.typst"
+                    ],
+                    "*.strong.emph": [
+                        "markup.bold.typst markup.italic.typst"
                     ],
                     "*.strong": [
                         "markup.bold.typst"
