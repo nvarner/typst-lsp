@@ -20,7 +20,7 @@ regex = "1.8.1"
 same-file = "1"
 serde_json = "1.0.94"
 siphasher = "0.3"
-tokio = { version = "1.26.0", features = [
+tokio = { version = "1.28.1", features = [
     "macros",
     "rt-multi-thread",
     "io-std",
