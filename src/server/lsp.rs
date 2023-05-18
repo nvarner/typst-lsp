@@ -352,15 +352,11 @@ impl LanguageServer for TypstServer {
             .map(|id| workspace.sources.get_open_source_by_id(id))
             .ok_or_else(jsonrpc::Error::internal_error)?;
 
-        let tokens = self
-            .get_semantic_tokens_full(source)
-            .map(|tokens| SemanticTokens {
-                data: tokens,
-                ..Default::default()
-            })
-            .map(SemanticTokensResult::Tokens);
-
-        Ok(tokens)
+        let tokens = SemanticTokens {
+            data: self.get_semantic_tokens_full(source),
+            ..Default::default()
+        };
+        Ok(Some(SemanticTokensResult::Tokens(tokens)))
     }
 
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
