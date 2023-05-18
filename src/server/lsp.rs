@@ -58,7 +58,7 @@ impl LanguageServer for TypstServer {
                 semantic_tokens_provider: Some(
                     SemanticTokensOptions {
                         legend: get_legend(),
-                        full: Some(SemanticTokensFullOptions::Bool(true)),
+                        full: Some(SemanticTokensFullOptions::Delta { delta: Some(true) }),
                         ..Default::default()
                     }
                     .into(),
@@ -352,11 +352,46 @@ impl LanguageServer for TypstServer {
             .map(|id| workspace.sources.get_open_source_by_id(id))
             .ok_or_else(jsonrpc::Error::internal_error)?;
 
+        let (tokens, result_id) = self.get_semantic_tokens_full(source);
+
         let tokens = SemanticTokens {
-            data: self.get_semantic_tokens_full(source),
-            ..Default::default()
+            result_id: Some(result_id),
+            data: tokens,
         };
         Ok(Some(SemanticTokensResult::Tokens(tokens)))
+    }
+
+    async fn semantic_tokens_full_delta(
+        &self,
+        params: SemanticTokensDeltaParams,
+    ) -> jsonrpc::Result<Option<SemanticTokensFullDeltaResult>> {
+        let uri = &params.text_document.uri;
+
+        let workspace = self.workspace.read().await;
+        let source = workspace
+            .sources
+            .get_id_by_uri(uri)
+            .map(|id| workspace.sources.get_open_source_by_id(id))
+            .ok_or_else(jsonrpc::Error::internal_error)?;
+
+        let (tokens, result_id) =
+            self.try_semantic_tokens_delta_from_result_id(source, &params.previous_result_id);
+        match tokens {
+            Ok(edits) => Ok(Some(
+                SemanticTokensDelta {
+                    result_id: Some(result_id),
+                    edits,
+                }
+                .into(),
+            )),
+            Err(tokens) => Ok(Some(
+                SemanticTokens {
+                    result_id: Some(result_id),
+                    data: tokens,
+                }
+                .into(),
+            )),
+        }
     }
 
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {

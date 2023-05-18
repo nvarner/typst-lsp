@@ -8,6 +8,7 @@ use tower_lsp::{jsonrpc, Client};
 use crate::config::{Config, ConstConfig};
 use crate::lsp_typst_boundary::world::WorkspaceWorld;
 use crate::server::log::LogMessage;
+use crate::server::semantic_tokens::SemanticTokenCache;
 use crate::workspace::source_manager::SourceId;
 use crate::workspace::Workspace;
 
@@ -30,6 +31,7 @@ pub struct TypstServer {
     workspace: Arc<RwLock<Workspace>>,
     config: Arc<RwLock<Config>>,
     const_config: OnceCell<ConstConfig>,
+    semantic_tokens_delta_cache: Arc<parking_lot::RwLock<SemanticTokenCache>>,
 }
 
 impl TypstServer {
@@ -39,6 +41,7 @@ impl TypstServer {
             workspace: Default::default(),
             config: Default::default(),
             const_config: Default::default(),
+            semantic_tokens_delta_cache: Default::default(),
         }
     }
 

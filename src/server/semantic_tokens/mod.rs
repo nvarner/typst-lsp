@@ -1,5 +1,5 @@
 use strum::IntoEnumIterator;
-use tower_lsp::lsp_types::{Position, SemanticToken, SemanticTokensLegend};
+use tower_lsp::lsp_types::{Position, SemanticToken, SemanticTokensEdit, SemanticTokensLegend};
 use typst::syntax::{ast, LinkedNode, SyntaxKind};
 use typst_library::prelude::EcoString;
 
@@ -12,6 +12,9 @@ use self::typst_tokens::{Modifier, TokenType};
 
 use super::TypstServer;
 
+pub use self::delta::Cache as SemanticTokenCache;
+
+mod delta;
 mod modifier_set;
 mod typst_tokens;
 
@@ -23,7 +26,7 @@ pub fn get_legend() -> SemanticTokensLegend {
 }
 
 impl TypstServer {
-    pub fn get_semantic_tokens_full(&self, source: &Source) -> Vec<SemanticToken> {
+    pub fn get_semantic_tokens_full(&self, source: &Source) -> (Vec<SemanticToken>, String) {
         let encoding = self.get_const_config().position_encoding;
 
         let mut output_tokens = Vec::new();
@@ -49,7 +52,65 @@ impl TypstServer {
             });
         }
 
-        output_tokens
+        let result_id = self
+            .semantic_tokens_delta_cache
+            .write()
+            .cache_result(output_tokens.clone());
+
+        (output_tokens, result_id)
+    }
+
+    pub fn try_semantic_tokens_delta_from_result_id(
+        &self,
+        source: &Source,
+        result_id: &str,
+    ) -> (Result<Vec<SemanticTokensEdit>, Vec<SemanticToken>>, String) {
+        let cached = self
+            .semantic_tokens_delta_cache
+            .write()
+            .try_take_result(result_id);
+
+        // this call will overwrite the cache, so need to read from cache first
+        let (tokens, result_id) = self.get_semantic_tokens_full(source);
+
+        match cached {
+            Some(cached) => (Ok(token_delta(&cached, &tokens)), result_id),
+            None => (Err(tokens), result_id),
+        }
+    }
+}
+
+fn token_delta(from: &[SemanticToken], to: &[SemanticToken]) -> Vec<SemanticTokensEdit> {
+    // Taken from `rust-analyzer`'s algorithm
+    // https://github.com/rust-lang/rust-analyzer/blob/master/crates/rust-analyzer/src/semantic_tokens.rs#L219
+
+    let start = from
+        .iter()
+        .zip(to.iter())
+        .take_while(|(x, y)| x == y)
+        .count();
+
+    let (_, from) = from.split_at(start);
+    let (_, to) = to.split_at(start);
+
+    let dist_from_end = from
+        .iter()
+        .rev()
+        .zip(to.iter().rev())
+        .take_while(|(x, y)| x == y)
+        .count();
+
+    let (from, _) = from.split_at(from.len() - dist_from_end);
+    let (to, _) = to.split_at(to.len() - dist_from_end);
+
+    if from.is_empty() && to.is_empty() {
+        vec![]
+    } else {
+        vec![SemanticTokensEdit {
+            start: 5 * start as u32,
+            delete_count: 5 * from.len() as u32,
+            data: Some(to.into()),
+        }]
     }
 }
 
