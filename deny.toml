@@ -74,6 +74,7 @@ allow = [
     "MPL-2.0",
     "ISC",
     "CC0-1.0",
+    "Zlib",
 ]
 unlicensed = "deny"
 copyleft = "deny"
