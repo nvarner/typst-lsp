@@ -18,6 +18,7 @@ pub mod export;
 pub mod hover;
 pub mod log;
 pub mod lsp;
+pub mod selection_range;
 pub mod signature;
 pub mod symbols;
 pub mod typst_compiler;
