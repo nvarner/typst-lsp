@@ -62,6 +62,7 @@ impl LanguageServer for TypstServer {
                 }),
                 document_symbol_provider: Some(OneOf::Left(true)),
                 workspace_symbol_provider: Some(OneOf::Left(true)),
+                selection_range_provider: Some(SelectionRangeProviderCapability::Simple(true)),
                 ..Default::default()
             },
             ..Default::default()
@@ -352,5 +353,21 @@ impl LanguageServer for TypstServer {
                 .log_message(MessageType::ERROR, "Got invalid configuration object")
                 .await;
         }
+    }
+
+    async fn selection_range(
+        &self,
+        params: SelectionRangeParams,
+    ) -> jsonrpc::Result<Option<Vec<SelectionRange>>> {
+        let uri = &params.text_document.uri;
+        let positions = params.positions;
+
+        let (world, source_id) = self.get_world_with_main_uri(uri).await;
+        let source = world
+            .get_workspace()
+            .sources
+            .get_open_source_by_id(source_id);
+
+        Ok(self.get_selection_range(source, &positions))
     }
 }
