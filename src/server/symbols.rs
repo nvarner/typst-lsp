@@ -81,14 +81,15 @@ fn get_ident(
                 return Ok(None);
             };
             let kind = match parent.kind() {
-                // in case we have a Destructuring pattern holding an Ident, we need to check the parent of the pattern
-                SyntaxKind::Destructuring => {
-                    let Some(parent) = parent.parent() else {
+                // for variable definitions, the Let binding holds an Ident
+                SyntaxKind::LetBinding => SymbolKind::VARIABLE,
+                // for function definitions, the Let binding holds a Closure which holds the Ident
+                SyntaxKind::Closure => {
+                    let Some(grand_parent) = parent.parent() else {
                         return Ok(None);
                     };
-                    match parent.kind() {
-                        SyntaxKind::LetBinding => SymbolKind::VARIABLE,
-                        SyntaxKind::Closure => SymbolKind::FUNCTION,
+                    match grand_parent.kind() {
+                        SyntaxKind::LetBinding => SymbolKind::FUNCTION,
                         _ => return Ok(None),
                     }
                 }
