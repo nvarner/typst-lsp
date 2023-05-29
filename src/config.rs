@@ -43,4 +43,5 @@ impl From<PositionEncoding> for lsp_types::PositionEncodingKind {
 #[derive(Debug)]
 pub struct ConstConfig {
     pub position_encoding: PositionEncoding,
+    pub supports_multiline_tokens: bool,
 }

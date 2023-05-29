@@ -23,8 +23,10 @@ impl LanguageServer for TypstServer {
             PositionEncoding::Utf16
         };
 
+        let supports_multiline_tokens = params.supports_multiline_tokens();
+
         self.const_config
-            .set(ConstConfig { position_encoding })
+            .set(ConstConfig { position_encoding, supports_multiline_tokens })
             .expect("const config should not yet be initialized");
 
         self.register_workspace_files(&params).await?;

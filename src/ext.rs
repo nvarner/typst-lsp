@@ -5,6 +5,7 @@ use crate::config::PositionEncoding;
 
 pub trait InitializeParamsExt {
     fn position_encodings(&self) -> &[PositionEncodingKind];
+    fn supports_multiline_tokens(&self) -> bool;
 }
 
 static DEFAULT_ENCODING: [PositionEncodingKind; 1] = [PositionEncodingKind::UTF16];
@@ -17,6 +18,13 @@ impl InitializeParamsExt for InitializeParams {
             .and_then(|general| general.position_encodings.as_ref())
             .map(|encodings| encodings.as_slice())
             .unwrap_or(&DEFAULT_ENCODING)
+    }
+
+    fn supports_multiline_tokens(&self) -> bool {
+        self.capabilities.text_document.as_ref()
+            .and_then(|text_document| text_document.semantic_tokens.as_ref())
+            .and_then(|semantic_tokens| semantic_tokens.multiline_token_support)
+            .unwrap_or(false)
     }
 }
 
