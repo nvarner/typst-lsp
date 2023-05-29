@@ -157,6 +157,18 @@
             {
                 "language": "typst",
                 "scopes": {
+                    "*.strong.emph": [
+                        "markup.bold.typst markup.italic.typst"
+                    ],
+                    "*.strong": [
+                        "markup.bold.typst"
+                    ],
+                    "*.emph": [
+                        "markup.italic.typst"
+                    ],
+                    "*.math": [
+                        "markup.math.typst"
+                    ],
                     "bool": [
                         "constant.language.boolean.typst"
                     ],
@@ -168,15 +180,6 @@
                         "constant.character.escape.typst",
                         "keyword.operator.typst",
                         "punctuation.definition.typst"
-                    ],
-                    "*.strong.emph": [
-                        "markup.bold.typst markup.italic.typst"
-                    ],
-                    "*.strong": [
-                        "markup.bold.typst"
-                    ],
-                    "*.emph": [
-                        "markup.italic.typst"
                     ],
                     "link": [
                         "markup.underline.link.typst"
