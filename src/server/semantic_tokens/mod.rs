@@ -7,6 +7,7 @@ use crate::ext::{PositionExt, StrExt};
 use crate::lsp_typst_boundary::typst_to_lsp;
 use crate::workspace::source::Source;
 
+use self::delta::token_delta;
 use self::modifier_set::ModifierSet;
 use self::typst_tokens::{Modifier, TokenType};
 
@@ -77,40 +78,6 @@ impl TypstServer {
             Some(cached) => (Ok(token_delta(&cached, &tokens)), result_id),
             None => (Err(tokens), result_id),
         }
-    }
-}
-
-fn token_delta(from: &[SemanticToken], to: &[SemanticToken]) -> Vec<SemanticTokensEdit> {
-    // Taken from `rust-analyzer`'s algorithm
-    // https://github.com/rust-lang/rust-analyzer/blob/master/crates/rust-analyzer/src/semantic_tokens.rs#L219
-
-    let start = from
-        .iter()
-        .zip(to.iter())
-        .take_while(|(x, y)| x == y)
-        .count();
-
-    let (_, from) = from.split_at(start);
-    let (_, to) = to.split_at(start);
-
-    let dist_from_end = from
-        .iter()
-        .rev()
-        .zip(to.iter().rev())
-        .take_while(|(x, y)| x == y)
-        .count();
-
-    let (from, _) = from.split_at(from.len() - dist_from_end);
-    let (to, _) = to.split_at(to.len() - dist_from_end);
-
-    if from.is_empty() && to.is_empty() {
-        vec![]
-    } else {
-        vec![SemanticTokensEdit {
-            start: 5 * start as u32,
-            delete_count: 5 * from.len() as u32,
-            data: Some(to.into()),
-        }]
     }
 }
 
