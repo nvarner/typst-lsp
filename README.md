@@ -57,3 +57,41 @@ the extension can be found in the Extensions `@installed` list.
     Extension Development Host
 4. Within the Extension Development Host, the extension will be active and ready
     for testing
+
+## Installation guide
+
+### Visual Studio Code
+
+- Install it from [Marketplace](https://marketplace.visualstudio.com/items?itemName=nvarner.typst-lsp).
+
+### Neovim
+
+#### Basic setup
+
+> Prerequisites: [`mason-lspconfig.nvim`](https://github.com/williamboman/mason-lspconfig.nvim), [`mason.nvim`](https://github.com/williamboman/mason.nvim) and [`nvim-lspconfig`](https://github.com/neovim/nvim-lspconfig) (Optional for advanced users, but required for this guide).
+
+1. Run `MasonInstall typst-lsp`.
+2. Edit your `init.lua` settings (For more details, you may consult [server_configurations.md#typst_lsp](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#typst_lsp)):
+```lua
+require'lspconfig'.typst_lsp.setup{
+	settings = {
+		exportPdf = "onType" -- Choose onType, onSave or never.
+        -- serverPath = "" -- Normally, there is no need to uncomment it.
+	}
+}
+```
+3. You may also install [`typst.vim`](https://github.com/kaarmu/typst.vim) for more capabilities in nvim.
+
+#### Addtional steps for `coc.nvim` users
+
+Run `CocConfig` to edit the settings so that `coc.nvim` could offer functions such as auto-completion:
+```
+{
+"languageserver": {
+    "typst": {
+        "command": "typst-lsp",
+        "filetypes": ["typst"]
+        }
+    }
+}
+```
