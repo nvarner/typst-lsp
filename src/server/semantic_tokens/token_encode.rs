@@ -7,9 +7,9 @@ use crate::ext::{PositionExt, StrExt};
 use crate::lsp_typst_boundary::typst_to_lsp;
 use crate::workspace::source::Source;
 
-use super::TokenInfo;
+use super::Token;
 
-pub(super) fn encode_tokens<'a>(tokens: impl Iterator<Item = TokenInfo> + 'a, source: &'a Source, encoding: PositionEncoding) -> impl Iterator<Item = SemanticToken> + 'a {
+pub(super) fn encode_tokens<'a>(tokens: impl Iterator<Item = Token> + 'a, source: &'a Source, encoding: PositionEncoding) -> impl Iterator<Item = SemanticToken> + 'a {
     tokens.scan(Position::new(0, 0), move |last_position, token| {
         let (encoded_tokens, position) = encode_token(token, last_position, source, encoding);
         *last_position = position;
@@ -17,7 +17,7 @@ pub(super) fn encode_tokens<'a>(tokens: impl Iterator<Item = TokenInfo> + 'a, so
     }).flatten()
 }
 
-fn encode_token(token: TokenInfo, last_position: &Position, source: &Source, encoding: PositionEncoding) -> (impl Iterator<Item = SemanticToken>, Position) {
+fn encode_token(token: Token, last_position: &Position, source: &Source, encoding: PositionEncoding) -> (impl Iterator<Item = SemanticToken>, Position) {
     let position =
         typst_to_lsp::offset_to_position(token.offset, encoding, source.as_ref());
     let delta = last_position.delta(&position);

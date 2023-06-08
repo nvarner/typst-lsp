@@ -64,19 +64,19 @@ impl TypstServer {
     }
 }
 
-fn tokenize_single_node(node: &LinkedNode, modifiers: ModifierSet) -> Option<TokenInfo> {
+fn tokenize_single_node(node: &LinkedNode, modifiers: ModifierSet) -> Option<Token> {
     let is_leaf = node.children().next().is_none();
 
     token_from_node(node)
         .or_else(|| is_leaf.then_some(TokenType::Text))
-        .map(|token_type| TokenInfo::new(token_type, modifiers, node))
+        .map(|token_type| Token::new(token_type, modifiers, node))
 }
 
 /// Tokenize a node and its children
 fn tokenize_tree<'a>(
     root: &LinkedNode<'a>,
     parent_modifiers: ModifierSet,
-) -> Box<dyn Iterator<Item = TokenInfo> + 'a> {
+) -> Box<dyn Iterator<Item = Token> + 'a> {
     let modifiers = parent_modifiers | modifiers_from_node(root);
 
     let token = tokenize_single_node(root, modifiers).into_iter();
@@ -86,14 +86,14 @@ fn tokenize_tree<'a>(
     Box::new(token.chain(children))
 }
 
-pub struct TokenInfo {
+pub struct Token {
     pub token_type: TokenType,
     pub modifiers: ModifierSet,
     pub offset: usize,
     pub source: EcoString,
 }
 
-impl TokenInfo {
+impl Token {
     pub fn new(token_type: TokenType, modifiers: ModifierSet, node: &LinkedNode) -> Self {
         let source = node.get().clone().into_text();
 
