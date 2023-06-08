@@ -1,14 +1,14 @@
+use itertools::Itertools;
 use strum::IntoEnumIterator;
-use tower_lsp::lsp_types::{Position, SemanticToken, SemanticTokensEdit, SemanticTokensLegend};
+use tower_lsp::lsp_types::{SemanticToken, SemanticTokensEdit, SemanticTokensLegend};
 use typst::syntax::{ast, LinkedNode, SyntaxKind};
 use typst_library::prelude::EcoString;
 
-use crate::ext::{PositionExt, StrExt};
-use crate::lsp_typst_boundary::typst_to_lsp;
 use crate::workspace::source::Source;
 
 use self::delta::token_delta;
 use self::modifier_set::ModifierSet;
+use self::token_encode::encode_tokens;
 use self::typst_tokens::{Modifier, TokenType};
 
 use super::TypstServer;
@@ -18,6 +18,7 @@ pub use self::delta::Cache as SemanticTokenCache;
 mod delta;
 mod modifier_set;
 mod typst_tokens;
+mod token_encode;
 
 pub fn get_legend() -> SemanticTokensLegend {
     SemanticTokensLegend {
@@ -30,28 +31,10 @@ impl TypstServer {
     pub fn get_semantic_tokens_full(&self, source: &Source) -> (Vec<SemanticToken>, String) {
         let encoding = self.get_const_config().position_encoding;
 
-        let mut output_tokens = Vec::new();
-        let mut last_position = Position::new(0, 0);
-
         let root = LinkedNode::new(source.as_ref().root());
 
         let tokens = tokenize_tree(&root, ModifierSet::empty());
-        for token in tokens {
-            let position =
-                typst_to_lsp::offset_to_position(token.offset, encoding, source.as_ref());
-            let delta = last_position.delta(&position);
-            last_position = position;
-
-            let length = token.source.as_str().encoded_len(encoding);
-
-            output_tokens.push(SemanticToken {
-                delta_line: delta.line,
-                delta_start: delta.character,
-                length: length as u32,
-                token_type: token.token_type as u32,
-                token_modifiers_bitset: token.modifiers.bitset(),
-            });
-        }
+        let output_tokens = encode_tokens(tokens, source, encoding).collect_vec();
 
         let result_id = self
             .semantic_tokens_delta_cache
@@ -103,7 +86,7 @@ fn tokenize_tree<'a>(
     Box::new(token.chain(children))
 }
 
-struct TokenInfo {
+pub struct TokenInfo {
     pub token_type: TokenType,
     pub modifiers: ModifierSet,
     pub offset: usize,
