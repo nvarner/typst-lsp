@@ -3,8 +3,7 @@ use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, LanguageServer};
 use typst::ide::autocomplete;
 
-use crate::config::{ConstConfig, ExportPdfMode, PositionEncoding};
-use crate::ext::InitializeParamsExt;
+use crate::config::{ConstConfig, ExportPdfMode};
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
 
 use super::command::LspCommand;
@@ -14,23 +13,18 @@ use super::TypstServer;
 #[tower_lsp::async_trait]
 impl LanguageServer for TypstServer {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
-        let position_encoding = if params
-            .position_encodings()
-            .contains(&PositionEncodingKind::UTF8)
-        {
-            PositionEncoding::Utf8
-        } else {
-            PositionEncoding::Utf16
-        };
-
-        let supports_multiline_tokens = params.supports_multiline_tokens();
-
         self.const_config
-            .set(ConstConfig {
-                position_encoding,
-                supports_multiline_tokens,
-            })
+            .set(ConstConfig::from(&params))
             .expect("const config should not yet be initialized");
+
+        if let Some(init) = &params.initialization_options {
+            let mut config = self.config.write().await;
+            config
+                .update(init)
+                .as_ref()
+                .map_err(ToString::to_string)
+                .map_err(jsonrpc::Error::invalid_params)?;
+        }
 
         self.register_workspace_files(&params).await?;
 
@@ -400,29 +394,18 @@ impl LanguageServer for TypstServer {
     }
 
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
-        let settings = params.settings;
+        let update = params.settings;
+
         let mut config = self.config.write().await;
-        if let JsonValue::Object(settings) = settings {
-            let export_pdf = settings
-                .get("exportPdf")
-                .map(|val| match val {
-                    JsonValue::String(val) => match val.as_str() {
-                        "never" => ExportPdfMode::Never,
-                        "onSave" => ExportPdfMode::OnSave,
-                        "onType" => ExportPdfMode::OnType,
-                        _ => ExportPdfMode::OnSave,
-                    },
-                    _ => ExportPdfMode::OnSave,
-                })
-                .unwrap_or_default();
-            config.export_pdf = export_pdf;
-            self.client
-                .log_message(MessageType::INFO, "New settings applied")
-                .await;
-        } else {
-            self.client
-                .log_message(MessageType::ERROR, "Got invalid configuration object")
-                .await;
+        match config.update(&update) {
+            Ok(()) => {
+                self.client
+                    .log_message(MessageType::INFO, "New settings applied")
+                    .await;
+            }
+            Err(err) => {
+                self.client.log_message(MessageType::ERROR, err).await;
+            }
         }
     }
 
