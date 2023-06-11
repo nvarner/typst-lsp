@@ -16,7 +16,7 @@ pub struct SourceId(u16);
 
 impl From<TypstSourceId> for SourceId {
     fn from(typst_id: TypstSourceId) -> Self {
-        Self(typst_id.into_u16())
+        Self(typst_id.as_u16())
     }
 }
 
