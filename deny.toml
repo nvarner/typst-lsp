@@ -72,8 +72,6 @@ allow = [
     "BSD-2-Clause",
     "BSD-3-Clause",
     "MPL-2.0",
-    "ISC",
-    "CC0-1.0",
     "Zlib",
 ]
 unlicensed = "deny"

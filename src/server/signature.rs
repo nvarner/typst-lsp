@@ -211,8 +211,8 @@ impl TypstServer {
 
         let params_label = labels.iter().join(param_joiner);
 
-        let returns_label = if !info.returns.is_empty() {
-            let type_label = info.returns.join(", ");
+        let type_label = Self::format_cast_info(&info.returns);
+        let returns_label = if !type_label.is_empty() {
             format!(" -> {type_label}")
         } else {
             "".to_owned()
