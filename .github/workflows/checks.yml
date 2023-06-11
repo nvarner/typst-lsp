@@ -57,8 +57,10 @@ jobs:
         run: npm run test
         working-directory: ./addons/vscode
       
-      - name: Linting
-        run: npm run lint
+      - name: Linting and Formatting
+        run: |
+          npm run lint
+          npm run format-check
         working-directory: ./addons/vscode
 
       - name: Packaging
