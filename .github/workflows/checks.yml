@@ -42,26 +42,27 @@ jobs:
         with:
           node-version: 16
 
-      - shell: pwsh
-        run: npm install
+      - run: npm install
         working-directory: ./addons/vscode
       
       - name: Compilation
-        shell: pwsh
         run: npm run compile
         working-directory: ./addons/vscode
       
       - name: Type Checking
-        shell: pwsh
         run: npm run check
         working-directory: ./addons/vscode
       
       - name: Tests
-        shell: pwsh
         run: npm run test
         working-directory: ./addons/vscode
       
       - name: Linting
-        shell: pwsh
         run: npm run lint
+        working-directory: ./addons/vscode
+
+      - name: Packaging
+        # raises an error with packaging issues, eg. `@types/vscode` out of sync
+        # with `engines.vscode`
+        run: npx vsce ls
         working-directory: ./addons/vscode
