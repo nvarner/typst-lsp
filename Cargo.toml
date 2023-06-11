@@ -5,23 +5,23 @@ edition = "2021"
 license = "Apache-2.0 OR MIT"
 
 [dependencies]
+anyhow = "1.0.71"
 chrono = { version = "0.4.24", default-features = false, features = [
     "std",
     "clock",
 ] }
-anyhow = "1.0.71"
 comemo = "0.3"
-dirs = "5"
+dirs = "5.0"
 elsa = { git = "https://github.com/nvarner/elsa.git" }
 futures = "0.3"
-if_chain = "1"
+if_chain = "1.0"
 itertools = "0.10.5"
 lazy_static = "1.4.0"
-memmap2 = "0.5"
-once_cell = "1"
+memmap2 = "0.7"
+once_cell = "1.0"
 parking_lot = "0.12.1"
 regex = "1.8.1"
-same-file = "1"
+same-file = "1.0"
 serde_json = "1.0.94"
 siphasher = "0.3"
 tokio = { version = "1.26.0", features = [
@@ -32,5 +32,4 @@ tokio = { version = "1.26.0", features = [
 tower-lsp = "0.19.0"
 typst = { git = "https://github.com/typst/typst.git", tag = "v0.5.0" }
 typst-library = { git = "https://github.com/typst/typst.git", tag = "v0.5.0" }
-unscanny = "0.1"
-walkdir = "2"
+walkdir = "2.3"
