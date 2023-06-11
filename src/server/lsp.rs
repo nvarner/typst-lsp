@@ -3,7 +3,7 @@ use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, LanguageServer};
 use typst::ide::autocomplete;
 
-use crate::config::{ConstConfig, ExportPdfMode};
+use crate::config::{ConstConfig, ExportPdfMode, SemanticTokensMode};
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
 
 use super::command::LspCommand;
@@ -27,6 +27,19 @@ impl LanguageServer for TypstServer {
         }
 
         self.register_workspace_files(&params).await?;
+
+        let config = self.config.read().await;
+        let semantic_tokens_provider = match config.semantic_tokens {
+            SemanticTokensMode::Disable => None,
+            SemanticTokensMode::Enable => Some(
+                SemanticTokensOptions {
+                    legend: get_legend(),
+                    full: Some(SemanticTokensFullOptions::Delta { delta: Some(true) }),
+                    ..Default::default()
+                }
+                .into(),
+            ),
+        };
 
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
@@ -54,14 +67,7 @@ impl LanguageServer for TypstServer {
                         ..Default::default()
                     },
                 )),
-                semantic_tokens_provider: Some(
-                    SemanticTokensOptions {
-                        legend: get_legend(),
-                        full: Some(SemanticTokensFullOptions::Delta { delta: Some(true) }),
-                        ..Default::default()
-                    }
-                    .into(),
-                ),
+                semantic_tokens_provider,
                 execute_command_provider: Some(ExecuteCommandOptions {
                     commands: LspCommand::all_as_string(),
                     work_done_progress_options: WorkDoneProgressOptions {

@@ -14,9 +14,17 @@ pub enum ExportPdfMode {
     OnType,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+pub enum SemanticTokensMode {
+    Disable,
+    #[default]
+    Enable,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Config {
     pub export_pdf: ExportPdfMode,
+    pub semantic_tokens: SemanticTokensMode,
 }
 
 impl Config {
