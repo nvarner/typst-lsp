@@ -4,16 +4,16 @@ A brand-new VS Code extension for Typst.
 
 ## Features
 
-- Syntax highlighting, error reporting, code completion, and function signature
+-   Syntax highlighting, error reporting, code completion, and function signature
     help
-- Compiles to PDF on save (configurable to as-you-type, or can be disabled)
+-   Compiles to PDF on save (configurable to as-you-type, or can be disabled)
 
 ## Usage Tips
 
-- This extension compiles to PDF, but it doesn't have a PDF viewer yet. To view
+-   This extension compiles to PDF, but it doesn't have a PDF viewer yet. To view
     the output as you work, install a PDF viewer extension, such as
     `vscode-pdf`.
-- To configure when PDFs are compiled:
+-   To configure when PDFs are compiled:
     1. Open settings
         - File -> Preferences -> Settings (Linux, Windows)
         - Code -> Preferences -> Settings (Mac)
