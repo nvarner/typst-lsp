@@ -1,12 +1,17 @@
 use std::ops;
 
-use tower_lsp::lsp_types::{InitializeParams, Position, PositionEncodingKind, SemanticToken};
+use tower_lsp::lsp_types::{
+    InitializeParams, Position, PositionEncodingKind, SemanticToken,
+    SemanticTokensClientCapabilities,
+};
 use typst::util::StrExt as TypstStrExt;
 
 use crate::config::PositionEncoding;
 
 pub trait InitializeParamsExt {
     fn position_encodings(&self) -> &[PositionEncodingKind];
+    fn semantic_tokens_capabilities(&self) -> Option<&SemanticTokensClientCapabilities>;
+    fn supports_semantic_tokens_dynamic_registration(&self) -> bool;
     fn supports_multiline_tokens(&self) -> bool;
 }
 
@@ -22,11 +27,22 @@ impl InitializeParamsExt for InitializeParams {
             .unwrap_or(&DEFAULT_ENCODING)
     }
 
-    fn supports_multiline_tokens(&self) -> bool {
+    fn semantic_tokens_capabilities(&self) -> Option<&SemanticTokensClientCapabilities> {
         self.capabilities
             .text_document
+            .as_ref()?
+            .semantic_tokens
             .as_ref()
-            .and_then(|text_document| text_document.semantic_tokens.as_ref())
+    }
+
+    fn supports_semantic_tokens_dynamic_registration(&self) -> bool {
+        self.semantic_tokens_capabilities()
+            .and_then(|semantic_tokens| semantic_tokens.dynamic_registration)
+            .unwrap_or(false)
+    }
+
+    fn supports_multiline_tokens(&self) -> bool {
+        self.semantic_tokens_capabilities()
             .and_then(|semantic_tokens| semantic_tokens.multiline_token_support)
             .unwrap_or(false)
     }

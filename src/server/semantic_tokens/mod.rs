@@ -1,6 +1,8 @@
 use itertools::Itertools;
 use strum::IntoEnumIterator;
-use tower_lsp::lsp_types::{SemanticToken, SemanticTokensEdit, SemanticTokensLegend};
+use tower_lsp::lsp_types::{
+    Registration, SemanticToken, SemanticTokensEdit, SemanticTokensLegend, SemanticTokensOptions,
+};
 use typst::syntax::{ast, LinkedNode, SyntaxKind};
 use typst_library::prelude::EcoString;
 
@@ -25,6 +27,17 @@ pub fn get_legend() -> SemanticTokensLegend {
     SemanticTokensLegend {
         token_types: TokenType::iter().map(Into::into).collect(),
         token_modifiers: Modifier::iter().map(Into::into).collect(),
+    }
+}
+
+const SEMANTIC_TOKENS_REGISTRATION_ID: &str = "semantic_tokens";
+const SEMANTIC_TOKENS_METHOD_ID: &str = "textDocument/semanticTokens";
+
+pub fn get_semantic_tokens_registration(options: Option<SemanticTokensOptions>) -> Registration {
+    Registration {
+        id: SEMANTIC_TOKENS_REGISTRATION_ID.to_owned(),
+        method: SEMANTIC_TOKENS_METHOD_ID.to_owned(),
+        register_options: options.map(serde_json::to_value).map(Result::unwrap),
     }
 }
 

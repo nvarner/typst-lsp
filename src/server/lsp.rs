@@ -4,10 +4,11 @@ use tower_lsp::{jsonrpc, LanguageServer};
 use typst::ide::autocomplete;
 
 use crate::config::{ConstConfig, ExportPdfMode, SemanticTokensMode};
+use crate::ext::InitializeParamsExt;
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
 
 use super::command::LspCommand;
-use super::semantic_tokens::get_legend;
+use super::semantic_tokens::{get_legend, get_semantic_tokens_registration};
 use super::TypstServer;
 
 #[tower_lsp::async_trait]
@@ -30,15 +31,19 @@ impl LanguageServer for TypstServer {
 
         let config = self.config.read().await;
         let semantic_tokens_provider = match config.semantic_tokens {
-            SemanticTokensMode::Disable => None,
-            SemanticTokensMode::Enable => Some(
-                SemanticTokensOptions {
-                    legend: get_legend(),
-                    full: Some(SemanticTokensFullOptions::Delta { delta: Some(true) }),
-                    ..Default::default()
-                }
-                .into(),
-            ),
+            SemanticTokensMode::Enable
+                if !params.supports_semantic_tokens_dynamic_registration() =>
+            {
+                Some(
+                    SemanticTokensOptions {
+                        legend: get_legend(),
+                        full: Some(SemanticTokensFullOptions::Delta { delta: Some(true) }),
+                        ..Default::default()
+                    }
+                    .into(),
+                )
+            }
+            _ => None,
         };
 
         Ok(InitializeResult {
@@ -84,6 +89,33 @@ impl LanguageServer for TypstServer {
     }
 
     async fn initialized(&self, _: InitializedParams) {
+        let const_config = self.get_const_config();
+        let config = self.config.read().await;
+
+        if const_config.supports_semantic_tokens_dynamic_registration {
+            let provider = match config.semantic_tokens {
+                SemanticTokensMode::Enable => Some(SemanticTokensOptions {
+                    legend: get_legend(),
+                    full: Some(SemanticTokensFullOptions::Delta { delta: Some(true) }),
+                    ..Default::default()
+                }),
+                _ => None,
+            };
+            let err = self
+                .client
+                .register_capability(vec![get_semantic_tokens_registration(provider)])
+                .await
+                .err();
+            if let Some(err) = err {
+                self.client
+                    .log_message(
+                        MessageType::ERROR,
+                        format!("could not dynamically register semantic tokens: {err}"),
+                    )
+                    .await;
+            }
+        }
+
         let watch_files_error = self
             .client
             .register_capability(vec![self.get_watcher_registration()])

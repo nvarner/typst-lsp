@@ -79,6 +79,7 @@ impl From<PositionEncoding> for lsp_types::PositionEncodingKind {
 pub struct ConstConfig {
     pub position_encoding: PositionEncoding,
     pub supports_multiline_tokens: bool,
+    pub supports_semantic_tokens_dynamic_registration: bool,
 }
 
 impl ConstConfig {
@@ -96,10 +97,13 @@ impl From<&InitializeParams> for ConstConfig {
     fn from(params: &InitializeParams) -> Self {
         let position_encoding = Self::choose_encoding(params);
         let supports_multiline_tokens = params.supports_multiline_tokens();
+        let supports_semantic_tokens_dynamic_registration =
+            params.supports_semantic_tokens_dynamic_registration();
 
         Self {
             position_encoding,
             supports_multiline_tokens,
+            supports_semantic_tokens_dynamic_registration,
         }
     }
 }
