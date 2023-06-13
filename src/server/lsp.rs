@@ -1,3 +1,5 @@
+use anyhow::Context;
+use futures::{FutureExt, TryFutureExt};
 use serde_json::Value as JsonValue;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, LanguageServer};
@@ -8,7 +10,10 @@ use crate::ext::InitializeParamsExt;
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
 
 use super::command::LspCommand;
-use super::semantic_tokens::{get_legend, get_semantic_tokens_registration};
+use super::semantic_tokens::{
+    get_semantic_tokens_options, get_semantic_tokens_registration,
+    get_semantic_tokens_unregistration,
+};
 use super::TypstServer;
 
 #[tower_lsp::async_trait]
@@ -22,6 +27,7 @@ impl LanguageServer for TypstServer {
             let mut config = self.config.write().await;
             config
                 .update(init)
+                .await
                 .as_ref()
                 .map_err(ToString::to_string)
                 .map_err(jsonrpc::Error::invalid_params)?;
@@ -34,14 +40,7 @@ impl LanguageServer for TypstServer {
             SemanticTokensMode::Enable
                 if !params.supports_semantic_tokens_dynamic_registration() =>
             {
-                Some(
-                    SemanticTokensOptions {
-                        legend: get_legend(),
-                        full: Some(SemanticTokensFullOptions::Delta { delta: Some(true) }),
-                        ..Default::default()
-                    }
-                    .into(),
-                )
+                Some(get_semantic_tokens_options().into())
             }
             _ => None,
         };
@@ -90,30 +89,47 @@ impl LanguageServer for TypstServer {
 
     async fn initialized(&self, _: InitializedParams) {
         let const_config = self.get_const_config();
-        let config = self.config.read().await;
+        let mut config = self.config.write().await;
 
         if const_config.supports_semantic_tokens_dynamic_registration {
-            let provider = match config.semantic_tokens {
-                SemanticTokensMode::Enable => Some(SemanticTokensOptions {
-                    legend: get_legend(),
-                    full: Some(SemanticTokensFullOptions::Delta { delta: Some(true) }),
-                    ..Default::default()
-                }),
-                _ => None,
+            let client = self.client.clone();
+            let register = move || {
+                let client = client.clone();
+                async move {
+                    let options = get_semantic_tokens_options();
+                    client
+                        .register_capability(vec![get_semantic_tokens_registration(options)])
+                        .await
+                        .context("could not register semantic tokens")
+                }
             };
-            let err = self
-                .client
-                .register_capability(vec![get_semantic_tokens_registration(provider)])
-                .await
-                .err();
-            if let Some(err) = err {
-                self.client
-                    .log_message(
-                        MessageType::ERROR,
-                        format!("could not dynamically register semantic tokens: {err}"),
-                    )
-                    .await;
+
+            let client = self.client.clone();
+            let unregister = move || {
+                let client = client.clone();
+                async move {
+                    client
+                        .unregister_capability(vec![get_semantic_tokens_unregistration()])
+                        .await
+                        .context("could not unregister semantic tokens")
+                }
+            };
+
+            if config.semantic_tokens == SemanticTokensMode::Enable {
+                if let Some(err) = register().await.err() {
+                    self.client
+                        .log_message(
+                            MessageType::ERROR,
+                            format!("could not dynamically register semantic tokens: {err}"),
+                        )
+                        .await;
+                }
             }
+
+            config.listen_semantic_tokens(Box::new(move |mode| match mode {
+                SemanticTokensMode::Enable => register().boxed(),
+                SemanticTokensMode::Disable => unregister().boxed(),
+            }));
         }
 
         let watch_files_error = self
@@ -435,7 +451,7 @@ impl LanguageServer for TypstServer {
         let update = params.settings;
 
         let mut config = self.config.write().await;
-        match config.update(&update) {
+        match config.update(&update).await {
             Ok(()) => {
                 self.client
                     .log_message(MessageType::INFO, "New settings applied")

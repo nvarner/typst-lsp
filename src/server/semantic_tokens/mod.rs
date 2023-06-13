@@ -1,7 +1,8 @@
 use itertools::Itertools;
 use strum::IntoEnumIterator;
 use tower_lsp::lsp_types::{
-    Registration, SemanticToken, SemanticTokensEdit, SemanticTokensLegend, SemanticTokensOptions,
+    Registration, SemanticToken, SemanticTokensEdit, SemanticTokensFullOptions,
+    SemanticTokensLegend, SemanticTokensOptions, Unregistration,
 };
 use typst::syntax::{ast, LinkedNode, SyntaxKind};
 use typst_library::prelude::EcoString;
@@ -33,11 +34,29 @@ pub fn get_legend() -> SemanticTokensLegend {
 const SEMANTIC_TOKENS_REGISTRATION_ID: &str = "semantic_tokens";
 const SEMANTIC_TOKENS_METHOD_ID: &str = "textDocument/semanticTokens";
 
-pub fn get_semantic_tokens_registration(options: Option<SemanticTokensOptions>) -> Registration {
+pub fn get_semantic_tokens_registration(options: SemanticTokensOptions) -> Registration {
     Registration {
         id: SEMANTIC_TOKENS_REGISTRATION_ID.to_owned(),
         method: SEMANTIC_TOKENS_METHOD_ID.to_owned(),
-        register_options: options.map(serde_json::to_value).map(Result::unwrap),
+        register_options: Some(
+            serde_json::to_value(options)
+                .expect("semantic tokens options should be representable as JSON value"),
+        ),
+    }
+}
+
+pub fn get_semantic_tokens_unregistration() -> Unregistration {
+    Unregistration {
+        id: SEMANTIC_TOKENS_REGISTRATION_ID.to_owned(),
+        method: SEMANTIC_TOKENS_METHOD_ID.to_owned(),
+    }
+}
+
+pub fn get_semantic_tokens_options() -> SemanticTokensOptions {
+    SemanticTokensOptions {
+        legend: get_legend(),
+        full: Some(SemanticTokensFullOptions::Delta { delta: Some(true) }),
+        ..Default::default()
     }
 }
 

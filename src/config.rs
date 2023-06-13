@@ -1,4 +1,7 @@
+use std::fmt;
+
 use anyhow::anyhow;
+use futures::future::BoxFuture;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 use tower_lsp::lsp_types::{self, InitializeParams, PositionEncodingKind};
@@ -15,29 +18,36 @@ pub enum ExportPdfMode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum SemanticTokensMode {
     Disable,
     #[default]
     Enable,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub type Listener<T> = Box<dyn FnMut(&T) -> BoxFuture<anyhow::Result<()>> + Send + Sync>;
+
+#[derive(Default)]
 pub struct Config {
     pub export_pdf: ExportPdfMode,
     pub semantic_tokens: SemanticTokensMode,
+    semantic_tokens_listeners: Vec<Listener<SemanticTokensMode>>,
 }
 
 impl Config {
-    pub fn update(&mut self, update: &Value) -> anyhow::Result<()> {
+    pub fn listen_semantic_tokens(&mut self, listener: Listener<SemanticTokensMode>) {
+        self.semantic_tokens_listeners.push(listener);
+    }
+
+    pub async fn update(&mut self, update: &Value) -> anyhow::Result<()> {
         if let Value::Object(update) = update {
-            self.update_by_map(update);
-            Ok(())
+            self.update_by_map(update).await
         } else {
             Err(anyhow!("got invalid configuration object {update}"))
         }
     }
 
-    fn update_by_map(&mut self, update: &Map<String, Value>) {
+    async fn update_by_map(&mut self, update: &Map<String, Value>) -> anyhow::Result<()> {
         let export_pdf = update
             .get("exportPdf")
             .map(ExportPdfMode::deserialize)
@@ -45,6 +55,32 @@ impl Config {
         if let Some(export_pdf) = export_pdf {
             self.export_pdf = export_pdf;
         }
+
+        let semantic_tokens = update
+            .get("semanticTokens")
+            .map(SemanticTokensMode::deserialize)
+            .and_then(Result::ok);
+        if let Some(semantic_tokens) = semantic_tokens {
+            for listener in &mut self.semantic_tokens_listeners {
+                listener(&semantic_tokens).await?;
+            }
+            self.semantic_tokens = semantic_tokens;
+        }
+
+        Ok(())
+    }
+}
+
+impl fmt::Debug for Config {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Config")
+            .field("export_pdf", &self.export_pdf)
+            .field("semantic_tokens", &self.semantic_tokens)
+            .field(
+                "semantic_tokens_listeners",
+                &format_args!("Vec[len = {}]", self.semantic_tokens_listeners.len()),
+            )
+            .finish()
     }
 }
 

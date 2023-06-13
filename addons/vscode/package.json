@@ -36,6 +36,20 @@
                         "Export PDFs as you type in a file."
                     ]
                 },
+                "typst-lsp.semanticTokens": {
+                    "title": "Semantic tokens mode",
+                    "description": "Enable or disable semantic tokens (LSP syntax highlighting)",
+                    "type": "string",
+                    "default": "enable",
+                    "enum": [
+                        "enable",
+                        "disable"
+                    ],
+                    "enumDescriptions": [
+                        "Use semantic tokens for syntax highlighting",
+                        "Do not use semantic tokens for syntax highlighting"
+                    ]
+                },
                 "typst-lsp.serverPath": {
                     "title": "Path to server executable",
                     "description": "The extension can use a local typst-lsp executable instead of the one bundled with the extension. This setting controls the path to the executable.",
