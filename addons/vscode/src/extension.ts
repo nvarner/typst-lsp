@@ -34,15 +34,6 @@ export function activate(context: ExtensionContext): Promise<void> {
 
     client = new LanguageClient("typst-lsp", "Typst Language Server", serverOptions, clientOptions);
 
-    // context.subscriptions.push(
-    //     workspace.onDidChangeConfiguration(async (e) => {
-    //         console.log(`send config update: ${JSON.stringify(e)}`);
-    //         await client?.sendNotification(DidChangeConfigurationNotification.type, {
-    //             settings: workspace.getConfiguration("typst-lsp"),
-    //         });
-    //     }, null)
-    // );
-
     context.subscriptions.push(
         commands.registerCommand("typst-lsp.exportCurrentPdf", commandExportCurrentPdf)
     );
