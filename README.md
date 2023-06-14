@@ -1,6 +1,6 @@
 # Typst LSP
 
-A brand-new language server for [Typst](https://typst.app/).
+A language server for [Typst](https://typst.app/).
 
 ## Features
 
