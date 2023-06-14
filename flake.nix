@@ -1,10 +1,15 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
     self,
+    fenix,
     nixpkgs,
   }: let
     inherit
@@ -14,7 +19,9 @@
     inherit
       (nixpkgs.lib)
       genAttrs
+      importTOML
       optionals
+      cleanSource
       ;
 
     eachSystem = f:
@@ -33,16 +40,27 @@
       else fallback;
 
     packageFor = pkgs:
-      pkgs.rustPlatform.buildRustPackage {
+      let
+        rust = fenix.packages.${pkgs.stdenv.hostPlatform.system}.minimal.toolchain;
+        rustPlatform = pkgs.makeRustPlatform {
+          cargo = rust;
+          rustc = rust;
+        };
+      in
+      rustPlatform.buildRustPackage {
         pname = "typst-lsp";
-        version = rev "00000000";
+        inherit ((importTOML ./Cargo.toml).workspace.package) version;
 
-        src = self;
+        src = cleanSource ./.;
 
         cargoLock = {
           lockFile = ./Cargo.lock;
           allowBuiltinFetchGit = true;
         };
+
+        nativeBuildInputs = [
+          pkgs.installShellFiles
+        ];
 
         buildInputs = optionals pkgs.stdenv.isDarwin [
           pkgs.darwin.apple_sdk.frameworks.CoreServices
@@ -51,14 +69,19 @@
   in {
     devShells = eachSystem (pkgs: {
       default = pkgs.mkShell {
-        packages = with pkgs; [
-          cargo
-          clippy
-          rust-analyzer
-          rustc
-          rustfmt
-          nodejs
-        ];
+        packages =
+          let
+            fenix' = fenix.packages.${pkgs.stdenv.hostPlatform.system};
+          in [
+            (fenix'.default.withComponents [
+              "cargo"
+              "clippy"
+              "rustc"
+              "rustfmt"
+            ])
+            fenix'.rust-analyzer
+            pkgs.nodejs
+          ];
 
         buildInputs = optionals pkgs.stdenv.isDarwin [
           pkgs.darwin.apple_sdk.frameworks.CoreServices
