@@ -10,6 +10,7 @@ use crate::config::PositionEncoding;
 
 pub trait InitializeParamsExt {
     fn position_encodings(&self) -> &[PositionEncodingKind];
+    fn supports_config_change_registration(&self) -> bool;
     fn semantic_tokens_capabilities(&self) -> Option<&SemanticTokensClientCapabilities>;
     fn supports_semantic_tokens_dynamic_registration(&self) -> bool;
     fn supports_multiline_tokens(&self) -> bool;
@@ -25,6 +26,14 @@ impl InitializeParamsExt for InitializeParams {
             .and_then(|general| general.position_encodings.as_ref())
             .map(|encodings| encodings.as_slice())
             .unwrap_or(&DEFAULT_ENCODING)
+    }
+
+    fn supports_config_change_registration(&self) -> bool {
+        self.capabilities
+            .workspace
+            .as_ref()
+            .and_then(|workspace| workspace.configuration)
+            .unwrap_or(false)
     }
 
     fn semantic_tokens_capabilities(&self) -> Option<&SemanticTokensClientCapabilities> {

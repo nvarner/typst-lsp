@@ -4,9 +4,22 @@ use anyhow::anyhow;
 use futures::future::BoxFuture;
 use serde::Deserialize;
 use serde_json::{Map, Value};
-use tower_lsp::lsp_types::{self, InitializeParams, PositionEncodingKind};
+use tower_lsp::lsp_types::{
+    self, ConfigurationItem, InitializeParams, PositionEncodingKind, Registration,
+};
 
 use crate::ext::InitializeParamsExt;
+
+const CONFIG_REGISTRATION_ID: &str = "config";
+const CONFIG_METHOD_ID: &str = "workspace/didChangeConfiguration";
+
+pub fn get_config_registration() -> Registration {
+    Registration {
+        id: CONFIG_REGISTRATION_ID.to_owned(),
+        method: CONFIG_METHOD_ID.to_owned(),
+        register_options: None,
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -27,6 +40,8 @@ pub enum SemanticTokensMode {
 
 pub type Listener<T> = Box<dyn FnMut(&T) -> BoxFuture<anyhow::Result<()>> + Send + Sync>;
 
+const CONFIG_ITEMS: &[&str] = &["exportPdf", "semanticTokens"];
+
 #[derive(Default)]
 pub struct Config {
     pub export_pdf: ExportPdfMode,
@@ -35,6 +50,16 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn get_items() -> Vec<ConfigurationItem> {
+        CONFIG_ITEMS
+            .iter()
+            .map(|item| ConfigurationItem {
+                section: Some(format!("typst-lsp.{item}")),
+                ..Default::default()
+            })
+            .collect()
+    }
+
     pub fn listen_semantic_tokens(&mut self, listener: Listener<SemanticTokensMode>) {
         self.semantic_tokens_listeners.push(listener);
     }
@@ -45,6 +70,12 @@ impl Config {
         } else {
             Err(anyhow!("got invalid configuration object {update}"))
         }
+    }
+
+    pub async fn update_from_values(&mut self, update: Vec<Value>) -> anyhow::Result<()> {
+        let items = CONFIG_ITEMS.iter().map(|item| (*item).to_owned());
+        let map = items.zip(update.into_iter()).collect();
+        self.update_by_map(&map).await
     }
 
     async fn update_by_map(&mut self, update: &Map<String, Value>) -> anyhow::Result<()> {
@@ -116,6 +147,7 @@ pub struct ConstConfig {
     pub position_encoding: PositionEncoding,
     pub supports_multiline_tokens: bool,
     pub supports_semantic_tokens_dynamic_registration: bool,
+    pub supports_config_change_registration: bool,
 }
 
 impl ConstConfig {
@@ -131,15 +163,12 @@ impl ConstConfig {
 
 impl From<&InitializeParams> for ConstConfig {
     fn from(params: &InitializeParams) -> Self {
-        let position_encoding = Self::choose_encoding(params);
-        let supports_multiline_tokens = params.supports_multiline_tokens();
-        let supports_semantic_tokens_dynamic_registration =
-            params.supports_semantic_tokens_dynamic_registration();
-
         Self {
-            position_encoding,
-            supports_multiline_tokens,
-            supports_semantic_tokens_dynamic_registration,
+            position_encoding: Self::choose_encoding(params),
+            supports_multiline_tokens: params.supports_multiline_tokens(),
+            supports_semantic_tokens_dynamic_registration: params
+                .supports_semantic_tokens_dynamic_registration(),
+            supports_config_change_registration: params.supports_config_change_registration(),
         }
     }
 }

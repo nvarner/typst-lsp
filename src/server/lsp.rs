@@ -1,11 +1,13 @@
 use anyhow::Context;
-use futures::{FutureExt, TryFutureExt};
+use futures::FutureExt;
 use serde_json::Value as JsonValue;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, LanguageServer};
 use typst::ide::autocomplete;
 
-use crate::config::{ConstConfig, ExportPdfMode, SemanticTokensMode};
+use crate::config::{
+    get_config_registration, Config, ConstConfig, ExportPdfMode, SemanticTokensMode,
+};
 use crate::ext::InitializeParamsExt;
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
 
@@ -130,6 +132,22 @@ impl LanguageServer for TypstServer {
                 SemanticTokensMode::Enable => register().boxed(),
                 SemanticTokensMode::Disable => unregister().boxed(),
             }));
+        }
+
+        if const_config.supports_config_change_registration {
+            let err = self
+                .client
+                .register_capability(vec![get_config_registration()])
+                .await
+                .err();
+            if let Some(err) = err {
+                self.client
+                    .log_message(
+                        MessageType::ERROR,
+                        format!("could not register to watch config changes: {err}"),
+                    )
+                    .await;
+            }
         }
 
         let watch_files_error = self
@@ -447,11 +465,18 @@ impl LanguageServer for TypstServer {
         }
     }
 
-    async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
-        let update = params.settings;
+    async fn did_change_configuration(&self, _: DidChangeConfigurationParams) {
+        // We don't get the actual changed configuration and need to poll for it
+        // https://github.com/microsoft/language-server-protocol/issues/676
+
+        let values = self
+            .client
+            .configuration(Config::get_items())
+            .await
+            .unwrap();
 
         let mut config = self.config.write().await;
-        match config.update(&update).await {
+        match config.update_from_values(values).await {
             Ok(()) => {
                 self.client
                     .log_message(MessageType::INFO, "New settings applied")
