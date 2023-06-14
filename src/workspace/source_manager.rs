@@ -71,11 +71,13 @@ impl SourceManager {
         self.sources.as_mut().get_mut(id.0 as usize).unwrap()
     }
 
+    fn get_source_by_id(&self, id: SourceId) -> Option<&Source> {
+        self.get_inner_source(id).get_source()
+    }
+
     /// Gets a source which is known to be open in the LSP client
     pub fn get_open_source_by_id(&self, id: SourceId) -> &Source {
-        self.get_inner_source(id)
-            .get_source()
-            .expect("open source should exist")
+        self.get_source_by_id(id).expect("open source should exist")
     }
 
     pub fn get_mut_open_source_by_id(&mut self, id: SourceId) -> &mut Source {
