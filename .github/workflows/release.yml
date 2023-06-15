@@ -53,34 +53,47 @@ jobs:
       target: ${{ matrix.platform }}-${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v2
+
       - uses: actions/setup-node@v3
         with:
           node-version: 16
+
       - run: npm install
         working-directory: ./addons/vscode
+
       - name: rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.rust-target }}
+
+      - name: Update apt repositories
+        if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'arm-unknown-linux-gnueabihf'
+        run: sudo apt-get update
+
       - name: Install AArch64 target toolchain
         if: matrix.rust-target == 'aarch64-unknown-linux-gnu'
         run: sudo apt-get install gcc-aarch64-linux-gnu
+
       - name: Install ARM target toolchain
         if: matrix.rust-target == 'arm-unknown-linux-gnueabihf'
         run: sudo apt-get install gcc-arm-linux-gnueabihf
+
       - shell: pwsh
         run: |
           cargo build --release -p typst-lsp --target ${{ matrix.rust-target }}
           mkdir -p addons/vscode/out
           cp "target/${{ matrix.rust-target }}/release/typst-lsp$(If ('${{ matrix.platform }}' -eq 'win32') { '.exe' } else { '' } )" "addons/vscode/out/"
           cp "target/${{ matrix.rust-target }}/release/typst-lsp$(If ('${{ matrix.platform }}' -eq 'win32') { '.exe' } else { '' } )" "typst-lsp-${{ env.target }}$(If ('${{ matrix.platform }}' -eq 'win32') { '.exe' } else { '' } )"
+
       - shell: pwsh
         run: npm run package -- --target ${{ env.target }} -o typst-lsp-${{ env.target }}.vsix
         working-directory: ./addons/vscode
+
       - uses: actions/upload-artifact@v2
         with:
           name: typst-lsp-${{ env.target }}.vsix
           path: addons/vscode/typst-lsp-${{ env.target }}.vsix
+
       - uses: actions/upload-artifact@v2
         with:
           name: typst-lsp-${{ env.target }}
