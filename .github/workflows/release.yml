@@ -66,17 +66,17 @@ jobs:
         with:
           targets: ${{ matrix.rust-target }}
 
-      - name: Update apt repositories
-        if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'arm-unknown-linux-gnueabihf'
-        run: sudo apt-get update
-
       - name: Install AArch64 target toolchain
         if: matrix.rust-target == 'aarch64-unknown-linux-gnu'
-        run: sudo apt-get install gcc-aarch64-linux-gnu
+        run: |
+          sudo apt-get update
+          sudo apt-get install gcc-aarch64-linux-gnu
 
       - name: Install ARM target toolchain
         if: matrix.rust-target == 'arm-unknown-linux-gnueabihf'
-        run: sudo apt-get install gcc-arm-linux-gnueabihf
+        run: |
+          sudo apt-get update
+          sudo apt-get install gcc-arm-linux-gnueabihf
 
       - shell: pwsh
         run: |
