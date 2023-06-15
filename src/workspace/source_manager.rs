@@ -1,8 +1,9 @@
-use std::collections::hash_map::Entry;
 use std::{fmt, fs, io, mem};
 
-use elsa::sync::{FrozenMap, FrozenVec};
+use elsa::sync::FrozenVec;
+use indexmap::IndexSet;
 use once_cell::sync::OnceCell;
+use parking_lot::RwLock;
 use tower_lsp::lsp_types::Url;
 use typst::diag::{FileError, FileResult};
 use typst::syntax::SourceId;
@@ -34,36 +35,44 @@ impl InnerSource {
     }
 }
 
+/// Provides access to [`Source`]s via [`SourceId`]s and [`Url`]s
 #[derive(Default)]
 pub struct SourceManager {
-    ids: FrozenMap<Url, SourceId>,
+    ids: RwLock<IndexSet<Url>>,
     sources: FrozenVec<Box<InnerSource>>,
 }
 
 impl SourceManager {
+    /// Get the URIs of all sources which have been seen
     pub fn get_uris(&self) -> Vec<Url> {
-        self.ids.keys_cloned()
+        self.ids.read().iter().cloned().collect()
     }
 
     pub fn get_id_by_uri(&self, uri: &Url) -> Option<SourceId> {
-        self.ids.get_copy(uri)
+        self.ids
+            .read()
+            .get_index_of(uri)
+            .map(|id| SourceId::from_u16(id as u16))
     }
 
     fn get_inner_source(&self, id: SourceId) -> &InnerSource {
+        // We treat all `SourceId`s as valid
         self.sources.get(id.as_u16() as usize).unwrap()
     }
 
     fn get_mut_inner_source(&mut self, id: SourceId) -> &mut InnerSource {
+        // We treat all `SourceId`s as valid
         self.sources.as_mut().get_mut(id.as_u16() as usize).unwrap()
     }
 
-    fn get_source_by_id(&self, id: SourceId) -> Option<&Source> {
+    fn get_cached_source_by_id(&self, id: SourceId) -> Option<&Source> {
         self.get_inner_source(id).get_source()
     }
 
     /// Gets a source which is known to be open in the LSP client
     pub fn get_open_source_by_id(&self, id: SourceId) -> &Source {
-        self.get_source_by_id(id).expect("open source should exist")
+        self.get_cached_source_by_id(id)
+            .expect("open source should exist")
     }
 
     pub fn get_mut_open_source_by_id(&mut self, id: SourceId) -> &mut Source {
@@ -72,24 +81,16 @@ impl SourceManager {
             .expect("open source should exist")
     }
 
-    fn get_next_id(&self) -> SourceId {
-        SourceId::from_u16(self.sources.len() as u16)
-    }
-
     pub fn insert_open(&mut self, uri: &Url, text: String) -> anyhow::Result<()> {
-        let next_id = self.get_next_id();
+        let ids = self.ids.get_mut();
+        let (index, uri_is_new) = ids.insert_full(uri.clone());
+        let id = SourceId::from_u16(index as u16);
+        let source = Source::new(id, uri, text)?;
 
-        match self.ids.as_mut().entry(uri.clone()) {
-            Entry::Occupied(entry) => {
-                let existing_id = *entry.get();
-                let source = Source::new(existing_id, uri, text)?;
-                *self.get_mut_inner_source(existing_id) = InnerSource::Open(source);
-            }
-            Entry::Vacant(entry) => {
-                entry.insert(next_id);
-                let source = Source::new(next_id, uri, text)?;
-                self.sources.push(Box::new(InnerSource::Open(source)));
-            }
+        if uri_is_new {
+            *self.get_mut_inner_source(id) = InnerSource::Open(source);
+        } else {
+            self.sources.push(Box::new(InnerSource::Open(source)));
         }
 
         Ok(())
@@ -125,13 +126,11 @@ impl SourceManager {
     }
 
     pub fn cache(&self, uri: Url) -> FileResult<SourceId> {
-        let next_id = self.get_next_id();
+        let mut ids = self.ids.write();
+        let (index, uri_is_new) = ids.insert_full(uri.clone());
+        let id = SourceId::from_u16(index as u16);
 
-        let id = self.ids.get_copy_or_insert(uri.clone(), next_id);
-
-        // TODO: next_id could expire before the new source is inserted; lock across everything, or
-        // use a more appropriate structure which handles that automatically
-        if id == next_id {
+        if uri_is_new {
             let source = Self::read_source_from_file(id, &uri)?;
             self.sources
                 .push(Box::new(InnerSource::Closed(OnceCell::with_value(source))));
