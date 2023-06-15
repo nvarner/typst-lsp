@@ -36,6 +36,15 @@
                         "Export PDFs as you type in a file."
                     ]
                 },
+                "typst-lsp.rootPath": {
+                    "title": "Root path",
+                    "description": "Configure the root for absolute paths in typst",
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "default": null
+                },
                 "typst-lsp.semanticTokens": {
                     "title": "Semantic tokens mode",
                     "description": "Enable or disable semantic tokens (LSP syntax highlighting)",

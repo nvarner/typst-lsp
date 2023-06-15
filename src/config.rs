@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, path::PathBuf};
 
 use anyhow::anyhow;
 use futures::future::BoxFuture;
@@ -40,11 +40,12 @@ pub enum SemanticTokensMode {
 
 pub type Listener<T> = Box<dyn FnMut(&T) -> BoxFuture<anyhow::Result<()>> + Send + Sync>;
 
-const CONFIG_ITEMS: &[&str] = &["exportPdf", "semanticTokens"];
+const CONFIG_ITEMS: &[&str] = &["exportPdf", "rootPath", "semanticTokens"];
 
 #[derive(Default)]
 pub struct Config {
     pub export_pdf: ExportPdfMode,
+    pub root_path: Option<PathBuf>,
     pub semantic_tokens: SemanticTokensMode,
     semantic_tokens_listeners: Vec<Listener<SemanticTokensMode>>,
 }
@@ -85,6 +86,16 @@ impl Config {
             .and_then(Result::ok);
         if let Some(export_pdf) = export_pdf {
             self.export_pdf = export_pdf;
+        }
+
+        let root_path = update.get("rootPath");
+        if let Some(root_path) = root_path {
+            if root_path.is_null() {
+                self.root_path = None;
+            }
+            if let Some(root_path) = root_path.as_str().map(PathBuf::from) {
+                self.root_path = Some(root_path);
+            }
         }
 
         let semantic_tokens = update
