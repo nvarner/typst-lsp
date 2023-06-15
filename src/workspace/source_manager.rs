@@ -5,26 +5,12 @@ use elsa::sync::{FrozenMap, FrozenVec};
 use once_cell::sync::OnceCell;
 use tower_lsp::lsp_types::Url;
 use typst::diag::{FileError, FileResult};
+use typst::syntax::SourceId;
 use walkdir::WalkDir;
 
-use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp, TypstSourceId};
+use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
 
 use super::source::Source;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SourceId(u16);
-
-impl From<TypstSourceId> for SourceId {
-    fn from(typst_id: TypstSourceId) -> Self {
-        Self(typst_id.as_u16())
-    }
-}
-
-impl From<SourceId> for TypstSourceId {
-    fn from(lsp_id: SourceId) -> Self {
-        Self::from_u16(lsp_id.0)
-    }
-}
 
 #[derive(Debug)]
 enum InnerSource {
@@ -64,11 +50,11 @@ impl SourceManager {
     }
 
     fn get_inner_source(&self, id: SourceId) -> &InnerSource {
-        self.sources.get(id.0 as usize).unwrap()
+        self.sources.get(id.as_u16() as usize).unwrap()
     }
 
     fn get_mut_inner_source(&mut self, id: SourceId) -> &mut InnerSource {
-        self.sources.as_mut().get_mut(id.0 as usize).unwrap()
+        self.sources.as_mut().get_mut(id.as_u16() as usize).unwrap()
     }
 
     fn get_source_by_id(&self, id: SourceId) -> Option<&Source> {
@@ -87,7 +73,7 @@ impl SourceManager {
     }
 
     fn get_next_id(&self) -> SourceId {
-        SourceId(self.sources.len() as u16)
+        SourceId::from_u16(self.sources.len() as u16)
     }
 
     pub fn insert_open(&mut self, uri: &Url, text: String) -> anyhow::Result<()> {

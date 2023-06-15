@@ -5,12 +5,12 @@ use once_cell::sync::OnceCell;
 use tokio::sync::RwLock;
 use tower_lsp::lsp_types::{InitializeParams, MessageType, Url};
 use tower_lsp::{jsonrpc, Client};
+use typst::syntax::SourceId;
 
 use crate::config::{Config, ConstConfig};
 use crate::lsp_typst_boundary::world::WorkspaceWorld;
 use crate::server::log::LogMessage;
 use crate::server::semantic_tokens::SemanticTokenCache;
-use crate::workspace::source_manager::SourceId;
 use crate::workspace::Workspace;
 
 pub mod command;

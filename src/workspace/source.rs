@@ -1,8 +1,7 @@
 use tower_lsp::lsp_types::Url;
+use typst::syntax::SourceId;
 
 use crate::lsp_typst_boundary::{lsp_to_typst, LspRange, TypstSource};
-
-use super::source_manager::SourceId;
 
 /// Typst source file
 #[derive(Debug)]
@@ -15,7 +14,7 @@ impl Source {
         let typst_path = lsp_to_typst::uri_to_path(uri)?;
 
         Ok(Self {
-            inner: TypstSource::new(id.into(), &typst_path, text),
+            inner: TypstSource::new(id, &typst_path, text),
         })
     }
 
