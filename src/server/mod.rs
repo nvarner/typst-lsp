@@ -63,7 +63,12 @@ impl TypstServer {
     }
 
     pub async fn get_world_with_main(&self, main: SourceId) -> WorkspaceWorld {
-        WorkspaceWorld::new(Arc::clone(&self.workspace).read_owned().await, main)
+        let config = self.config.read().await;
+        WorkspaceWorld::new(
+            Arc::clone(&self.workspace).read_owned().await,
+            main,
+            config.root_path.clone(),
+        )
     }
 
     pub async fn register_workspace_files(&self, params: &InitializeParams) -> jsonrpc::Result<()> {
