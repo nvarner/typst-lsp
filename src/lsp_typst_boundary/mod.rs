@@ -11,7 +11,6 @@ pub type TypstPath = std::path::Path;
 pub type TypstPathOwned = std::path::PathBuf;
 
 pub type TypstSource = typst::syntax::Source;
-pub type TypstSourceId = typst::syntax::SourceId;
 
 pub type LspPosition = lsp_types::Position;
 /// The interpretation of an `LspCharacterOffset` depends on the `LspPositionEncoding`

@@ -6,13 +6,13 @@ use tokio::sync::OwnedRwLockReadGuard;
 use typst::diag::{FileError, FileResult};
 use typst::eval::{Datetime, Library};
 use typst::font::{Font, FontBook};
+use typst::syntax::SourceId;
 use typst::util::Buffer;
 use typst::World;
 
-use crate::workspace::source_manager::SourceId;
 use crate::workspace::Workspace;
 
-use super::{typst_to_lsp, TypstPath, TypstSource, TypstSourceId};
+use super::{typst_to_lsp, TypstPath, TypstSource};
 
 pub struct WorkspaceWorld {
     workspace: OwnedRwLockReadGuard<Workspace>,
@@ -52,20 +52,17 @@ impl World for WorkspaceWorld {
     }
 
     fn main(&self) -> &TypstSource {
-        self.source(self.main.into())
+        self.source(self.main)
     }
 
-    fn resolve(&self, typst_path: &TypstPath) -> FileResult<TypstSourceId> {
+    fn resolve(&self, typst_path: &TypstPath) -> FileResult<SourceId> {
         let lsp_uri = typst_to_lsp::path_to_uri(typst_path)
             .map_err(|_| FileError::NotFound(typst_path.to_owned()))?;
-        self.get_workspace().sources.cache(lsp_uri).map(Into::into)
+        self.get_workspace().sources.cache(lsp_uri)
     }
 
-    fn source(&self, typst_id: TypstSourceId) -> &TypstSource {
-        let lsp_source = self
-            .get_workspace()
-            .sources
-            .get_open_source_by_id(typst_id.into());
+    fn source(&self, id: SourceId) -> &TypstSource {
+        let lsp_source = self.get_workspace().sources.get_open_source_by_id(id);
         lsp_source.as_ref()
     }
 
