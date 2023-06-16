@@ -5,95 +5,75 @@
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    typst = {
+      url = "github:typst/typst";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.fenix.follows = "fenix";
+      flake = false;
+    };
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = {
-    self,
-    fenix,
-    nixpkgs,
-  }: let
-    inherit
-      (builtins)
-      substring
-      ;
-    inherit
-      (nixpkgs.lib)
-      genAttrs
-      importTOML
-      optionals
-      cleanSource
-      ;
-
-    eachSystem = f:
-      genAttrs
-      [
-        "aarch64-darwin"
-        "aarch64-linux"
-        "x86_64-darwin"
-        "x86_64-linux"
-      ]
-      (system: f nixpkgs.legacyPackages.${system});
-
-    rev = fallback:
-      if self ? rev
-      then substring 0 8 self.rev
-      else fallback;
-
-    packageFor = pkgs:
+  outputs = { self, fenix, nixpkgs, typst, flake-utils }:
+    let
+      inherit (builtins) substring;
+      inherit (nixpkgs.lib) genAttrs importTOML optionals cleanSource;
+    in
+    flake-utils.lib.eachDefaultSystem (system:
       let
-        rust = fenix.packages.${pkgs.stdenv.hostPlatform.system}.minimal.toolchain;
+        fenixPkgs = fenix.packages.${system};
+        pkgs = nixpkgs.legacyPackages.${system};
+
+        toolchain = fenixPkgs.minimal.toolchain;
         rustPlatform = pkgs.makeRustPlatform {
-          cargo = rust;
-          rustc = rust;
+          cargo = toolchain;
+          rustc = toolchain;
         };
       in
-      rustPlatform.buildRustPackage {
-        pname = "typst-lsp";
-        inherit ((importTOML ./Cargo.toml).workspace.package) version;
-
-        src = cleanSource ./.;
-
-        cargoLock = {
-          lockFile = ./Cargo.lock;
-          allowBuiltinFetchGit = true;
-        };
-
-        nativeBuildInputs = [
-          pkgs.installShellFiles
-        ];
-
-        buildInputs = optionals pkgs.stdenv.isDarwin [
-          pkgs.darwin.apple_sdk.frameworks.CoreServices
-        ];
-      };
-  in {
-    devShells = eachSystem (pkgs: {
-      default = pkgs.mkShell {
-        packages =
-          let
-            fenix' = fenix.packages.${pkgs.stdenv.hostPlatform.system};
-          in [
-            (fenix'.default.withComponents [
+      {
+        devShells.default = pkgs.mkShell {
+          packages = [
+            (fenixPkgs.default.withComponents [
               "cargo"
               "clippy"
               "rustc"
               "rustfmt"
             ])
-            fenix'.rust-analyzer
+            fenixPkgs.rust-analyzer
             pkgs.nodejs
           ];
 
-        buildInputs = optionals pkgs.stdenv.isDarwin [
-          pkgs.darwin.apple_sdk.frameworks.CoreServices
-          pkgs.libiconv
-        ];
+          buildInputs = optionals pkgs.stdenv.isDarwin [
+            pkgs.darwin.apple_sdk.frameworks.CoreServices
+            pkgs.libiconv
+          ];
 
-        RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
-      };
-    });
+          RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
+        };
 
-    packages = eachSystem (pkgs: {
-      default = packageFor pkgs;
-    });
-  };
+        packages.default = rustPlatform.buildRustPackage {
+          pname = "typst-lsp";
+          inherit ((importTOML ./Cargo.toml).package) version;
+
+          src = cleanSource ./.;
+
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+            allowBuiltinFetchGit = true;
+          };
+
+          preBuild = ''
+            cp -r ${typst}/assets /build/cargo-vendor-dir/assets
+          '';
+
+          nativeBuildInputs = [
+            pkgs.installShellFiles
+          ];
+
+          buildInputs = optionals pkgs.stdenv.isDarwin [
+            pkgs.darwin.apple_sdk.frameworks.CoreServices
+          ];
+        };
+      });
+
 }
