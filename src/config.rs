@@ -156,7 +156,6 @@ impl From<PositionEncoding> for lsp_types::PositionEncodingKind {
 #[derive(Debug)]
 pub struct ConstConfig {
     pub position_encoding: PositionEncoding,
-    pub supports_multiline_tokens: bool,
     pub supports_semantic_tokens_dynamic_registration: bool,
     pub supports_config_change_registration: bool,
 }
@@ -176,7 +175,6 @@ impl From<&InitializeParams> for ConstConfig {
     fn from(params: &InitializeParams) -> Self {
         Self {
             position_encoding: Self::choose_encoding(params),
-            supports_multiline_tokens: params.supports_multiline_tokens(),
             supports_semantic_tokens_dynamic_registration: params
                 .supports_semantic_tokens_dynamic_registration(),
             supports_config_change_registration: params.supports_config_change_registration(),
