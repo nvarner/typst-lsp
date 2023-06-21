@@ -3,6 +3,7 @@ use tower_lsp::lsp_types::{
     Registration,
 };
 
+use crate::lsp_typst_boundary::lsp_to_typst;
 use crate::workspace::Workspace;
 
 use super::TypstServer;
@@ -18,7 +19,7 @@ impl TypstServer {
             register_options: Some(
                 serde_json::to_value(DidChangeWatchedFilesRegistrationOptions {
                     watchers: vec![FileSystemWatcher {
-                        glob_pattern: GlobPattern::String("**/*.typ".to_owned()),
+                        glob_pattern: GlobPattern::String("**/*".to_owned()),
                         kind: None,
                     }],
                 })
@@ -28,6 +29,19 @@ impl TypstServer {
     }
 
     pub fn handle_file_change_event(&self, workspace: &mut Workspace, event: FileEvent) {
-        workspace.sources.invalidate(&event.uri);
+        let uri = event.uri;
+
+        let path = lsp_to_typst::uri_to_path(&uri);
+
+        let is_typst = path
+            .ok()
+            .and_then(|path| path.extension().map(|extension| extension == "typ"))
+            .unwrap_or(false);
+
+        if is_typst {
+            workspace.sources.invalidate(&uri);
+        } else {
+            workspace.resources.write().invalidate(uri);
+        }
     }
 }

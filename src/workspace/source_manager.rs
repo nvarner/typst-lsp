@@ -13,32 +13,6 @@ use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
 
 use super::source::Source;
 
-#[derive(Debug)]
-enum InnerSource {
-    Open(Source),
-    Closed(OnceCell<Source>, Url),
-}
-
-impl InnerSource {
-    pub fn closed(source: Source, uri: Url) -> Self {
-        Self::Closed(OnceCell::with_value(source), uri)
-    }
-
-    pub fn get_source(&self) -> Option<&Source> {
-        match self {
-            Self::Open(source) => Some(source),
-            Self::Closed(cell, _) => cell.get(),
-        }
-    }
-
-    pub fn get_mut_source(&mut self) -> Option<&mut Source> {
-        match self {
-            Self::Open(source) => Some(source),
-            Self::Closed(cell, _) => cell.get_mut(),
-        }
-    }
-}
-
 /// Provides access to [`Source`] documents via [`SourceId`]s and [`Url`]s
 ///
 /// A document can be open or closed. "Open" and "closed" correspond to the document's reported
@@ -210,5 +184,31 @@ impl SourceManager {
 impl fmt::Debug for SourceManager {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("SourceManager").finish_non_exhaustive()
+    }
+}
+
+#[derive(Debug)]
+enum InnerSource {
+    Open(Source),
+    Closed(OnceCell<Source>, Url),
+}
+
+impl InnerSource {
+    pub fn closed(source: Source, uri: Url) -> Self {
+        Self::Closed(OnceCell::with_value(source), uri)
+    }
+
+    pub fn get_source(&self) -> Option<&Source> {
+        match self {
+            Self::Open(source) => Some(source),
+            Self::Closed(cell, _) => cell.get(),
+        }
+    }
+
+    pub fn get_mut_source(&mut self) -> Option<&mut Source> {
+        match self {
+            Self::Open(source) => Some(source),
+            Self::Closed(cell, _) => cell.get_mut(),
+        }
     }
 }

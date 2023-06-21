@@ -35,8 +35,8 @@ impl Resource {
     }
 }
 
-impl From<&Resource> for Buffer {
-    fn from(lsp_resource: &Resource) -> Self {
-        lsp_resource.buffer.clone()
+impl From<Resource> for Buffer {
+    fn from(lsp_resource: Resource) -> Self {
+        lsp_resource.buffer
     }
 }
