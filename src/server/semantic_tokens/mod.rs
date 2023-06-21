@@ -7,12 +7,11 @@ use tower_lsp::lsp_types::{
 use typst::syntax::{ast, LinkedNode, SyntaxKind};
 use typst_library::prelude::EcoString;
 
-use crate::ext::PositionDelta;
 use crate::workspace::source::Source;
 
 use self::delta::token_delta;
 use self::modifier_set::ModifierSet;
-use self::token_encode::{encode_tokens, split_lsp_token};
+use self::token_encode::encode_tokens;
 use self::typst_tokens::{Modifier, TokenType};
 
 use super::TypstServer;
@@ -63,25 +62,12 @@ pub fn get_semantic_tokens_options() -> SemanticTokensOptions {
 impl TypstServer {
     pub fn get_semantic_tokens_full(&self, source: &Source) -> (Vec<SemanticToken>, String) {
         let encoding = self.get_const_config().position_encoding;
-        let multiline_support = self.get_const_config().supports_multiline_tokens;
 
         let root = LinkedNode::new(source.as_ref().root());
 
         let tokens = tokenize_tree(&root, ModifierSet::empty());
         let encoded_tokens = encode_tokens(tokens, source, encoding);
-        let output_tokens = if multiline_support {
-            encoded_tokens.map(|(token, _)| token).collect_vec()
-        } else {
-            encoded_tokens
-                .scan(PositionDelta::default(), |delta, (token, source_code)| {
-                    let (tokens, new_delta) =
-                        split_lsp_token(token, *delta, &source_code, encoding);
-                    *delta = new_delta;
-                    Some(tokens)
-                })
-                .flatten()
-                .collect_vec()
-        };
+        let output_tokens = encoded_tokens.map(|(token, _)| token).collect_vec();
 
         let result_id = self
             .semantic_tokens_delta_cache
