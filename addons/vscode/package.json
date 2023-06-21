@@ -150,8 +150,7 @@
             },
             {
                 "id": "pol",
-                "description": "Interpolated variable",
-                "superType": "keyword"
+                "description": "Interpolated variable"
             },
             {
                 "id": "error",
@@ -239,7 +238,8 @@
                         "entity.name.label.typst"
                     ],
                     "pol": [
-                        "meta.interpolation.typst"
+                        "meta.interpolation.typst",
+                        "variable.typst"
                     ],
                     "error": [
                         "invalid.typst"
