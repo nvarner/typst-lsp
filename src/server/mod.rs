@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use itertools::Itertools;
 use once_cell::sync::OnceCell;
 use tokio::sync::RwLock;
 use tower_lsp::lsp_types::{InitializeParams, MessageType, Url};
@@ -8,6 +9,7 @@ use tower_lsp::{jsonrpc, Client};
 use crate::config::{Config, ConstConfig};
 use crate::lsp_typst_boundary::world::WorkspaceWorld;
 use crate::server::log::LogMessage;
+use crate::server::semantic_tokens::SemanticTokenCache;
 use crate::workspace::source_manager::SourceId;
 use crate::workspace::Workspace;
 
@@ -19,6 +21,7 @@ pub mod hover;
 pub mod log;
 pub mod lsp;
 pub mod selection_range;
+pub mod semantic_tokens;
 pub mod signature;
 pub mod symbols;
 pub mod typst_compiler;
@@ -29,6 +32,7 @@ pub struct TypstServer {
     workspace: Arc<RwLock<Workspace>>,
     config: Arc<RwLock<Config>>,
     const_config: OnceCell<ConstConfig>,
+    semantic_tokens_delta_cache: Arc<parking_lot::RwLock<SemanticTokenCache>>,
 }
 
 impl TypstServer {
@@ -38,6 +42,7 @@ impl TypstServer {
             workspace: Default::default(),
             config: Default::default(),
             const_config: Default::default(),
+            semantic_tokens_delta_cache: Default::default(),
         }
     }
 
@@ -58,42 +63,39 @@ impl TypstServer {
     }
 
     pub async fn get_world_with_main(&self, main: SourceId) -> WorkspaceWorld {
-        WorkspaceWorld::new(Arc::clone(&self.workspace).read_owned().await, main)
+        let config = self.config.read().await;
+        WorkspaceWorld::new(
+            Arc::clone(&self.workspace).read_owned().await,
+            main,
+            config.root_path.clone(),
+        )
     }
 
     pub async fn register_workspace_files(&self, params: &InitializeParams) -> jsonrpc::Result<()> {
         let workspace = self.workspace.read().await;
         let source_manager = &workspace.sources;
-        if let Some(workspace_folders) = &params.workspace_folders {
-            for workspace_folder in workspace_folders {
-                source_manager
-                    .register_workspace_files(&workspace_folder.uri)
-                    .map_err(|e| {
-                        jsonrpc::Error::invalid_params(format!(
-                            "failed to register workspace files: {e:#}"
-                        ))
-                    })?;
-                self.log_to_client(LogMessage {
-                    message_type: MessageType::INFO,
-                    message: format!("Folder added to workspace: {}", &workspace_folder.uri),
-                })
-                .await;
-            }
-        }
-        if let Some(root_uri) = &params.root_uri {
-            source_manager
-                .register_workspace_files(root_uri)
-                .map_err(|e| {
-                    jsonrpc::Error::invalid_params(format!(
-                        "failed to register workspace files: {e:#}"
-                    ))
-                })?;
+
+        let workspace_uris = params
+            .workspace_folders
+            .iter()
+            .flat_map(|folders| folders.iter())
+            .map(|folder| &folder.uri);
+
+        let root_uri = params.root_uri.iter();
+
+        let uris_to_register = workspace_uris.chain(root_uri).unique_by(|x| *x);
+
+        for uri in uris_to_register {
+            source_manager.register_workspace_files(uri).map_err(|e| {
+                jsonrpc::Error::invalid_params(format!("failed to register workspace files: {e:#}"))
+            })?;
             self.log_to_client(LogMessage {
                 message_type: MessageType::INFO,
-                message: format!("Folder added to workspace: {}", &root_uri),
+                message: format!("Folder added to workspace: {}", &uri),
             })
             .await;
         }
+
         Ok(())
     }
 }

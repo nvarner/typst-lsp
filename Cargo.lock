@@ -1953,7 +1953,7 @@ dependencies = [
 
 [[package]]
 name = "typst-lsp"
-version = "0.5.0"
+version = "0.6.2"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1969,8 +1969,10 @@ dependencies = [
  "parking_lot",
  "regex",
  "same-file",
+ "serde",
  "serde_json",
  "siphasher",
+ "strum",
  "tokio",
  "tower-lsp",
  "typst",

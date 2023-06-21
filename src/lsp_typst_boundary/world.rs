@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use chrono::{Datelike, FixedOffset, Local, TimeZone, Timelike, Utc};
 use comemo::Prehashed;
 use tokio::sync::OwnedRwLockReadGuard;
@@ -15,11 +17,20 @@ use super::{typst_to_lsp, TypstPath, TypstSource, TypstSourceId};
 pub struct WorkspaceWorld {
     workspace: OwnedRwLockReadGuard<Workspace>,
     main: SourceId,
+    root_path: Option<PathBuf>,
 }
 
 impl WorkspaceWorld {
-    pub fn new(workspace: OwnedRwLockReadGuard<Workspace>, main: SourceId) -> Self {
-        Self { workspace, main }
+    pub fn new(
+        workspace: OwnedRwLockReadGuard<Workspace>,
+        main: SourceId,
+        root_path: Option<PathBuf>,
+    ) -> Self {
+        Self {
+            workspace,
+            main,
+            root_path,
+        }
     }
 
     pub fn get_workspace(&self) -> &OwnedRwLockReadGuard<Workspace> {
@@ -28,6 +39,13 @@ impl WorkspaceWorld {
 }
 
 impl World for WorkspaceWorld {
+    fn root(&self) -> &Path {
+        match &self.root_path {
+            Some(path) => path.as_ref(),
+            None => Path::new(""),
+        }
+    }
+
     fn library(&self) -> &Prehashed<Library> {
         let workspace = self.get_workspace();
         &workspace.typst_stdlib

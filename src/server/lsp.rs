@@ -1,32 +1,51 @@
+use anyhow::Context;
+use futures::FutureExt;
 use serde_json::Value as JsonValue;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, LanguageServer};
 use typst::ide::autocomplete;
 
-use crate::config::{ConstConfig, ExportPdfMode, PositionEncoding};
+use crate::config::{
+    get_config_registration, Config, ConstConfig, ExportPdfMode, SemanticTokensMode,
+};
 use crate::ext::InitializeParamsExt;
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
 
 use super::command::LspCommand;
+use super::semantic_tokens::{
+    get_semantic_tokens_options, get_semantic_tokens_registration,
+    get_semantic_tokens_unregistration,
+};
 use super::TypstServer;
 
 #[tower_lsp::async_trait]
 impl LanguageServer for TypstServer {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
-        let position_encoding = if params
-            .position_encodings()
-            .contains(&PositionEncodingKind::UTF8)
-        {
-            PositionEncoding::Utf8
-        } else {
-            PositionEncoding::Utf16
-        };
-
         self.const_config
-            .set(ConstConfig { position_encoding })
+            .set(ConstConfig::from(&params))
             .expect("const config should not yet be initialized");
 
+        if let Some(init) = &params.initialization_options {
+            let mut config = self.config.write().await;
+            config
+                .update(init)
+                .await
+                .as_ref()
+                .map_err(ToString::to_string)
+                .map_err(jsonrpc::Error::invalid_params)?;
+        }
+
         self.register_workspace_files(&params).await?;
+
+        let config = self.config.read().await;
+        let semantic_tokens_provider = match config.semantic_tokens {
+            SemanticTokensMode::Enable
+                if !params.supports_semantic_tokens_dynamic_registration() =>
+            {
+                Some(get_semantic_tokens_options().into())
+            }
+            _ => None,
+        };
 
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
@@ -54,6 +73,7 @@ impl LanguageServer for TypstServer {
                         ..Default::default()
                     },
                 )),
+                semantic_tokens_provider,
                 execute_command_provider: Some(ExecuteCommandOptions {
                     commands: LspCommand::all_as_string(),
                     work_done_progress_options: WorkDoneProgressOptions {
@@ -70,6 +90,66 @@ impl LanguageServer for TypstServer {
     }
 
     async fn initialized(&self, _: InitializedParams) {
+        let const_config = self.get_const_config();
+        let mut config = self.config.write().await;
+
+        if const_config.supports_semantic_tokens_dynamic_registration {
+            let client = self.client.clone();
+            let register = move || {
+                let client = client.clone();
+                async move {
+                    let options = get_semantic_tokens_options();
+                    client
+                        .register_capability(vec![get_semantic_tokens_registration(options)])
+                        .await
+                        .context("could not register semantic tokens")
+                }
+            };
+
+            let client = self.client.clone();
+            let unregister = move || {
+                let client = client.clone();
+                async move {
+                    client
+                        .unregister_capability(vec![get_semantic_tokens_unregistration()])
+                        .await
+                        .context("could not unregister semantic tokens")
+                }
+            };
+
+            if config.semantic_tokens == SemanticTokensMode::Enable {
+                if let Some(err) = register().await.err() {
+                    self.client
+                        .log_message(
+                            MessageType::ERROR,
+                            format!("could not dynamically register semantic tokens: {err}"),
+                        )
+                        .await;
+                }
+            }
+
+            config.listen_semantic_tokens(Box::new(move |mode| match mode {
+                SemanticTokensMode::Enable => register().boxed(),
+                SemanticTokensMode::Disable => unregister().boxed(),
+            }));
+        }
+
+        if const_config.supports_config_change_registration {
+            let err = self
+                .client
+                .register_capability(vec![get_config_registration()])
+                .await
+                .err();
+            if let Some(err) = err {
+                self.client
+                    .log_message(
+                        MessageType::ERROR,
+                        format!("could not register to watch config changes: {err}"),
+                    )
+                    .await;
+            }
+        }
+
         let watch_files_error = self
             .client
             .register_capability(vec![self.get_watcher_registration()])
@@ -166,6 +246,8 @@ impl LanguageServer for TypstServer {
             .get_workspace()
             .sources
             .get_open_source_by_id(source_id);
+
+        self.client.semantic_tokens_refresh().await.unwrap();
 
         self.on_source_changed(&world, &config, source).await;
     }
@@ -328,30 +410,81 @@ impl LanguageServer for TypstServer {
         Ok(Some(symbols))
     }
 
-    async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
-        let settings = params.settings;
+    async fn semantic_tokens_full(
+        &self,
+        params: SemanticTokensParams,
+    ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
+        let uri = &params.text_document.uri;
+
+        let workspace = self.workspace.read().await;
+        let source = workspace
+            .sources
+            .get_id_by_uri(uri)
+            .map(|id| workspace.sources.get_open_source_by_id(id))
+            .ok_or_else(jsonrpc::Error::internal_error)?;
+
+        let (tokens, result_id) = self.get_semantic_tokens_full(source);
+
+        let tokens = SemanticTokens {
+            result_id: Some(result_id),
+            data: tokens,
+        };
+        Ok(Some(SemanticTokensResult::Tokens(tokens)))
+    }
+
+    async fn semantic_tokens_full_delta(
+        &self,
+        params: SemanticTokensDeltaParams,
+    ) -> jsonrpc::Result<Option<SemanticTokensFullDeltaResult>> {
+        let uri = &params.text_document.uri;
+
+        let workspace = self.workspace.read().await;
+        let source = workspace
+            .sources
+            .get_id_by_uri(uri)
+            .map(|id| workspace.sources.get_open_source_by_id(id))
+            .ok_or_else(jsonrpc::Error::internal_error)?;
+
+        let (tokens, result_id) =
+            self.try_semantic_tokens_delta_from_result_id(source, &params.previous_result_id);
+        match tokens {
+            Ok(edits) => Ok(Some(
+                SemanticTokensDelta {
+                    result_id: Some(result_id),
+                    edits,
+                }
+                .into(),
+            )),
+            Err(tokens) => Ok(Some(
+                SemanticTokens {
+                    result_id: Some(result_id),
+                    data: tokens,
+                }
+                .into(),
+            )),
+        }
+    }
+
+    async fn did_change_configuration(&self, _: DidChangeConfigurationParams) {
+        // We don't get the actual changed configuration and need to poll for it
+        // https://github.com/microsoft/language-server-protocol/issues/676
+
+        let values = self
+            .client
+            .configuration(Config::get_items())
+            .await
+            .unwrap();
+
         let mut config = self.config.write().await;
-        if let JsonValue::Object(settings) = settings {
-            let export_pdf = settings
-                .get("exportPdf")
-                .map(|val| match val {
-                    JsonValue::String(val) => match val.as_str() {
-                        "never" => ExportPdfMode::Never,
-                        "onSave" => ExportPdfMode::OnSave,
-                        "onType" => ExportPdfMode::OnType,
-                        _ => ExportPdfMode::OnSave,
-                    },
-                    _ => ExportPdfMode::OnSave,
-                })
-                .unwrap_or_default();
-            config.export_pdf = export_pdf;
-            self.client
-                .log_message(MessageType::INFO, "New settings applied")
-                .await;
-        } else {
-            self.client
-                .log_message(MessageType::ERROR, "Got invalid configuration object")
-                .await;
+        match config.update_from_values(values).await {
+            Ok(()) => {
+                self.client
+                    .log_message(MessageType::INFO, "New settings applied")
+                    .await;
+            }
+            Err(err) => {
+                self.client.log_message(MessageType::ERROR, err).await;
+            }
         }
     }
 
