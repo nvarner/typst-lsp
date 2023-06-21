@@ -6,9 +6,9 @@ use typst::diag::{FileError, FileResult};
 
 use super::resource::Resource;
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct ResourceManager {
-    resources: HashMap<Url, Resource>,
+    resources: HashMap<Url, Option<Resource>>,
 }
 
 impl ResourceManager {
@@ -16,15 +16,27 @@ impl ResourceManager {
         self.resources.clear();
     }
 
-    pub fn get_or_insert_resource(&mut self, uri: Url) -> FileResult<&Resource> {
+    pub fn get_by_uri(&mut self, uri: Url) -> FileResult<Resource> {
         match self.resources.entry(uri.clone()) {
             Entry::Vacant(entry) => {
-                // TODO: ideally, we do this through the LSP client instead, and watch the file to
-                // avoid caching old data
                 let resource = Resource::read_file(&uri).map_err(|_| FileError::Other)?;
-                Ok(entry.insert(resource))
+                let resource = entry.insert(Some(resource));
+                Ok(resource.as_mut().unwrap().clone())
             }
-            Entry::Occupied(entry) => Ok(entry.into_mut()),
+            Entry::Occupied(mut entry) => match entry.get_mut() {
+                Some(resource) => Ok(resource.clone()),
+                option @ None => {
+                    let resource = Resource::read_file(&uri).map_err(|_| FileError::Other)?;
+                    let resource = option.insert(resource);
+                    Ok(resource.clone())
+                }
+            },
         }
+    }
+
+    pub fn invalidate(&mut self, uri: Url) {
+        self.resources
+            .entry(uri)
+            .and_modify(|option| *option = None);
     }
 }

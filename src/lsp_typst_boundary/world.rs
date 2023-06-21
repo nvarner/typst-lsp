@@ -91,7 +91,7 @@ impl World for WorkspaceWorld {
         let lsp_uri = typst_to_lsp::path_to_uri(typst_path)
             .map_err(|_| FileError::NotFound(typst_path.to_owned()))?;
         let mut resources = self.get_workspace().resources.write();
-        let lsp_resource = resources.get_or_insert_resource(lsp_uri)?;
+        let lsp_resource = resources.get_by_uri(lsp_uri)?;
         Ok(lsp_resource.into())
     }
 

@@ -52,7 +52,7 @@ impl FontSlot {
     fn init(&self, resource_manager: &mut ResourceManager) -> anyhow::Result<Font> {
         let uri = self.uri.as_ref().context("could not get font url")?;
         let data = resource_manager
-            .get_or_insert_resource(uri.clone())
+            .get_by_uri(uri.clone())
             .context("could not load font")?;
         Font::new(data.into(), self.index).context("could not parse font")
     }
