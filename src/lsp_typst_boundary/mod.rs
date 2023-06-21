@@ -223,6 +223,10 @@ pub mod typst_to_lsp {
         }
     }
 
+    pub fn completions(typst_completions: &[TypstCompletion]) -> Vec<LspCompletion> {
+        typst_completions.iter().map(completion).collect_vec()
+    }
+
     pub fn source_error_to_diagnostic(
         typst_error: &TypstSourceError,
         world: &WorkspaceWorld,

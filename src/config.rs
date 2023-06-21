@@ -1,6 +1,6 @@
 use std::{fmt, path::PathBuf};
 
-use anyhow::anyhow;
+use anyhow::bail;
 use futures::future::BoxFuture;
 use serde::Deserialize;
 use serde_json::{Map, Value};
@@ -69,7 +69,7 @@ impl Config {
         if let Value::Object(update) = update {
             self.update_by_map(update).await
         } else {
-            Err(anyhow!("got invalid configuration object {update}"))
+            bail!("got invalid configuration object {update}")
         }
     }
 

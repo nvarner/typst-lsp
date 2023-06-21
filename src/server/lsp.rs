@@ -1,5 +1,6 @@
 use anyhow::Context;
 use futures::FutureExt;
+use itertools::Itertools;
 use serde_json::Value as JsonValue;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, LanguageServer};
@@ -179,36 +180,18 @@ impl LanguageServer for TypstServer {
         let text = params.text_document.text;
 
         let mut workspace = self.workspace.write().await;
-        if let Err(error) = workspace.sources.insert_open(&uri, text) {
+        if let Err(error) = workspace.sources.open(&uri, text) {
             self.client.log_message(MessageType::ERROR, error).await;
             return;
         }
-
-        let workspace = workspace.downgrade();
-        let config = self.config.read().await;
-
-        let source_id = workspace
-            .sources
-            .get_id_by_uri(&uri)
-            .expect("source should exist just after adding it");
-
         drop(workspace);
 
-        let world = self.get_world_with_main(source_id).await;
-        let source = world
-            .get_workspace()
-            .sources
-            .get_open_source_by_id(source_id);
-
-        // the following is useful to debug AST stuff
-        /* let message = {
-            let root = LinkedNode::new(source.as_ref().root());
-            LogMessage {
-                message_type: MessageType::LOG,
-                message: format!("{root:#?}"),
-            }
-        };
-        self.log_to_client(message).await; */
+        let config = self.config.read().await;
+        let world = self
+            .get_world_with_main(uri)
+            .await
+            .expect("source should be cached just after opening it");
+        let source = world.get_main();
 
         self.on_source_changed(&world, &config, source).await;
     }
@@ -217,7 +200,7 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document.uri;
 
         let mut workspace = self.workspace.write().await;
-        workspace.sources.close(&uri);
+        workspace.sources.close(uri.clone());
 
         self.client.publish_diagnostics(uri, Vec::new(), None).await;
     }
@@ -227,27 +210,20 @@ impl LanguageServer for TypstServer {
         let changes = params.content_changes;
 
         let mut workspace = self.workspace.write().await;
-        let source_id = workspace
+        let source = workspace
             .sources
-            .get_id_by_uri(&uri)
-            .expect("source should exist after being changed");
+            .get_mut_source_by_uri(uri.clone())
+            .expect("changed sources should be open, so should be cached");
 
-        let source = workspace.sources.get_mut_open_source_by_id(source_id);
         for change in changes {
             self.apply_single_document_change(source, change);
         }
 
         drop(workspace);
 
-        let world = self.get_world_with_main(source_id).await;
         let config = self.config.read().await;
-
-        let source = world
-            .get_workspace()
-            .sources
-            .get_open_source_by_id(source_id);
-
-        self.client.semantic_tokens_refresh().await.unwrap();
+        let world = self.get_world_with_main(uri).await.unwrap();
+        let source = world.get_main();
 
         self.on_source_changed(&world, &config, source).await;
     }
@@ -255,13 +231,9 @@ impl LanguageServer for TypstServer {
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         let uri = params.text_document.uri;
 
-        let (world, source_id) = self.get_world_with_main_uri(&uri).await;
         let config = self.config.read().await;
-
-        let source = world
-            .get_workspace()
-            .sources
-            .get_open_source_by_id(source_id);
+        let world = self.get_world_with_main(uri).await.unwrap();
+        let source = world.get_main();
 
         if config.export_pdf == ExportPdfMode::OnSave {
             self.run_diagnostics_and_export(&world, source).await;
@@ -303,14 +275,11 @@ impl LanguageServer for TypstServer {
     }
 
     async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
-        let uri = &params.text_document_position_params.text_document.uri;
+        let uri = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
 
-        let (world, source_id) = self.get_world_with_main_uri(uri).await;
-        let source = world
-            .get_workspace()
-            .sources
-            .get_open_source_by_id(source_id);
+        let world = self.get_world_with_main(uri).await.unwrap();
+        let source = world.get_main();
 
         Ok(self.get_hover(&world, source, position))
     }
@@ -319,19 +288,15 @@ impl LanguageServer for TypstServer {
         &self,
         params: CompletionParams,
     ) -> jsonrpc::Result<Option<CompletionResponse>> {
-        let uri = &params.text_document_position.text_document.uri;
+        let uri = params.text_document_position.text_document.uri;
         let position = params.text_document_position.position;
         let explicit = params
             .context
             .map(|context| context.trigger_kind == CompletionTriggerKind::INVOKED)
             .unwrap_or(false);
 
-        let (world, source_id) = self.get_world_with_main_uri(uri).await;
-
-        let source = world
-            .get_workspace()
-            .sources
-            .get_open_source_by_id(source_id);
+        let world = self.get_world_with_main(uri).await.unwrap();
+        let source = world.get_main();
 
         let typst_offset = lsp_to_typst::position_to_offset(
             position,
@@ -339,32 +304,20 @@ impl LanguageServer for TypstServer {
             source.as_ref(),
         );
 
-        let completions = autocomplete(&world, &[], source.as_ref(), typst_offset, explicit);
-
-        match completions {
-            Some((_, c)) => {
-                let lsp_completions = c.iter().map(typst_to_lsp::completion).collect();
-                return Ok(Some(CompletionResponse::Array(lsp_completions)));
-            }
-            None => {
-                return Ok(None);
-            }
-        }
+        let completions = autocomplete(&world, &[], source.as_ref(), typst_offset, explicit)
+            .map(|(_, completions)| typst_to_lsp::completions(&completions).into());
+        Ok(completions)
     }
 
     async fn signature_help(
         &self,
         params: SignatureHelpParams,
     ) -> jsonrpc::Result<Option<SignatureHelp>> {
-        let uri = &params.text_document_position_params.text_document.uri;
+        let uri = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
 
-        let (world, source_id) = self.get_world_with_main_uri(uri).await;
-
-        let source = world
-            .get_workspace()
-            .sources
-            .get_open_source_by_id(source_id);
+        let world = self.get_world_with_main(uri).await.unwrap();
+        let source = world.get_main();
 
         Ok(self.get_signature_at_position(&world, source, position))
     }
@@ -373,14 +326,20 @@ impl LanguageServer for TypstServer {
         &self,
         params: DocumentSymbolParams,
     ) -> jsonrpc::Result<Option<DocumentSymbolResponse>> {
-        let symbols = self
-            .get_document_symbols(&params.text_document.uri, None)
-            .await
+        let uri = params.text_document.uri;
+
+        let workspace = self.workspace.read().await;
+        let source = workspace.sources.get_source_by_uri(uri.clone()).unwrap();
+
+        let symbols: Vec<_> = self
+            .get_document_symbols(source.as_ref(), &uri, None)
+            .try_collect()
             .map_err(|e| jsonrpc::Error {
                 code: jsonrpc::ErrorCode::InternalError,
                 message: format!("Failed to get document symbols: {:#}", e),
                 data: None,
             })?;
+
         Ok(Some(symbols.into()))
     }
 
@@ -388,40 +347,41 @@ impl LanguageServer for TypstServer {
         &self,
         params: WorkspaceSymbolParams,
     ) -> jsonrpc::Result<Option<Vec<SymbolInformation>>> {
-        let workspace = self.workspace.read().await;
-        let source_manager = &workspace.sources;
+        let query = (!params.query.is_empty()).then_some(params.query.as_str());
 
-        let mut symbols = Vec::new();
-        for source_uri in source_manager.get_uris().iter() {
-            let mut query = None;
-            if !params.query.is_empty() {
-                query = Some(params.query.as_str());
-            }
-            let mut document_symbols =
-                self.get_document_symbols(source_uri, query)
-                    .await
-                    .map_err(|e| jsonrpc::Error {
-                        code: jsonrpc::ErrorCode::InternalError,
-                        message: format!("Failed to get document symbols: {:#}", e),
-                        data: None,
-                    })?;
-            symbols.append(&mut document_symbols);
-        }
-        Ok(Some(symbols))
+        let workspace = self.workspace.read().await;
+
+        let uris = workspace.sources.get_uris();
+        let uris_sources = uris
+            .iter()
+            .map(|uri| {
+                workspace
+                    .sources
+                    .get_source_by_uri(uri.clone())
+                    .map(|source| (uri, source))
+            })
+            .filter_map(Result::ok);
+
+        let symbols = uris_sources
+            .flat_map(|(uri, source)| self.get_document_symbols(source.as_ref(), uri, query))
+            .try_collect()
+            .map_err(|e| jsonrpc::Error {
+                code: jsonrpc::ErrorCode::InternalError,
+                message: format!("Failed to get document symbols: {:#}", e),
+                data: None,
+            });
+
+        Some(symbols).transpose()
     }
 
     async fn semantic_tokens_full(
         &self,
         params: SemanticTokensParams,
     ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
-        let uri = &params.text_document.uri;
+        let uri = params.text_document.uri;
 
         let workspace = self.workspace.read().await;
-        let source = workspace
-            .sources
-            .get_id_by_uri(uri)
-            .map(|id| workspace.sources.get_open_source_by_id(id))
-            .ok_or_else(jsonrpc::Error::internal_error)?;
+        let source = workspace.sources.get_source_by_uri(uri).unwrap();
 
         let (tokens, result_id) = self.get_semantic_tokens_full(source);
 
@@ -436,17 +396,14 @@ impl LanguageServer for TypstServer {
         &self,
         params: SemanticTokensDeltaParams,
     ) -> jsonrpc::Result<Option<SemanticTokensFullDeltaResult>> {
-        let uri = &params.text_document.uri;
+        let uri = params.text_document.uri;
+        let previous_result_id = params.previous_result_id;
 
         let workspace = self.workspace.read().await;
-        let source = workspace
-            .sources
-            .get_id_by_uri(uri)
-            .map(|id| workspace.sources.get_open_source_by_id(id))
-            .ok_or_else(jsonrpc::Error::internal_error)?;
+        let source = workspace.sources.get_source_by_uri(uri).unwrap();
 
         let (tokens, result_id) =
-            self.try_semantic_tokens_delta_from_result_id(source, &params.previous_result_id);
+            self.try_semantic_tokens_delta_from_result_id(source, &previous_result_id);
         match tokens {
             Ok(edits) => Ok(Some(
                 SemanticTokensDelta {
@@ -492,14 +449,11 @@ impl LanguageServer for TypstServer {
         &self,
         params: SelectionRangeParams,
     ) -> jsonrpc::Result<Option<Vec<SelectionRange>>> {
-        let uri = &params.text_document.uri;
+        let uri = params.text_document.uri;
         let positions = params.positions;
 
-        let (world, source_id) = self.get_world_with_main_uri(uri).await;
-        let source = world
-            .get_workspace()
-            .sources
-            .get_open_source_by_id(source_id);
+        let world = self.get_world_with_main(uri).await.unwrap();
+        let source = world.get_main();
 
         Ok(self.get_selection_range(source, &positions))
     }

@@ -10,6 +10,7 @@ use typst::syntax::SourceId;
 use typst::util::Buffer;
 use typst::World;
 
+use crate::workspace::source::Source;
 use crate::workspace::Workspace;
 
 use super::{typst_to_lsp, TypstPath, TypstSource};
@@ -36,6 +37,13 @@ impl WorkspaceWorld {
     pub fn get_workspace(&self) -> &OwnedRwLockReadGuard<Workspace> {
         &self.workspace
     }
+
+    pub fn get_main(&self) -> &Source {
+        self.get_workspace()
+            .sources
+            .get_source_by_id(self.main)
+            .expect("main should be cached and so won't cause errors")
+    }
 }
 
 impl World for WorkspaceWorld {
@@ -58,11 +66,15 @@ impl World for WorkspaceWorld {
     fn resolve(&self, typst_path: &TypstPath) -> FileResult<SourceId> {
         let lsp_uri = typst_to_lsp::path_to_uri(typst_path)
             .map_err(|_| FileError::NotFound(typst_path.to_owned()))?;
-        self.get_workspace().sources.cache(lsp_uri)
+        self.get_workspace().sources.get_id_by_uri(lsp_uri)
     }
 
     fn source(&self, id: SourceId) -> &TypstSource {
-        let lsp_source = self.get_workspace().sources.get_open_source_by_id(id);
+        let lsp_source = self
+            .get_workspace()
+            .sources
+            .get_source_by_id(id)
+            .expect("source should have been cached by `resolve`, so won't cause an error");
         lsp_source.as_ref()
     }
 
