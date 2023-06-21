@@ -194,8 +194,9 @@ fn token_from_node(node: &LinkedNode) -> Option<TokenType> {
         Heading | HeadingMarker => Some(TokenType::Heading),
         ListMarker | EnumMarker | TermMarker => Some(TokenType::ListMarker),
         MathAlignPoint | Plus | Minus | Slash | Hat | Dot | Eq | EqEq | ExclEq | Lt | LtEq | Gt
-        | GtEq | PlusEq | HyphEq | StarEq | SlashEq | Dots | Arrow | Not | And | Or | Unary
-        | Binary => Some(TokenType::Operator),
+        | GtEq | PlusEq | HyphEq | StarEq | SlashEq | Dots | Arrow | Not | And | Or => {
+            Some(TokenType::Operator)
+        }
         Dollar => Some(TokenType::Delimiter),
         None | Auto | Let | Show | If | Else | For | In | While | Break | Continue | Return
         | Import | Include | As | Set => Some(TokenType::Keyword),
