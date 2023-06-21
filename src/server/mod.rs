@@ -5,6 +5,7 @@ use once_cell::sync::OnceCell;
 use tokio::sync::RwLock;
 use tower_lsp::lsp_types::{InitializeParams, MessageType, Url};
 use tower_lsp::{jsonrpc, Client};
+use typst::diag::FileResult;
 use typst::syntax::SourceId;
 
 use crate::config::{Config, ConstConfig};
@@ -52,17 +53,15 @@ impl TypstServer {
             .expect("const config should be initialized")
     }
 
-    pub async fn get_world_with_main_uri(&self, main: &Url) -> (WorkspaceWorld, SourceId) {
+    pub async fn get_world_with_main(&self, main_uri: Url) -> FileResult<WorkspaceWorld> {
         let workspace = self.workspace.read().await;
-        let source_id = workspace
-            .sources
-            .get_id_by_uri(main)
-            .expect("source should exist");
+        let main_id = workspace.sources.get_id_by_uri(main_uri)?;
         drop(workspace);
-        (self.get_world_with_main(source_id).await, source_id)
+
+        Ok(self.get_world_with_main_by_id(main_id).await)
     }
 
-    pub async fn get_world_with_main(&self, main: SourceId) -> WorkspaceWorld {
+    async fn get_world_with_main_by_id(&self, main: SourceId) -> WorkspaceWorld {
         let config = self.config.read().await;
         WorkspaceWorld::new(
             Arc::clone(&self.workspace).read_owned().await,

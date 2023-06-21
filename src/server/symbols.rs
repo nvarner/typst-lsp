@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, Result};
 use tower_lsp::lsp_types::*;
 use typst::syntax::{ast, LinkedNode, Source, SyntaxKind};
 
@@ -7,31 +7,18 @@ use crate::{config::PositionEncoding, lsp_typst_boundary::typst_to_lsp};
 use super::TypstServer;
 
 /// Get all symbols for a node recursively.
-pub fn get_symbols(
-    node: &LinkedNode,
-    source: &Source,
-    uri: &Url,
-    query_string: Option<&str>,
+pub fn get_symbols<'a>(
+    node: LinkedNode<'a>,
+    source: &'a Source,
+    uri: &'a Url,
+    query_string: Option<&'a str>,
     position_encoding: PositionEncoding,
-) -> Result<Vec<SymbolInformation>> {
-    let mut vec: Vec<SymbolInformation> = Vec::new();
-    if node.children().len() > 0 {
-        // recursively get identifiers for all children of the current node
-        let mut children_symbols: Vec<SymbolInformation> = node
-            .children()
-            .map(|c| get_symbols(&c, source, uri, query_string, position_encoding))
-            .collect::<Result<Vec<_>>>()?
-            .into_iter()
-            .flatten()
-            .collect();
-        vec.append(&mut children_symbols);
-    }
-    // in case the current node is a symbol, add it to the list.
-    let Some(symbol) = get_ident(node, source, uri, query_string, position_encoding)? else {
-        return Ok(vec);
-    };
-    vec.push(symbol);
-    Ok(vec)
+) -> Box<dyn Iterator<Item = Result<SymbolInformation>> + 'a> {
+    let own_symbol = get_ident(&node, source, uri, query_string, position_encoding).transpose();
+    let children_symbols = node
+        .children()
+        .flat_map(move |child| get_symbols(child, source, uri, query_string, position_encoding));
+    Box::new(children_symbols.chain(own_symbol))
 }
 
 /// Get symbol for a leaf node of a valid type, or `None` if the node is an invalid type.
@@ -143,27 +130,21 @@ fn get_ident(
 }
 
 impl TypstServer {
-    pub async fn get_document_symbols(
-        &self,
-        document: &Url,
-        query_string: Option<&str>,
-    ) -> Result<Vec<SymbolInformation>> {
-        let config = self
-            .const_config
-            .get()
-            .expect("const_config not initialized");
-        let workspace = self.workspace.read().await;
-        let Some(source_id) = workspace.sources.get_id_by_uri(document) else {
-            bail!("no source found for uri: {document}");
-        };
-        let source = workspace.sources.get_open_source_by_id(source_id);
-        let root = LinkedNode::new(source.as_ref().root());
+    pub fn get_document_symbols<'a>(
+        &'a self,
+        source: &'a Source,
+        uri: &'a Url,
+        query_string: Option<&'a str>,
+    ) -> impl Iterator<Item = Result<SymbolInformation>> + 'a {
+        let const_config = self.get_const_config();
+
+        let root = LinkedNode::new(source.root());
         get_symbols(
-            &root,
-            source.as_ref(),
-            document,
+            root,
+            source,
+            uri,
             query_string,
-            config.position_encoding,
+            const_config.position_encoding,
         )
     }
 }

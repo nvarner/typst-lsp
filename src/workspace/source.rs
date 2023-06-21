@@ -1,4 +1,7 @@
+use std::{fs, io};
+
 use tower_lsp::lsp_types::Url;
+use typst::diag::{FileError, FileResult};
 use typst::syntax::SourceId;
 
 use crate::lsp_typst_boundary::{lsp_to_typst, LspRange, TypstSource};
@@ -22,6 +25,16 @@ impl Source {
         Self {
             inner: TypstSource::detached(""),
         }
+    }
+
+    pub fn read_from_file(id: SourceId, uri: &Url) -> FileResult<Self> {
+        let path = lsp_to_typst::uri_to_path(uri).map_err(|_| FileError::Other)?;
+        let text = fs::read_to_string(&path).map_err(|error| match error.kind() {
+            io::ErrorKind::NotFound => FileError::NotFound(path),
+            io::ErrorKind::PermissionDenied => FileError::AccessDenied,
+            _ => FileError::Other,
+        })?;
+        Self::new(id, uri, text).map_err(|_| FileError::Other)
     }
 
     pub fn edit(&mut self, replace: &LspRange, with: &str) {
