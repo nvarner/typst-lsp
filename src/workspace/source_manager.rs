@@ -60,9 +60,9 @@ impl SourceManager {
         let source = Source::new(id, uri, text)?;
 
         if uri_is_new {
-            *self.get_mut_inner_source(id) = InnerSource::Open(source);
-        } else {
             self.sources.push(Box::new(InnerSource::Open(source)));
+        } else {
+            *self.get_mut_inner_source(id) = InnerSource::Open(source);
         }
 
         Ok(())
