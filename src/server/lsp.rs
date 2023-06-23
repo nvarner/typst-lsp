@@ -92,6 +92,7 @@ impl LanguageServer for TypstServer {
         })
     }
 
+    #[tracing::instrument(skip(self))]
     async fn initialized(&self, _: InitializedParams) {
         let const_config = self.get_const_config();
         let mut config = self.config.write().await;
@@ -173,10 +174,12 @@ impl LanguageServer for TypstServer {
             .await;
     }
 
+    #[tracing::instrument(skip(self))]
     async fn shutdown(&self) -> jsonrpc::Result<()> {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let uri = params.text_document.uri;
         let text = params.text_document.text;
@@ -198,6 +201,7 @@ impl LanguageServer for TypstServer {
         self.on_source_changed(&world, &config, source).await;
     }
 
+    #[tracing::instrument(skip(self))]
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
         let uri = params.text_document.uri;
 
@@ -207,6 +211,7 @@ impl LanguageServer for TypstServer {
         self.client.publish_diagnostics(uri, Vec::new(), None).await;
     }
 
+    #[tracing::instrument(skip(self))]
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri;
         let changes = params.content_changes;
@@ -230,6 +235,7 @@ impl LanguageServer for TypstServer {
         self.on_source_changed(&world, &config, source).await;
     }
 
+    #[tracing::instrument(skip(self))]
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         let uri = params.text_document.uri;
 
@@ -242,6 +248,7 @@ impl LanguageServer for TypstServer {
         }
     }
 
+    #[tracing::instrument(skip(self))]
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         let changes = params.changes;
 
@@ -252,6 +259,7 @@ impl LanguageServer for TypstServer {
         }
     }
 
+    #[tracing::instrument(skip(self))]
     async fn execute_command(
         &self,
         params: ExecuteCommandParams,
@@ -276,6 +284,7 @@ impl LanguageServer for TypstServer {
         Ok(None)
     }
 
+    #[tracing::instrument(skip(self))]
     async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
         let uri = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
@@ -286,6 +295,7 @@ impl LanguageServer for TypstServer {
         Ok(self.get_hover(&world, source, position))
     }
 
+    #[tracing::instrument(skip(self))]
     async fn completion(
         &self,
         params: CompletionParams,
@@ -311,6 +321,7 @@ impl LanguageServer for TypstServer {
         Ok(completions)
     }
 
+    #[tracing::instrument(skip(self))]
     async fn signature_help(
         &self,
         params: SignatureHelpParams,
@@ -324,6 +335,7 @@ impl LanguageServer for TypstServer {
         Ok(self.get_signature_at_position(&world, source, position))
     }
 
+    #[tracing::instrument(skip(self))]
     async fn document_symbol(
         &self,
         params: DocumentSymbolParams,
@@ -345,6 +357,7 @@ impl LanguageServer for TypstServer {
         Ok(Some(symbols.into()))
     }
 
+    #[tracing::instrument(skip(self))]
     async fn symbol(
         &self,
         params: WorkspaceSymbolParams,
@@ -376,6 +389,7 @@ impl LanguageServer for TypstServer {
         Some(symbols).transpose()
     }
 
+    #[tracing::instrument(skip(self))]
     async fn semantic_tokens_full(
         &self,
         params: SemanticTokensParams,
@@ -394,6 +408,7 @@ impl LanguageServer for TypstServer {
         Ok(Some(SemanticTokensResult::Tokens(tokens)))
     }
 
+    #[tracing::instrument(skip(self))]
     async fn semantic_tokens_full_delta(
         &self,
         params: SemanticTokensDeltaParams,
@@ -424,6 +439,7 @@ impl LanguageServer for TypstServer {
         }
     }
 
+    #[tracing::instrument(skip(self))]
     async fn did_change_configuration(&self, _: DidChangeConfigurationParams) {
         // We don't get the actual changed configuration and need to poll for it
         // https://github.com/microsoft/language-server-protocol/issues/676
@@ -447,6 +463,7 @@ impl LanguageServer for TypstServer {
         }
     }
 
+    #[tracing::instrument(skip(self))]
     async fn selection_range(
         &self,
         params: SelectionRangeParams,
