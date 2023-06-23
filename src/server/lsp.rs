@@ -2,6 +2,7 @@ use anyhow::Context;
 use futures::FutureExt;
 use itertools::Itertools;
 use serde_json::Value as JsonValue;
+use tokio::io::AsyncReadExt;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, LanguageServer};
 use typst::ide::autocomplete;
@@ -58,6 +59,7 @@ impl LanguageServer for TypstServer {
                     },
                 }),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
+                folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),
                 completion_provider: Some(CompletionOptions {
                     trigger_characters: Some(vec![
                         String::from("#"),
@@ -282,6 +284,76 @@ impl LanguageServer for TypstServer {
         let source = world.get_main();
 
         Ok(self.get_hover(&world, source, position))
+    }
+
+    async fn folding_range(
+        &self,
+        params: FoldingRangeParams,
+    ) -> jsonrpc::Result<Option<Vec<FoldingRange>>> {
+        /*
+        optimizations: - maybe the compiler is already doing something similar (e.g. reading file, tokenization)
+
+        todo: - moving this functionality into own file?
+              - making code collapsible again
+        */
+
+        // collect content from the file that is currently being viewed in your IDE
+        let file_contents = {
+            let path = params.text_document.uri.path();
+            let file = tokio::fs::File::open(path).await.unwrap();
+
+            let mut reader = tokio::io::BufReader::new(file);
+            let mut file_contents = String::new();
+
+            reader.read_to_string(&mut file_contents).await.unwrap();
+            file_contents
+        };
+
+        // making typst headings collapsible
+        let result = {
+            // collect line numbers of the headings so that we know from which line to which line we can fold
+            let mut headings_lineno: Vec<usize> = Vec::new();
+
+            for (lineno, content) in file_contents.lines().enumerate() {
+                lazy_static::lazy_static! {
+                    // a typst heading can be written as '#heading("h")' or as '= h'
+                    static ref CODE_EXPRESSION: regex::Regex = regex::Regex::new(r"^#heading.*$").unwrap();
+                    static ref MARKUP_EXPRESSION: regex::Regex = regex::Regex::new(r"^=+\s.*$").unwrap();
+                }
+
+                if CODE_EXPRESSION.is_match(content) || MARKUP_EXPRESSION.is_match(content) {
+                    headings_lineno.push(lineno);
+                }
+            }
+
+            // make line number collection peakable so we know when to stop folding
+            let mut headings_lineno = headings_lineno.iter().peekable();
+            let mut result: Vec<FoldingRange> = Vec::new();
+
+            while headings_lineno.peek() != None {
+                let lineno = headings_lineno.next().unwrap();
+
+                result.push(FoldingRange {
+                    start_line: *lineno as u32,
+                    start_character: None,
+                    end_line: match headings_lineno.peek() {
+                        Some(next_heading_lineno) => (**next_heading_lineno - 1) as u32, // -1 is compact, -2 has a linebreak
+                        None => (file_contents.lines().count()) as u32,
+                    },
+                    end_character: None,
+                    kind: None,
+                    collapsed_text: None,
+                })
+            }
+
+            result
+        };
+
+        Ok(Some(result))
+
+        // debuging:
+        // let mut tmp = std::fs::OpenOptions::new().append(true).create(true).open("/tmp/typstlsp_foldinig.txt").unwrap();
+        // tmp.write_fmt(format_args!("{:?}\n",...)).unwrap();
     }
 
     async fn completion(
