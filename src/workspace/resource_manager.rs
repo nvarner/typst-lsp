@@ -6,16 +6,18 @@ use typst::diag::{FileError, FileResult};
 
 use super::resource::Resource;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ResourceManager {
     resources: HashMap<Url, Option<Resource>>,
 }
 
 impl ResourceManager {
+    #[tracing::instrument(skip(self))]
     pub fn clear(&mut self) {
         self.resources.clear();
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn get_by_uri(&mut self, uri: Url) -> FileResult<Resource> {
         match self.resources.entry(uri.clone()) {
             Entry::Vacant(entry) => {
@@ -34,6 +36,7 @@ impl ResourceManager {
         }
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn invalidate(&mut self, uri: Url) {
         self.resources
             .entry(uri)
