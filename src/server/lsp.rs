@@ -21,6 +21,7 @@ use super::TypstServer;
 
 #[tower_lsp::async_trait]
 impl LanguageServer for TypstServer {
+    #[tracing::instrument(skip(self))]
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
         self.tracing_init();
 

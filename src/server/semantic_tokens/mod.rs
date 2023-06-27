@@ -60,6 +60,7 @@ pub fn get_semantic_tokens_options() -> SemanticTokensOptions {
 }
 
 impl TypstServer {
+    #[tracing::instrument(skip(self))]
     pub fn get_semantic_tokens_full(&self, source: &Source) -> (Vec<SemanticToken>, String) {
         let encoding = self.get_const_config().position_encoding;
 

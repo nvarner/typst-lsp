@@ -70,6 +70,7 @@ impl TypstServer {
         )
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn register_workspace_files(&self, params: &InitializeParams) -> jsonrpc::Result<()> {
         let workspace = self.workspace.read().await;
         let source_manager = &workspace.sources;

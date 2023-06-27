@@ -1,10 +1,11 @@
-use std::{fmt, mem};
+use std::mem;
 
 use elsa::sync::FrozenVec;
 use indexmap::IndexSet;
 use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
 use tower_lsp::lsp_types::Url;
+use tracing::{info, trace};
 use typst::diag::FileResult;
 use typst::syntax::SourceId;
 use walkdir::WalkDir;
@@ -53,6 +54,7 @@ impl SourceManager {
     }
 
     /// Open a document, adding it to the `SourceManager` if needed
+    #[tracing::instrument(skip(self))]
     pub fn open(&mut self, uri: &Url, text: String) -> anyhow::Result<()> {
         let ids = self.ids.get_mut();
         let (index, uri_is_new) = ids.insert_full(uri.clone());
@@ -60,8 +62,10 @@ impl SourceManager {
         let source = Source::new(id, uri, text)?;
 
         if uri_is_new {
+            info!(id = id.as_u16(), "new source opened");
             self.sources.push(Box::new(InnerSource::Open(source)));
         } else {
+            info!(id = id.as_u16(), "existing source opened");
             *self.get_mut_inner_source(id) = InnerSource::Open(source);
         }
 
@@ -69,10 +73,12 @@ impl SourceManager {
     }
 
     /// Close a document
+    #[tracing::instrument(skip(self))]
     pub fn close(&mut self, uri: Url) {
         if let Some(id) = self.get_id_by_known_uri(&uri) {
             let inner_source = self.get_mut_inner_source(id);
             if let InnerSource::Open(source) = inner_source {
+                info!(id = id.as_u16(), "open source closed");
                 let source = mem::replace(source, Source::new_detached());
                 *inner_source = InnerSource::closed(source, uri);
             }
@@ -80,16 +86,19 @@ impl SourceManager {
     }
 
     /// Invalidate a document if it is cached
+    #[tracing::instrument(skip(self))]
     pub fn invalidate(&mut self, uri: &Url) {
         if let Some(id) = self.get_id_by_known_uri(uri) {
             let inner_source = self.get_mut_inner_source(id);
             if let InnerSource::Closed(cell, _) = inner_source {
+                info!(id = id.as_u16(), "close source invalidated");
                 cell.take();
             }
         }
     }
 
     /// Add all Typst files in `workspace` to the `SourceManager`, caching them as needed
+    #[tracing::instrument(skip(self))]
     pub fn register_workspace_files(&self, workspace: &Url) -> anyhow::Result<()> {
         let workspace_path = lsp_to_typst::uri_to_path(workspace)?;
 
@@ -102,6 +111,7 @@ impl SourceManager {
             .filter_map(Result::ok);
 
         for uri in typst_file_uris {
+            trace!(uri = uri.as_str(), "registering file");
             self.get_id_by_uri(uri)?;
         }
 
@@ -110,6 +120,7 @@ impl SourceManager {
 
     /// Get a [`Source`] and its [`SourceId`] by its URI, caching it and adding it to the
     /// `SourceManager` if needed
+    #[tracing::instrument(skip(self))]
     pub fn get_all_by_uri(&self, uri: Url) -> FileResult<(&Source, SourceId)> {
         let mut ids = self.ids.write();
         let (index, uri_is_new) = ids.insert_full(uri.clone());
@@ -135,6 +146,7 @@ impl SourceManager {
 
     /// Get a [`Source`] and its [`SourceId`] by its URI, caching it and adding it to the
     /// `SourceManager` if needed
+    #[tracing::instrument(skip(self))]
     pub fn get_mut_all_by_uri(&mut self, uri: Url) -> FileResult<(&mut Source, SourceId)> {
         let ids = self.ids.get_mut();
         let (index, uri_is_new) = ids.insert_full(uri.clone());
@@ -178,12 +190,6 @@ impl SourceManager {
     fn get_mut_inner_source(&mut self, id: SourceId) -> &mut InnerSource {
         // We treat all `SourceId`s as valid
         self.sources.as_mut().get_mut(id.as_u16() as usize).unwrap()
-    }
-}
-
-impl fmt::Debug for SourceManager {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("SourceManager").finish_non_exhaustive()
     }
 }
 
