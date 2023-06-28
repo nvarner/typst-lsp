@@ -1,7 +1,10 @@
+use std::fmt::{self, Write};
+
 use tokio::runtime::Handle;
 use tower_lsp::lsp_types::MessageType;
 use tower_lsp::Client;
-use tracing::{Event, Level, Subscriber};
+use tracing::field::{Field, Visit};
+use tracing::{Event, Level, Metadata, Subscriber};
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Layer;
@@ -33,24 +36,48 @@ impl LspLayer {
 }
 
 impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for LspLayer {
-    fn on_event(&self, event: &Event, _ctx: Context<S>) {
+    fn on_event<'b>(&self, event: &Event<'b>, _ctx: Context<S>) {
         if Self::should_skip(event) {
             return;
         }
 
         if let Ok(handle) = Handle::try_current() {
             let client = self.client.clone();
-            let message_type = level_to_message_type(*event.metadata().level());
-            let message = format!(
-                "event: {}, {}",
-                event.metadata().name(),
-                event.metadata().target()
-            );
+            let metadata: &Metadata<'b> = event.metadata();
+
+            let message_type = level_to_message_type(*metadata.level());
+
+            let line_info: (Option<&'b str>, _) = (metadata.file(), metadata.line());
+            let mut message = match line_info {
+                (Some(file), Some(line)) => format!("{file}:{line} {{"),
+                (Some(file), None) => format!("{file} {{"),
+                (None, _) => "{".to_owned(),
+            };
+
+            event.record(&mut LspVisit::with_string(&mut message));
+
+            message.push_str(" }");
 
             handle.spawn(async move {
                 client.log_message(message_type, message).await;
             });
         }
+    }
+}
+
+struct LspVisit<'a> {
+    message: &'a mut String,
+}
+
+impl<'a> LspVisit<'a> {
+    pub fn with_string(string: &'a mut String) -> Self {
+        Self { message: string }
+    }
+}
+
+impl<'a> Visit for LspVisit<'a> {
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+        write!(self.message, " {} = {:?};", field.name(), value).unwrap();
     }
 }
 

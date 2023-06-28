@@ -97,7 +97,7 @@ impl TypstServer {
             source_manager.register_workspace_files(uri).map_err(|e| {
                 jsonrpc::Error::invalid_params(format!("failed to register workspace files: {e:#}"))
             })?;
-            info!(?uri, "folder added to workspace");
+            info!(%uri, "folder added to workspace");
         }
 
         Ok(())

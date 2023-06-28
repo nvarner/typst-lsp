@@ -111,7 +111,7 @@ impl SourceManager {
             .filter_map(Result::ok);
 
         for uri in typst_file_uris {
-            trace!(uri = uri.as_str(), "registering file");
+            trace!(%uri, "registering file");
             self.get_id_by_uri(uri)?;
         }
 
