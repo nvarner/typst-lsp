@@ -12,12 +12,12 @@ pub struct ResourceManager {
 }
 
 impl ResourceManager {
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all)]
     pub fn clear(&mut self) {
         self.resources.clear();
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, fields(%uri))]
     pub fn get_by_uri(&mut self, uri: Url) -> FileResult<Resource> {
         match self.resources.entry(uri.clone()) {
             Entry::Vacant(entry) => {
@@ -36,7 +36,7 @@ impl ResourceManager {
         }
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, fields(%uri))]
     pub fn invalidate(&mut self, uri: Url) {
         self.resources
             .entry(uri)
