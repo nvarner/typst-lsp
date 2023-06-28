@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use tokio::runtime::Handle;
 use tower_lsp::lsp_types::MessageType;
 use tower_lsp::Client;
@@ -10,25 +8,12 @@ use tracing_subscriber::Layer;
 
 use super::TypstServer;
 
-// Message that is sent to the client
-#[derive(Debug, Clone)]
-pub struct LogMessage<M: Display> {
-    pub message_type: MessageType,
-    pub message: M,
-}
-
 impl TypstServer {
     pub fn tracing_init(&self) {
         let lsp_layer = LspLayer::new(self.client.clone());
         self.lsp_tracing_layer_handle
             .reload(Some(lsp_layer))
             .expect("should be able to replace layer, since it should only fail when there is a larger issue with the `Subscriber`");
-    }
-
-    pub async fn log_to_client<M: Display>(&self, message: LogMessage<M>) {
-        self.client
-            .log_message(message.message_type, message.message)
-            .await;
     }
 }
 
