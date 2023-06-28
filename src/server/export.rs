@@ -1,11 +1,10 @@
 use std::fs;
 
-use tower_lsp::lsp_types::MessageType;
+use tracing::{error, info};
 use typst::doc::Document;
 
 use crate::workspace::source::Source;
 
-use super::log::LogMessage;
 use super::TypstServer;
 
 impl TypstServer {
@@ -17,18 +16,10 @@ impl TypstServer {
 
         match result {
             Ok(_) => {
-                let message = LogMessage {
-                    message_type: MessageType::INFO,
-                    message: format!("File written to {}", output_path.to_string_lossy()),
-                };
-                self.log_to_client(message).await;
+                info!(?output_path, "exported PDF");
             }
-            Err(e) => {
-                let message = LogMessage {
-                    message_type: MessageType::ERROR,
-                    message: e.to_string(),
-                };
-                self.log_to_client(message).await;
+            Err(err) => {
+                error!(?err, "failed to export PDF");
             }
         };
     }

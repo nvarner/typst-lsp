@@ -4,6 +4,7 @@ use itertools::Itertools;
 use serde_json::Value as JsonValue;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, LanguageServer};
+use tracing::{error, info, trace};
 use typst::ide::autocomplete;
 
 use crate::config::{
@@ -99,8 +100,11 @@ impl LanguageServer for TypstServer {
         let mut config = self.config.write().await;
 
         if const_config.supports_semantic_tokens_dynamic_registration {
+            trace!("setting up to dynamically register semantic token support");
+
             let client = self.client.clone();
             let register = move || {
+                trace!("dynamically registering semantic tokens");
                 let client = client.clone();
                 async move {
                     let options = get_semantic_tokens_options();
@@ -113,6 +117,7 @@ impl LanguageServer for TypstServer {
 
             let client = self.client.clone();
             let unregister = move || {
+                trace!("unregistering semantic tokens");
                 let client = client.clone();
                 async move {
                     client
@@ -124,12 +129,7 @@ impl LanguageServer for TypstServer {
 
             if config.semantic_tokens == SemanticTokensMode::Enable {
                 if let Some(err) = register().await.err() {
-                    self.client
-                        .log_message(
-                            MessageType::ERROR,
-                            format!("could not dynamically register semantic tokens: {err}"),
-                        )
-                        .await;
+                    error!(?err, "could not dynamically register semantic tokens");
                 }
             }
 
@@ -140,39 +140,29 @@ impl LanguageServer for TypstServer {
         }
 
         if const_config.supports_config_change_registration {
+            trace!("setting up to request config change notifications");
+
             let err = self
                 .client
                 .register_capability(vec![get_config_registration()])
                 .await
                 .err();
             if let Some(err) = err {
-                self.client
-                    .log_message(
-                        MessageType::ERROR,
-                        format!("could not register to watch config changes: {err}"),
-                    )
-                    .await;
+                error!(?err, "could not register to watch config changes");
             }
         }
 
+        trace!("setting up to watch Typst files");
         let watch_files_error = self
             .client
             .register_capability(vec![self.get_watcher_registration()])
             .await
             .err();
-
-        if let Some(error) = watch_files_error {
-            self.client
-                .log_message(
-                    MessageType::ERROR,
-                    format!("could not register to watch Typst files: {error}"),
-                )
-                .await;
+        if let Some(err) = watch_files_error {
+            error!(?err, "could not register to watch Typst files");
         }
 
-        self.client
-            .log_message(MessageType::INFO, "server initialized!")
-            .await;
+        info!("server initialized");
     }
 
     #[tracing::instrument(skip_all)]
@@ -186,8 +176,8 @@ impl LanguageServer for TypstServer {
         let text = params.text_document.text;
 
         let mut workspace = self.workspace.write().await;
-        if let Err(error) = workspace.sources.open(&uri, text) {
-            self.client.log_message(MessageType::ERROR, error).await;
+        if let Err(err) = workspace.sources.open(&uri, text) {
+            error!(?err, uri = ?uri, "could not open file");
             return;
         }
         drop(workspace);
@@ -273,7 +263,6 @@ impl LanguageServer for TypstServer {
             arguments,
             work_done_progress_params: _,
         } = params;
-        self.client.log_message(MessageType::INFO, &command).await;
         match LspCommand::parse(&command) {
             Some(LspCommand::ExportPdf) => {
                 self.command_export_pdf(arguments).await?;
@@ -282,6 +271,7 @@ impl LanguageServer for TypstServer {
                 self.command_clear_cache(arguments).await?;
             }
             None => {
+                error!("asked to execute known command");
                 return Err(jsonrpc::Error::method_not_found());
             }
         };
@@ -475,12 +465,10 @@ impl LanguageServer for TypstServer {
         let mut config = self.config.write().await;
         match config.update_from_values(values).await {
             Ok(()) => {
-                self.client
-                    .log_message(MessageType::INFO, "New settings applied")
-                    .await;
+                info!("new settings applied");
             }
             Err(err) => {
-                self.client.log_message(MessageType::ERROR, err).await;
+                error!(?err, "error applying new settings");
             }
         }
     }

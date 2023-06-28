@@ -38,6 +38,7 @@ impl LspCommand {
 /// Here are implemented the handlers for each command.
 impl TypstServer {
     /// Export the current document as a PDF file. The client is responsible for passing the correct file URI.
+    #[tracing::instrument(skip(self))]
     pub async fn command_export_pdf(&self, arguments: Vec<Value>) -> Result<()> {
         if arguments.is_empty() {
             return Err(Error::invalid_params("Missing file URI argument"));
@@ -59,6 +60,7 @@ impl TypstServer {
     }
 
     /// Clear all cached resources.
+    #[tracing::instrument(skip_all)]
     pub async fn command_clear_cache(&self, _arguments: Vec<Value>) -> Result<()> {
         let workspace = self.workspace.write().await;
         workspace.resources.write().clear();

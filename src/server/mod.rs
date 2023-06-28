@@ -3,15 +3,15 @@ use std::sync::Arc;
 use itertools::Itertools;
 use once_cell::sync::OnceCell;
 use tokio::sync::RwLock;
-use tower_lsp::lsp_types::{InitializeParams, MessageType, Url};
+use tower_lsp::lsp_types::{InitializeParams, Url};
 use tower_lsp::{jsonrpc, Client};
+use tracing::info;
 use tracing_subscriber::{reload, Registry};
 use typst::diag::FileResult;
 use typst::syntax::SourceId;
 
 use crate::config::{Config, ConstConfig};
 use crate::lsp_typst_boundary::world::WorkspaceWorld;
-use crate::server::log::LogMessage;
 use crate::server::semantic_tokens::SemanticTokenCache;
 use crate::workspace::Workspace;
 
@@ -97,11 +97,7 @@ impl TypstServer {
             source_manager.register_workspace_files(uri).map_err(|e| {
                 jsonrpc::Error::invalid_params(format!("failed to register workspace files: {e:#}"))
             })?;
-            self.log_to_client(LogMessage {
-                message_type: MessageType::INFO,
-                message: format!("Folder added to workspace: {}", &uri),
-            })
-            .await;
+            info!(?uri, "folder added to workspace");
         }
 
         Ok(())
