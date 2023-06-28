@@ -5,6 +5,7 @@ use once_cell::sync::OnceCell;
 use tokio::sync::RwLock;
 use tower_lsp::lsp_types::{InitializeParams, MessageType, Url};
 use tower_lsp::{jsonrpc, Client};
+use tracing_subscriber::{reload, Registry};
 use typst::diag::FileResult;
 use typst::syntax::SourceId;
 
@@ -13,6 +14,8 @@ use crate::lsp_typst_boundary::world::WorkspaceWorld;
 use crate::server::log::LogMessage;
 use crate::server::semantic_tokens::SemanticTokenCache;
 use crate::workspace::Workspace;
+
+use self::log::LspLayer;
 
 pub mod command;
 pub mod diagnostics;
@@ -34,16 +37,21 @@ pub struct TypstServer {
     config: Arc<RwLock<Config>>,
     const_config: OnceCell<ConstConfig>,
     semantic_tokens_delta_cache: Arc<parking_lot::RwLock<SemanticTokenCache>>,
+    lsp_tracing_layer_handle: reload::Handle<Option<LspLayer>, Registry>,
 }
 
 impl TypstServer {
-    pub fn with_client(client: Client) -> Self {
+    pub fn new(
+        client: Client,
+        lsp_tracing_layer_handle: reload::Handle<Option<LspLayer>, Registry>,
+    ) -> Self {
         Self {
             client,
             workspace: Default::default(),
             config: Default::default(),
             const_config: Default::default(),
             semantic_tokens_delta_cache: Default::default(),
+            lsp_tracing_layer_handle,
         }
     }
 
