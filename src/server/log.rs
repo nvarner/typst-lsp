@@ -5,9 +5,7 @@ use tower_lsp::lsp_types::MessageType;
 use tower_lsp::Client;
 use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::layer::Context;
-use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::registry::LookupSpan;
-use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::Layer;
 
 use super::TypstServer;
@@ -21,17 +19,10 @@ pub struct LogMessage<M: Display> {
 
 impl TypstServer {
     pub fn tracing_init(&self) {
-        opentelemetry::global::set_text_map_propagator(opentelemetry_jaeger::Propagator::new());
-
-        let tracer = opentelemetry_jaeger::new_agent_pipeline()
-            .with_service_name("typst-lsp")
-            .install_simple()
-            .ok();
-
-        tracing_subscriber::registry()
-            .with(LspLayer::new(self.client.clone()))
-            .with(tracer.map(|tracer| tracing_opentelemetry::layer().with_tracer(tracer)))
-            .init()
+        let lsp_layer = LspLayer::new(self.client.clone());
+        self.lsp_tracing_layer_handle
+            .reload(Some(lsp_layer))
+            .expect("should be able to replace layer, since it should only fail when there is a larger issue with the `Subscriber`");
     }
 
     pub async fn log_to_client<M: Display>(&self, message: LogMessage<M>) {
