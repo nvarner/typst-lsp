@@ -13,6 +13,19 @@
                 "${workspaceFolder}/addons/vscode/out/**/*.js"
             ],
             "preLaunchTask": "VS Code Extension Prelaunch"
+        },
+        {
+            "name": "Run Extension [Jaeger]",
+            "type": "extensionHost",
+            "request": "launch",
+            "runtimeExecutable": "${execPath}",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/addons/vscode"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/addons/vscode/out/**/*.js"
+            ],
+            "preLaunchTask": "VS Code Extension Prelaunch [Jaeger]"
         }
     ]
 }
