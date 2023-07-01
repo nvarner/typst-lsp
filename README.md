@@ -55,8 +55,34 @@ the extension can be found in the Extensions `@installed` list.
 3. Press <kbd>Ctrl</kbd>+<kbd>F5</kbd> to launch the "Extension Development Host"; if it's already
     running, invoke "Developer: Reload Window" from the command palette in the
     Extension Development Host
+    - If prompted, choose "Run Extension"
 4. Within the Extension Development Host, the extension will be active and ready
     for testing
+
+#### Tracing with Jaeger
+
+[Jaeger](https://www.jaegertracing.io/) is a tool to visualize tracing data. It
+shows spans (e.g. a span corresponds to each time a file is opened, each time we
+calculate semantic tokens, etc.) and associated data (e.g. the URL of the file
+opened), which provides timing and debugging data.
+
+By default, the LSP does not send data to Jaeger. To enable it:
+
+1. Launch the Jaeger server. The [`opentelemetry_jaeger`](https://docs.rs/opentelemetry-jaeger/latest/opentelemetry_jaeger/)
+    crate recommends the following:
+    ```
+    $ docker run -d -p6831:6831/udp -p6832:6832/udp -p16686:16686 -p14268:14268 jaegertracing/all-in-one:latest
+    ```
+2. Compile the LSP with the `jaeger` feature enabled. In the terminal, run:
+    ```
+    $ cargo build --features jaeger
+    ```
+    In VS Code, you can use the "Run Extension [Jaeger]" task to launch the
+    extension with Jaeger support.
+3. Run the LSP, then eventually close it.
+4. From Jaeger, search for traces. It may be best to restrict the search to
+    traces with a minimum length, such as 2 seconds, to hide smaller traces that
+    come from the task sending data to Jaeger.
 
 ## Installation guide
 
