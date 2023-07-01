@@ -9,7 +9,15 @@
 				"Copy Debug LSP Binary to VS Code Extension"
 			],
 			"dependsOrder": "sequence",
-			"problemMatcher": []
+		},
+		{
+			"label": "VS Code Extension Prelaunch [Jaeger]",
+			"dependsOn": [
+				"Compile VS Code Extension",
+				"Build Debug LSP Binary [Jaeger]",
+				"Copy Debug LSP Binary to VS Code Extension"
+			],
+			"dependsOrder": "sequence"
 		},
 		{
 			"label": "Compile VS Code Extension",
@@ -17,12 +25,21 @@
 			"script": "compile",
 			"path": "addons/vscode",
 			"group": "build",
-			"problemMatcher": []
 		},
 		{
 			"label": "Build Debug LSP Binary",
 			"type": "cargo",
 			"command": "build",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Debug LSP Binary [Jaeger]",
+			"type": "cargo",
+			"command": "build",
+			"args": [ "--features", "jaeger" ],
 			"problemMatcher": [
 				"$rustc"
 			],
