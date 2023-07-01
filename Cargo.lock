@@ -135,7 +135,7 @@ dependencies = [
  "chrono",
  "numerals",
  "paste",
- "strum",
+ "strum 0.24.1",
  "unicode-normalization",
  "unscanny",
 ]
@@ -777,7 +777,7 @@ dependencies = [
  "linked-hash-map",
  "paste",
  "regex",
- "strum",
+ "strum 0.24.1",
  "thiserror",
  "unic-langid",
  "unicode-segmentation",
@@ -1067,9 +1067,9 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.10.5"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
 dependencies = [
  "either",
 ]
@@ -2087,7 +2087,16 @@ version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "063e6045c0e62079840579a7e47a355ae92f60eb74daaf156fb1e84ba164e63f"
 dependencies = [
- "strum_macros",
+ "strum_macros 0.24.3",
+]
+
+[[package]]
+name = "strum"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "290d54ea6f91c969195bdbcd7442c8c2a2ba87da8bf60a7ee86a235d4bc1e125"
+dependencies = [
+ "strum_macros 0.25.0",
 ]
 
 [[package]]
@@ -2101,6 +2110,19 @@ dependencies = [
  "quote",
  "rustversion",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe9f3bd7d2e45dcc5e265fbb88d6513e4747d8ef9444cf01a533119bce28a157"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn 2.0.27",
 ]
 
 [[package]]
@@ -2658,7 +2680,7 @@ dependencies = [
  "elsa",
  "futures",
  "if_chain",
- "indexmap 1.9.3",
+ "indexmap 2.0.0",
  "itertools",
  "lazy_static",
  "memmap2 0.7.1",
@@ -2671,7 +2693,7 @@ dependencies = [
  "serde",
  "serde_json",
  "siphasher",
- "strum",
+ "strum 0.25.0",
  "tokio",
  "tower-lsp",
  "tracing",
