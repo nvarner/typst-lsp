@@ -410,6 +410,9 @@ name = "ecow"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c5c5051925c54d9a42c8652313b5358a7432eed209466b443ed5220431243a14"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "either"
@@ -1889,8 +1892,8 @@ checksum = "09eab8a83bff89ba2200bd4c59be45c7c787f988431b936099a5a266c957f2f9"
 
 [[package]]
 name = "svg2pdf"
-version = "0.4.1"
-source = "git+https://github.com/typst/svg2pdf#35f4bb87fb677473661c6d12919e01a6d64a716d"
+version = "0.5.0"
+source = "git+https://github.com/typst/svg2pdf#39daf9fc2ee84b62b0e3b174ff8c9017f655af6b"
 dependencies = [
  "image",
  "miniz_oxide",
@@ -2364,7 +2367,50 @@ dependencies = [
  "tiny-skia",
  "tracing",
  "ttf-parser",
- "typst-macros",
+ "typst-macros 0.5.0",
+ "unicode-general-category",
+ "unicode-ident",
+ "unicode-math-class",
+ "unicode-segmentation",
+ "unscanny",
+ "usvg",
+ "xmp-writer",
+]
+
+[[package]]
+name = "typst"
+version = "0.6.0"
+source = "git+https://github.com/typst/typst.git?tag=v0.6.0#2dfd44fedd99ab9414c17f358179e1c37e953f30"
+dependencies = [
+ "bitflags 2.3.1",
+ "bytemuck",
+ "comemo",
+ "ecow",
+ "flate2",
+ "fontdb",
+ "if_chain",
+ "image",
+ "indexmap",
+ "log",
+ "miniz_oxide",
+ "once_cell",
+ "pdf-writer",
+ "pixglyph",
+ "regex",
+ "resvg",
+ "roxmltree",
+ "rustybuzz",
+ "serde",
+ "siphasher",
+ "stacker",
+ "subsetter",
+ "svg2pdf",
+ "time",
+ "tiny-skia",
+ "toml",
+ "tracing",
+ "ttf-parser",
+ "typst-macros 0.6.0",
  "unicode-general-category",
  "unicode-ident",
  "unicode-math-class",
@@ -2376,8 +2422,8 @@ dependencies = [
 
 [[package]]
 name = "typst-library"
-version = "0.5.0"
-source = "git+https://github.com/typst/typst.git?tag=v0.5.0#3a8b9cce471934031ba57c5972d194ac1d7d2a6c"
+version = "0.6.0"
+source = "git+https://github.com/typst/typst.git?tag=v0.6.0#2dfd44fedd99ab9414c17f358179e1c37e953f30"
 dependencies = [
  "az",
  "chinese-number",
@@ -2406,7 +2452,7 @@ dependencies = [
  "tracing",
  "ttf-parser",
  "typed-arena",
- "typst",
+ "typst 0.6.0",
  "unicode-bidi",
  "unicode-math-class",
  "unicode-script",
@@ -2443,7 +2489,7 @@ dependencies = [
  "tracing",
  "tracing-opentelemetry",
  "tracing-subscriber",
- "typst",
+ "typst 0.5.0",
  "typst-library",
  "walkdir",
 ]
@@ -2452,6 +2498,17 @@ dependencies = [
 name = "typst-macros"
 version = "0.5.0"
 source = "git+https://github.com/typst/typst.git?tag=v0.5.0#3a8b9cce471934031ba57c5972d194ac1d7d2a6c"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.18",
+]
+
+[[package]]
+name = "typst-macros"
+version = "0.6.0"
+source = "git+https://github.com/typst/typst.git?tag=v0.6.0#2dfd44fedd99ab9414c17f358179e1c37e953f30"
 dependencies = [
  "heck",
  "proc-macro2",
