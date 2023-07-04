@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use tower_lsp::lsp_types;
 
+pub mod clock;
 pub mod world;
 
 pub type LspUri = lsp_types::Url;
@@ -30,6 +31,8 @@ pub type TypstSourceError = typst::diag::SourceError;
 
 pub type TypstTooltip = typst::ide::Tooltip;
 pub type LspHoverContents = lsp_types::HoverContents;
+
+pub type TypstDatetime = typst::eval::Datetime;
 
 /// An LSP range with its associated encoding.
 pub struct LspRange {
