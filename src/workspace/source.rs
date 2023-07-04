@@ -2,22 +2,22 @@ use std::{fs, io};
 
 use tower_lsp::lsp_types::Url;
 use typst::diag::{FileError, FileResult};
-use typst::syntax::SourceId;
+use typst::file::FileId;
 
 use crate::lsp_typst_boundary::{lsp_to_typst, LspRange, TypstSource};
 
 /// Typst source file
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Source {
     inner: TypstSource,
 }
 
 impl Source {
-    pub fn new(id: SourceId, uri: &Url, text: String) -> anyhow::Result<Self> {
+    pub fn new(id: FileId, uri: &Url, text: String) -> anyhow::Result<Self> {
         let typst_path = lsp_to_typst::uri_to_path(uri)?;
 
         Ok(Self {
-            inner: TypstSource::new(id, &typst_path, text),
+            inner: TypstSource::new(id, text),
         })
     }
 

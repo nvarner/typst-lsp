@@ -9,6 +9,7 @@ use self::font_manager::FontManager;
 use self::resource_manager::ResourceManager;
 use self::source_manager::SourceManager;
 
+pub mod file_manager;
 pub mod font_manager;
 pub mod resource;
 pub mod resource_manager;

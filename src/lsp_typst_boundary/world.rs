@@ -1,36 +1,43 @@
 use std::path::{Path, PathBuf};
 
-use chrono::{Datelike, FixedOffset, Local, TimeZone, Timelike, Utc};
 use comemo::Prehashed;
 use tokio::sync::OwnedRwLockReadGuard;
-use typst::diag::{FileError, FileResult};
+use tracing::{error, warn};
+use typst::diag::{EcoString, FileError, FileResult};
 use typst::eval::{Datetime, Library};
+use typst::file::{FileId, PackageSpec};
 use typst::font::{Font, FontBook};
-use typst::syntax::SourceId;
-use typst::util::Buffer;
+use typst::util::Bytes;
 use typst::World;
 
+use crate::server::TypstServer;
 use crate::workspace::source::Source;
 use crate::workspace::Workspace;
 
+use super::clock::Now;
 use super::{typst_to_lsp, TypstPath, TypstSource};
 
+/// Short-lived struct to implement [`World`] for [`Workspace`]. It wraps a `Workspace` with a main
+/// file and exists for the lifetime of a Typst invocation.
 pub struct WorkspaceWorld {
     workspace: OwnedRwLockReadGuard<Workspace>,
-    main: SourceId,
+    main: FileId,
     root_path: Option<PathBuf>,
+    /// Current time. Will be cached lazily for consistency throughout a compilation.
+    now: Now,
 }
 
 impl WorkspaceWorld {
     pub fn new(
         workspace: OwnedRwLockReadGuard<Workspace>,
-        main: SourceId,
+        main: FileId,
         root_path: Option<PathBuf>,
     ) -> Self {
         Self {
             workspace,
             main,
             root_path,
+            now: Now::new(),
         }
     }
 
@@ -47,47 +54,34 @@ impl WorkspaceWorld {
 }
 
 impl World for WorkspaceWorld {
-    fn root(&self) -> &Path {
-        match &self.root_path {
-            Some(path) => path.as_ref(),
-            None => Path::new(""),
-        }
-    }
-
     fn library(&self) -> &Prehashed<Library> {
         let workspace = self.get_workspace();
         &workspace.typst_stdlib
-    }
-
-    fn main(&self) -> &TypstSource {
-        self.source(self.main)
-    }
-
-    fn resolve(&self, typst_path: &TypstPath) -> FileResult<SourceId> {
-        let lsp_uri = typst_to_lsp::path_to_uri(typst_path)
-            .map_err(|_| FileError::NotFound(typst_path.to_owned()))?;
-        self.get_workspace().sources.get_id_by_uri(lsp_uri)
-    }
-
-    fn source(&self, id: SourceId) -> &TypstSource {
-        let lsp_source = self
-            .get_workspace()
-            .sources
-            .get_source_by_id(id)
-            .expect("source should have been cached by `resolve`, so won't cause an error");
-        lsp_source.as_ref()
     }
 
     fn book(&self) -> &Prehashed<FontBook> {
         self.get_workspace().fonts.book()
     }
 
-    fn font(&self, id: usize) -> Option<Font> {
-        let mut resources = self.get_workspace().resources.write();
-        self.get_workspace().fonts.font(id, &mut resources)
+    fn main(&self) -> TypstSource {
+        match self.source(self.main) {
+            Ok(main) => main,
+            Err(err) => {
+                error!(
+                    "this is a bug: failed to get main with id {} with error {err}",
+                    self.main
+                );
+                warn!("returning fake main file");
+                TypstSource::detached("")
+            }
+        }
     }
 
-    fn file(&self, typst_path: &TypstPath) -> FileResult<Buffer> {
+    fn source(&self, id: FileId) -> FileResult<TypstSource> {
+        self.get_workspace().sources.get_source_by_id(id).as_deref()
+    }
+
+    fn file(&self, id: FileId) -> FileResult<Bytes> {
         let lsp_uri = typst_to_lsp::path_to_uri(typst_path)
             .map_err(|_| FileError::NotFound(typst_path.to_owned()))?;
         let mut resources = self.get_workspace().resources.write();
@@ -95,81 +89,16 @@ impl World for WorkspaceWorld {
         Ok(lsp_resource.into())
     }
 
+    fn font(&self, id: usize) -> Option<Font> {
+        let mut resources = self.get_workspace().resources.write();
+        self.get_workspace().fonts.font(id, &mut resources)
+    }
+
     fn today(&self, offset: Option<i64>) -> Option<Datetime> {
-        let tz = match offset {
-            Some(offset) => TypstTz::from_offset(offset)?,
-            None => TypstTz::local(),
-        };
-
-        let datetime = Utc::now().with_timezone(&tz).naive_local();
-
-        Datetime::from_ymd_hms(
-            datetime.year(),
-            datetime.month() as u8,
-            datetime.day() as u8,
-            datetime.hour() as u8,
-            datetime.minute() as u8,
-            datetime.second() as u8,
-        )
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-enum TypstTz {
-    Local(Local),
-    FixedOffset(FixedOffset),
-}
-
-impl TypstTz {
-    /// Create a timezone with given UTC offset in hours, if the offset is within bounds
-    pub fn from_offset(offset: i64) -> Option<Self> {
-        const SECS_PER_HOUR: i32 = 60 * 60;
-        FixedOffset::east_opt(offset as i32 * SECS_PER_HOUR).map(Self::FixedOffset)
+        self.now.with_typst_offset(offset)
     }
 
-    pub fn local() -> Self {
-        Self::Local(Local)
-    }
-}
-
-impl TimeZone for TypstTz {
-    type Offset = FixedOffset;
-
-    fn from_offset(offset: &Self::Offset) -> Self {
-        Self::FixedOffset(*offset)
-    }
-
-    fn offset_from_local_date(
-        &self,
-        local: &chrono::NaiveDate,
-    ) -> chrono::LocalResult<Self::Offset> {
-        match self {
-            Self::Local(inner) => inner.offset_from_local_date(local),
-            Self::FixedOffset(inner) => inner.offset_from_local_date(local),
-        }
-    }
-
-    fn offset_from_local_datetime(
-        &self,
-        local: &chrono::NaiveDateTime,
-    ) -> chrono::LocalResult<Self::Offset> {
-        match self {
-            Self::Local(inner) => inner.offset_from_local_datetime(local),
-            Self::FixedOffset(inner) => inner.offset_from_local_datetime(local),
-        }
-    }
-
-    fn offset_from_utc_date(&self, utc: &chrono::NaiveDate) -> Self::Offset {
-        match self {
-            Self::Local(inner) => inner.offset_from_utc_date(utc),
-            Self::FixedOffset(inner) => inner.offset_from_utc_date(utc),
-        }
-    }
-
-    fn offset_from_utc_datetime(&self, utc: &chrono::NaiveDateTime) -> Self::Offset {
-        match self {
-            Self::Local(inner) => inner.offset_from_utc_datetime(utc),
-            Self::FixedOffset(inner) => inner.offset_from_utc_datetime(utc),
-        }
+    fn packages(&self) -> &[(PackageSpec, Option<EcoString>)] {
+        &[]
     }
 }

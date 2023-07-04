@@ -2,13 +2,13 @@ use std::fs::File;
 use std::io::{self, Read};
 
 use tower_lsp::lsp_types::Url;
-use typst::util::Buffer;
+use typst::util::Bytes;
 
 /// Files used by Typst source code, like fonts or images
 #[derive(Debug, Clone)]
 pub struct Resource {
     // This is driven by the interface of Typst's `World` trait and `Font` struct
-    buffer: Buffer,
+    buffer: Bytes,
 }
 
 impl Resource {

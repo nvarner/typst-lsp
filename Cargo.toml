@@ -49,6 +49,6 @@ tracing-subscriber = { version = "0.3.17", default-features = false, features = 
     "registry",
     "fmt",
 ] }
-typst = { git = "https://github.com/typst/typst.git", tag = "v0.5.0" }
-typst-library = { git = "https://github.com/typst/typst.git", tag = "v0.5.0" }
+typst = { git = "https://github.com/typst/typst.git", tag = "v0.6.0" }
+typst-library = { git = "https://github.com/typst/typst.git", tag = "v0.6.0" }
 walkdir = "2.3"
