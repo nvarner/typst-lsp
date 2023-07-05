@@ -5,6 +5,7 @@ use comemo::Prehashed;
 use parking_lot::RwLock;
 use typst::eval::Library;
 
+use self::file_manager::FileManager;
 use self::font_manager::FontManager;
 use self::resource_manager::ResourceManager;
 use self::source_manager::SourceManager;
@@ -17,12 +18,18 @@ pub mod source;
 pub mod source_manager;
 
 pub struct Workspace {
-    pub sources: SourceManager,
+    files: FileManager,
     pub resources: RwLock<ResourceManager>,
 
     // Needed so that `Workspace` can implement Typst's `World` trait
     pub typst_stdlib: Prehashed<Library>,
     pub fonts: FontManager,
+}
+
+impl Workspace {
+    pub fn sources(&self) -> impl SourceManager + '_ {
+        &self.files
+    }
 }
 
 impl Default for Workspace {

@@ -12,6 +12,7 @@ use typst::World;
 
 use crate::server::TypstServer;
 use crate::workspace::source::Source;
+use crate::workspace::source_manager::SourceManager;
 use crate::workspace::Workspace;
 
 use super::clock::Now;
@@ -78,7 +79,7 @@ impl World for WorkspaceWorld {
     }
 
     fn source(&self, id: FileId) -> FileResult<TypstSource> {
-        self.get_workspace().sources.get_source_by_id(id).as_deref()
+        self.get_workspace().sources().source(id)
     }
 
     fn file(&self, id: FileId) -> FileResult<Bytes> {

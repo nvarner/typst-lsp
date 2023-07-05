@@ -1,78 +1,71 @@
+use std::fs;
+use std::path::PathBuf;
+
 use elsa::sync::FrozenMap;
 use once_cell::sync::OnceCell;
+use typst::diag::{FileError, FileResult};
 use typst::file::FileId;
-use typst::util::Bytes;
+use typst::util::{Bytes, PathExt};
 
-use crate::lsp_typst_boundary::TypstSource;
+use super::source_manager::CacheableSource;
 
+/// Implements the abstract Typst filesystem on the local filesystem. Finds project and package
+/// files locally, downloading packages as needed to ensure their availability.
 pub struct FileManager {
     files: FrozenMap<FileId, Box<File>>,
+    project_root: PathBuf,
 }
 
 impl FileManager {
-    pub fn get(&self, id: FileId) -> &File {
+    pub fn file(&self, id: FileId) -> &File {
         self.files
             .get(&id) // don't take write lock unnecessarily
             .unwrap_or_else(|| self.files.insert(id, Box::default()))
     }
 
-    pub fn get_mut(&mut self, id: FileId) -> &mut File {
+    pub fn get_file_mut(&mut self, id: FileId) -> &mut File {
         self.files.as_mut().entry(id).or_default()
+    }
+
+    pub fn read_bytes(&self, id: FileId) -> FileResult<Bytes> {
+        self.read_raw(id).map(Bytes::from)
+    }
+
+    pub fn read_raw(&self, id: FileId) -> FileResult<Vec<u8>> {
+        let path = self.resolve_path(id)?;
+        fs::read(&path).map_err(|err| FileError::from_io(err, &path))
+    }
+
+    fn resolve_path(&self, id: FileId) -> FileResult<PathBuf> {
+        match id.package() {
+            None => self
+                .project_root
+                .join_rooted(id.path())
+                .ok_or_else(|| FileError::NotFound(id.path().to_owned())),
+            Some(package) => todo!("packages not yet implemented"),
+        }
     }
 }
 
 #[derive(Default)]
 pub struct File {
-    source: CachableSource,
-    bytes: CachableBytes,
+    source: OnceCell<CacheableSource>,
+    bytes: OnceCell<Bytes>,
 }
 
 impl File {
-    fn from_source(source: CachableSource) -> Self {
+    fn from_source(source: CacheableSource) -> Self {
         Self {
-            source,
-            bytes: CachableBytes::empty(),
-        }
-    }
-}
-
-#[derive(Default)]
-enum CachableSource {
-    /// Cache has never been initialized for this source. This is used when a [`File`] is not
-    /// actually a source (e.g. for fonts).
-    #[default]
-    Uninit,
-    Open(TypstSource),
-    Closed(FileId, OnceCell<TypstSource>),
-}
-
-impl CachableSource {
-    pub fn closed(id: FileId) -> Self {
-        Self::Closed(id, OnceCell::new())
-    }
-
-    pub fn get_source(&self) -> Option<&TypstSource> {
-        match self {
-            Self::Uninit => None,
-            Self::Open(source) => Some(source),
-            Self::Closed(_, cell) => cell.get(),
+            source: OnceCell::with_value(source),
+            bytes: OnceCell::new(),
         }
     }
 
-    pub fn get_mut_source(&mut self) -> Option<&mut TypstSource> {
-        match self {
-            Self::Uninit => None,
-            Self::Open(source) => Some(source),
-            Self::Closed(_, cell) => cell.get_mut(),
-        }
+    pub fn cacheable_source(&self, id: FileId) -> &CacheableSource {
+        self.source.get_or_init(|| CacheableSource::closed(id))
     }
-}
 
-#[derive(Default)]
-struct CachableBytes(OnceCell<Bytes>);
-
-impl CachableBytes {
-    pub fn empty() -> Self {
-        Self::default()
+    pub fn as_bytes(&self, id: FileId, file_manager: &FileManager) -> FileResult<&Bytes> {
+        self.bytes.get_or_try_init(|| file_manager.read_bytes(id))
     }
 }
