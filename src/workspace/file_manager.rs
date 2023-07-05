@@ -11,6 +11,7 @@ use super::source_manager::CacheableSource;
 
 /// Implements the abstract Typst filesystem on the local filesystem. Finds project and package
 /// files locally, downloading packages as needed to ensure their availability.
+#[derive(Default)]
 pub struct FileManager {
     files: FrozenMap<FileId, Box<File>>,
     project_root: PathBuf,
@@ -65,7 +66,7 @@ impl File {
         self.source.get_or_init(|| CacheableSource::closed(id))
     }
 
-    pub fn as_bytes(&self, id: FileId, file_manager: &FileManager) -> FileResult<&Bytes> {
+    pub fn bytes(&self, id: FileId, file_manager: &FileManager) -> FileResult<&Bytes> {
         self.bytes.get_or_try_init(|| file_manager.read_bytes(id))
     }
 }

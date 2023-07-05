@@ -8,7 +8,7 @@ use tower_lsp::{jsonrpc, Client};
 use tracing::info;
 use tracing_subscriber::{reload, Registry};
 use typst::diag::FileResult;
-use typst::syntax::SourceId;
+use typst::file::FileId;
 
 use crate::config::{Config, ConstConfig};
 use crate::lsp_typst_boundary::world::WorkspaceWorld;
@@ -69,13 +69,9 @@ impl TypstServer {
         Ok(self.get_world_with_main_by_id(main_id).await)
     }
 
-    async fn get_world_with_main_by_id(&self, main: SourceId) -> WorkspaceWorld {
+    async fn get_world_with_main_by_id(&self, main: FileId) -> WorkspaceWorld {
         let config = self.config.read().await;
-        WorkspaceWorld::new(
-            Arc::clone(&self.workspace).read_owned().await,
-            main,
-            config.root_path.clone(),
-        )
+        WorkspaceWorld::new(Arc::clone(&self.workspace).read_owned().await, main)
     }
 
     #[tracing::instrument(skip(self))]

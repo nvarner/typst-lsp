@@ -1,45 +1,15 @@
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
+use typst::diag::FileResult;
+use typst::file::FileId;
+use typst::util::Bytes;
 
-use tower_lsp::lsp_types::Url;
-use typst::diag::{FileError, FileResult};
+use super::file_manager::FileManager;
 
-use super::resource::Resource;
-
-#[derive(Default, Debug)]
-pub struct ResourceManager {
-    resources: HashMap<Url, Option<Resource>>,
+pub trait ResourceManager {
+    fn resource(self, id: FileId) -> FileResult<Bytes>;
 }
 
-impl ResourceManager {
-    #[tracing::instrument(skip_all)]
-    pub fn clear(&mut self) {
-        self.resources.clear();
-    }
-
-    #[tracing::instrument(skip_all, fields(%uri))]
-    pub fn get_by_uri(&mut self, uri: Url) -> FileResult<Resource> {
-        match self.resources.entry(uri.clone()) {
-            Entry::Vacant(entry) => {
-                let resource = Resource::read_file(&uri).map_err(|_| FileError::Other)?;
-                let resource = entry.insert(Some(resource));
-                Ok(resource.as_mut().unwrap().clone())
-            }
-            Entry::Occupied(mut entry) => match entry.get_mut() {
-                Some(resource) => Ok(resource.clone()),
-                option @ None => {
-                    let resource = Resource::read_file(&uri).map_err(|_| FileError::Other)?;
-                    let resource = option.insert(resource);
-                    Ok(resource.clone())
-                }
-            },
-        }
-    }
-
-    #[tracing::instrument(skip_all, fields(%uri))]
-    pub fn invalidate(&mut self, uri: Url) {
-        self.resources
-            .entry(uri)
-            .and_modify(|option| *option = None);
+impl<'a> ResourceManager for &'a FileManager {
+    fn resource(self, id: FileId) -> FileResult<Bytes> {
+        self.file(id).bytes(id, self).cloned()
     }
 }

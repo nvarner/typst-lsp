@@ -1,43 +1,35 @@
-use std::path::{Path, PathBuf};
-
 use comemo::Prehashed;
 use tokio::sync::OwnedRwLockReadGuard;
 use tracing::{error, warn};
-use typst::diag::{EcoString, FileError, FileResult};
+use typst::diag::{EcoString, FileResult};
 use typst::eval::{Datetime, Library};
 use typst::file::{FileId, PackageSpec};
 use typst::font::{Font, FontBook};
 use typst::util::Bytes;
 use typst::World;
 
-use crate::server::TypstServer;
+use crate::workspace::resource_manager::ResourceManager;
 use crate::workspace::source::Source;
 use crate::workspace::source_manager::SourceManager;
 use crate::workspace::Workspace;
 
 use super::clock::Now;
-use super::{typst_to_lsp, TypstPath, TypstSource};
+use super::TypstSource;
 
 /// Short-lived struct to implement [`World`] for [`Workspace`]. It wraps a `Workspace` with a main
 /// file and exists for the lifetime of a Typst invocation.
 pub struct WorkspaceWorld {
     workspace: OwnedRwLockReadGuard<Workspace>,
     main: FileId,
-    root_path: Option<PathBuf>,
     /// Current time. Will be cached lazily for consistency throughout a compilation.
     now: Now,
 }
 
 impl WorkspaceWorld {
-    pub fn new(
-        workspace: OwnedRwLockReadGuard<Workspace>,
-        main: FileId,
-        root_path: Option<PathBuf>,
-    ) -> Self {
+    pub fn new(workspace: OwnedRwLockReadGuard<Workspace>, main: FileId) -> Self {
         Self {
             workspace,
             main,
-            root_path,
             now: Now::new(),
         }
     }
@@ -83,11 +75,7 @@ impl World for WorkspaceWorld {
     }
 
     fn file(&self, id: FileId) -> FileResult<Bytes> {
-        let lsp_uri = typst_to_lsp::path_to_uri(typst_path)
-            .map_err(|_| FileError::NotFound(typst_path.to_owned()))?;
-        let mut resources = self.get_workspace().resources.write();
-        let lsp_resource = resources.get_by_uri(lsp_uri)?;
-        Ok(lsp_resource.into())
+        self.get_workspace().resources().resource(id)
     }
 
     fn font(&self, id: usize) -> Option<Font> {
@@ -100,6 +88,7 @@ impl World for WorkspaceWorld {
     }
 
     fn packages(&self) -> &[(PackageSpec, Option<EcoString>)] {
+        // TODO: implement packages
         &[]
     }
 }
