@@ -1,18 +1,18 @@
 //! Derived from https://github.com/typst/typst/blob/main/cli/src/main.rs
 
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use anyhow::Context;
 use comemo::Prehashed;
 use memmap2::Mmap;
 use once_cell::sync::OnceCell;
-use tower_lsp::lsp_types::Url;
+use tracing::{error, warn};
+use typst::diag::{FileError, FileResult};
 use typst::font::{Font, FontBook, FontInfo};
-use typst::util::Buffer;
+use typst::util::Bytes;
 use walkdir::WalkDir;
 
-use super::resource_manager::ResourceManager;
+use super::file_manager::FileManager;
 
 /// Searches for fonts.
 pub struct FontManager {
@@ -30,31 +30,60 @@ impl FontManager {
         &self.book
     }
 
-    pub fn font(&self, id: usize, resource_manager: &mut ResourceManager) -> Option<Font> {
+    pub fn font(&self, id: usize) -> Option<Font> {
         let slot = self.fonts.get(id)?;
-        slot.get_font(resource_manager).as_ref().cloned().ok()
+        let font = slot.get_font().cloned();
+        match font {
+            Ok(font) => Some(font),
+            Err(err) => {
+                error!("failed to load font with id {id}: {err}");
+                None
+            }
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.fonts.iter_mut().for_each(|font| font.invalidate());
     }
 }
+
+// TODO: special handling for fonts that are resources (i.e. are in the project/in a package)?
 
 /// Holds details about the location of a font and lazily the font itself.
 struct FontSlot {
     /// If `None`, the font is embedded
-    uri: Option<Url>,
+    path: Option<PathBuf>,
     index: u32,
-    font: OnceCell<anyhow::Result<Font>>,
+    font: OnceCell<Font>,
 }
 
 impl FontSlot {
-    pub fn get_font(&self, resource_manager: &mut ResourceManager) -> &anyhow::Result<Font> {
-        self.font.get_or_init(|| self.init(resource_manager))
+    pub fn get_font(&self) -> FileResult<&Font> {
+        self.font.get_or_try_init(|| self.init())
     }
 
-    fn init(&self, resource_manager: &mut ResourceManager) -> anyhow::Result<Font> {
-        let uri = self.uri.as_ref().context("could not get font url")?;
-        let data = resource_manager
-            .get_by_uri(uri.clone())
-            .context("could not load font")?;
-        Font::new(data.into(), self.index).context("could not parse font")
+    fn init(&self) -> FileResult<Font> {
+        let path = self.path()?;
+        let data = FileManager::read_path_raw(path)?;
+
+        Font::new(data.into(), self.index).ok_or_else(|| {
+            warn!("failed to parse font from file {}", path.display());
+            FileError::Other
+        })
+    }
+
+    fn path(&self) -> FileResult<&Path> {
+        self.path.as_deref().ok_or_else(|| {
+            warn!("attempted to init font index {} without a path", self.index);
+            FileError::Other
+        })
+    }
+
+    pub fn invalidate(&mut self) {
+        // don't invalidate embedded fonts
+        if self.path.is_some() {
+            self.font.take();
+        }
     }
 }
 
@@ -82,13 +111,13 @@ impl Builder {
     /// Add fonts that are embedded in the binary.
     pub fn with_embedded(mut self) -> Self {
         let mut add = |bytes: &'static [u8]| {
-            let buffer = Buffer::from_static(bytes);
-            for (i, font) in Font::iter(buffer).enumerate() {
+            let bytes = Bytes::from_static(bytes);
+            for (i, font) in Font::iter(bytes).enumerate() {
                 self.book.push(font.info().clone());
                 self.fonts.push(FontSlot {
-                    uri: None,
+                    path: None,
                     index: i as u32,
-                    font: OnceCell::from(Ok(font)),
+                    font: OnceCell::with_value(font),
                 });
             }
         };
@@ -182,11 +211,9 @@ impl Builder {
         if let Ok(file) = File::open(&path) {
             if let Ok(mmap) = unsafe { Mmap::map(&file) } {
                 for (i, info) in FontInfo::iter(&mmap).enumerate() {
-                    let Ok(uri) = Url::from_file_path(&path) else { continue; };
-
                     self.book.push(info);
                     self.fonts.push(FontSlot {
-                        uri: Some(uri),
+                        path: Some(path),
                         index: i as u32,
                         font: OnceCell::new(),
                     });
