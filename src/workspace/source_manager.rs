@@ -1,30 +1,62 @@
 use std::mem;
 
-use elsa::sync::FrozenVec;
-use indexmap::IndexSet;
 use once_cell::sync::OnceCell;
-use parking_lot::RwLock;
 use tower_lsp::lsp_types::Url;
-use tracing::{info, trace};
-use typst::diag::FileResult;
-use typst::syntax::SourceId;
+use tracing::{info, trace, warn};
+use typst::diag::{FileError, FileResult};
+use typst::file::FileId;
 use walkdir::WalkDir;
 
-use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
+use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp, TypstSource};
 
+use super::file_manager::FileManager;
 use super::source::Source;
 
-/// Provides access to [`Source`] documents via [`SourceId`]s and [`Url`]s
+/// Provides access to [`Source`] documents via [`FileId`]s
 ///
 /// A document can be open or closed. "Open" and "closed" correspond to the document's reported
 /// state in the LSP client.
-#[derive(Default)]
-pub struct SourceManager {
-    ids: RwLock<IndexSet<Url>>,
-    sources: FrozenVec<Box<InnerSource>>,
+pub trait SourceManager {
+    fn source(self, id: FileId) -> FileResult<TypstSource>;
 }
 
-impl SourceManager {
+impl<'a> SourceManager for &'a FileManager {
+    fn source(self, id: FileId) -> FileResult<TypstSource> {
+        self.file(id).cacheable_source(id).read(self).cloned()
+    }
+}
+
+pub enum CacheableSource {
+    Open(TypstSource),
+    Closed(FileId, OnceCell<TypstSource>),
+}
+
+impl CacheableSource {
+    pub fn closed(id: FileId) -> Self {
+        Self::Closed(id, OnceCell::new())
+    }
+
+    /// Read the underlying source, or from cache if available
+    pub fn read<'a, 'b>(&'a self, file_manager: &'b FileManager) -> FileResult<&'a TypstSource> {
+        match self {
+            Self::Open(source) => Ok(source),
+            Self::Closed(id, cell) => {
+                cell.get_or_try_init(|| Self::read_from_file(*id, file_manager))
+            }
+        }
+    }
+
+    fn read_from_file(id: FileId, file_manager: &FileManager) -> FileResult<TypstSource> {
+        let raw = file_manager.read_raw(id)?;
+        let text = String::from_utf8(raw).map_err(|err| {
+            warn!("failed to convert raw bytes into UTF-8 string: {err}");
+            FileError::InvalidUtf8
+        })?;
+        Ok(TypstSource::new(id, text))
+    }
+}
+
+impl FileManager {
     /// Get the URIs of all sources which have been seen
     pub fn get_uris(&self) -> Vec<Url> {
         self.ids.read().iter().cloned().collect()
