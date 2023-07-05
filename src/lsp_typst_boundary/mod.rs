@@ -151,6 +151,7 @@ pub mod typst_to_lsp {
     use tower_lsp::lsp_types::{
         DiagnosticSeverity, InsertTextFormat, LanguageString, MarkedString,
     };
+    use tracing::error;
     use typst::World;
     use typst_library::prelude::EcoString;
 
@@ -259,12 +260,12 @@ pub mod typst_to_lsp {
         typst_error: &TypstSourceError,
         world: &WorkspaceWorld,
         const_config: &ConstConfig,
-    ) -> Option<(LspUri, LspDiagnostic)> {
+    ) -> anyhow::Result<(LspUri, LspDiagnostic)> {
         let typst_span = typst_error.span;
-        let typst_source = world.source(typst_span.source());
+        let typst_source = world.source(typst_span.id())?;
 
-        let typst_range = typst_source.range(typst_span);
-        let lsp_range = range(typst_range, typst_source, const_config.position_encoding);
+        let typst_range = typst_span.range(world);
+        let lsp_range = range(typst_range, &typst_source, const_config.position_encoding);
 
         let lsp_message = typst_error.message.to_string();
 
@@ -275,9 +276,9 @@ pub mod typst_to_lsp {
             ..Default::default()
         };
 
-        let uri = path_to_uri(typst_source.path()).ok()?;
+        let uri = path_to_uri(typst_source.id().path())?;
 
-        Some((uri, diagnostic))
+        Ok((uri, diagnostic))
     }
 
     pub fn source_errors_to_diagnostics<'a>(
@@ -287,9 +288,13 @@ pub mod typst_to_lsp {
     ) -> LspDiagnostics {
         errors
             .into_iter()
-            .filter_map(|error| {
-                typst_to_lsp::source_error_to_diagnostic(error, world, const_config)
+            .map(|error| source_error_to_diagnostic(error, world, const_config))
+            .inspect(|result| {
+                if let Err(err) = result {
+                    error!("could not convert Typst error to diagnostic: {err}");
+                }
             })
+            .filter_map(Result::ok)
             .into_group_map()
     }
 

@@ -53,7 +53,7 @@ impl World for WorkspaceWorld {
     }
 
     fn book(&self) -> &Prehashed<FontBook> {
-        self.get_workspace().fonts.book()
+        self.get_workspace().fonts().book()
     }
 
     fn main(&self) -> TypstSource {
@@ -79,8 +79,7 @@ impl World for WorkspaceWorld {
     }
 
     fn font(&self, id: usize) -> Option<Font> {
-        let mut resources = self.get_workspace().resources.write();
-        self.get_workspace().fonts.font(id, &mut resources)
+        self.get_workspace().fonts().font(id)
     }
 
     fn today(&self, offset: Option<i64>) -> Option<Datetime> {

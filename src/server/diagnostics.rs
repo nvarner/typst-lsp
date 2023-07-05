@@ -15,7 +15,7 @@ impl TypstServer {
         mut diagnostics: HashMap<Url, Vec<LspDiagnostic>>,
     ) {
         // Clear the previous diagnostics (could be done with the refresh notification when implemented by tower-lsp)
-        for uri in workspace.sources.get_uris() {
+        for uri in workspace.sources().get_uris() {
             diagnostics.entry(uri.clone()).or_insert_with(Vec::new);
         }
 

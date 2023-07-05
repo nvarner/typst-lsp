@@ -17,10 +17,10 @@ pub mod source_manager;
 
 pub struct Workspace {
     files: FileManager,
+    fonts: FontManager,
 
     // Needed so that `Workspace` can implement Typst's `World` trait
     pub typst_stdlib: Prehashed<Library>,
-    pub fonts: FontManager,
 }
 
 impl Workspace {
@@ -30,6 +30,15 @@ impl Workspace {
 
     pub fn resources(&self) -> impl ResourceManager + '_ {
         &self.files
+    }
+
+    pub fn fonts(&self) -> &FontManager {
+        &self.fonts
+    }
+
+    pub fn clear(&mut self) {
+        self.fonts.clear();
+        self.files.clear();
     }
 }
 

@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use elsa::sync::FrozenMap;
 use once_cell::sync::OnceCell;
@@ -34,7 +34,12 @@ impl FileManager {
 
     pub fn read_raw(&self, id: FileId) -> FileResult<Vec<u8>> {
         let path = self.resolve_path(id)?;
-        fs::read(&path).map_err(|err| FileError::from_io(err, &path))
+        Self::read_path_raw(&path)
+    }
+
+    /// Regular read from filesystem, returning a [`FileResult`] on failure
+    pub fn read_path_raw(path: &Path) -> FileResult<Vec<u8>> {
+        fs::read(&path).map_err(|err| FileError::from_io(err, path))
     }
 
     fn resolve_path(&self, id: FileId) -> FileResult<PathBuf> {
@@ -45,6 +50,13 @@ impl FileManager {
                 .ok_or_else(|| FileError::NotFound(id.path().to_owned())),
             Some(package) => todo!("packages not yet implemented"),
         }
+    }
+
+    pub fn clear(&mut self) {
+        self.files
+            .as_mut()
+            .values_mut()
+            .for_each(|file| file.invalidate());
     }
 }
 
@@ -68,5 +80,10 @@ impl File {
 
     pub fn bytes(&self, id: FileId, file_manager: &FileManager) -> FileResult<&Bytes> {
         self.bytes.get_or_try_init(|| file_manager.read_bytes(id))
+    }
+
+    pub fn invalidate(&mut self) {
+        self.source.take();
+        self.bytes.take();
     }
 }
