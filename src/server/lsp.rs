@@ -6,6 +6,7 @@ use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, LanguageServer};
 use tracing::{error, info, trace};
 use typst::ide::autocomplete;
+use typst::World;
 
 use crate::config::{
     get_config_registration, Config, ConstConfig, ExportPdfMode, SemanticTokensMode,
@@ -187,9 +188,9 @@ impl LanguageServer for TypstServer {
             .get_world_with_main(uri)
             .await
             .expect("source should be cached just after opening it");
-        let source = world.get_main();
+        let source = world.main();
 
-        self.on_source_changed(&world, &config, source).await;
+        self.on_source_changed(&world, &config, &source).await;
     }
 
     #[tracing::instrument(skip_all, fields(uri = %params.text_document.uri))]
@@ -221,9 +222,9 @@ impl LanguageServer for TypstServer {
 
         let config = self.config.read().await;
         let world = self.get_world_with_main(uri).await.unwrap();
-        let source = world.get_main();
+        let source = world.main();
 
-        self.on_source_changed(&world, &config, source).await;
+        self.on_source_changed(&world, &config, &source).await;
     }
 
     #[tracing::instrument(skip_all, fields(uri = %params.text_document.uri))]
@@ -232,10 +233,10 @@ impl LanguageServer for TypstServer {
 
         let config = self.config.read().await;
         let world = self.get_world_with_main(uri).await.unwrap();
-        let source = world.get_main();
+        let source = world.main();
 
         if config.export_pdf == ExportPdfMode::OnSave {
-            self.run_diagnostics_and_export(&world, source).await;
+            self.run_diagnostics_and_export(&world, &source).await;
         }
     }
 
@@ -290,9 +291,9 @@ impl LanguageServer for TypstServer {
         let position = params.text_document_position_params.position;
 
         let world = self.get_world_with_main(uri).await.unwrap();
-        let source = world.get_main();
+        let source = world.main();
 
-        Ok(self.get_hover(&world, source, position))
+        Ok(self.get_hover(&world, &source, position))
     }
 
     #[tracing::instrument(
@@ -314,15 +315,15 @@ impl LanguageServer for TypstServer {
             .unwrap_or(false);
 
         let world = self.get_world_with_main(uri).await.unwrap();
-        let source = world.get_main();
+        let source = world.main();
 
         let typst_offset = lsp_to_typst::position_to_offset(
             position,
             self.get_const_config().position_encoding,
-            source.as_ref(),
+            &source,
         );
 
-        let completions = autocomplete(&world, &[], source.as_ref(), typst_offset, explicit)
+        let completions = autocomplete(&world, &[], &source, typst_offset, explicit)
             .map(|(_, completions)| typst_to_lsp::completions(&completions).into());
         Ok(completions)
     }
@@ -342,9 +343,9 @@ impl LanguageServer for TypstServer {
         let position = params.text_document_position_params.position;
 
         let world = self.get_world_with_main(uri).await.unwrap();
-        let source = world.get_main();
+        let source = world.main();
 
-        Ok(self.get_signature_at_position(&world, source, position))
+        Ok(self.get_signature_at_position(&world, &source, position))
     }
 
     #[tracing::instrument(skip_all, fields(uri = %params.text_document.uri))]
@@ -482,8 +483,8 @@ impl LanguageServer for TypstServer {
         let positions = params.positions;
 
         let world = self.get_world_with_main(uri).await.unwrap();
-        let source = world.get_main();
+        let source = world.main();
 
-        Ok(self.get_selection_range(source, &positions))
+        Ok(self.get_selection_range(&source, &positions))
     }
 }

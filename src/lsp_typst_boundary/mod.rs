@@ -1,8 +1,7 @@
 //! Conversions between Typst and LSP types and representations
 
-use std::collections::HashMap;
-
 use tower_lsp::lsp_types;
+use typst::syntax::Source;
 
 pub mod clock;
 pub mod world;
@@ -10,8 +9,6 @@ pub mod world;
 pub type LspUri = lsp_types::Url;
 pub type TypstPath = std::path::Path;
 pub type TypstPathOwned = std::path::PathBuf;
-
-pub type TypstSource = typst::syntax::Source;
 
 pub type LspPosition = lsp_types::Position;
 /// The interpretation of an `LspCharacterOffset` depends on the `LspPositionEncoding`
@@ -24,10 +21,6 @@ pub type TypstOffset = usize;
 /// provides this range with that encoding.
 pub type LspRawRange = lsp_types::Range;
 pub type TypstRange = std::ops::Range<usize>;
-
-pub type LspDiagnostic = lsp_types::Diagnostic;
-pub type LspDiagnostics = HashMap<LspUri, Vec<LspDiagnostic>>;
-pub type TypstSourceError = typst::diag::SourceError;
 
 pub type TypstTooltip = typst::ide::Tooltip;
 pub type LspHoverContents = lsp_types::HoverContents;
@@ -47,6 +40,10 @@ impl LspRange {
             encoding,
         }
     }
+
+    pub fn to_range_on(self, source: &Source) -> TypstRange {
+        lsp_to_typst::range(&self, source)
+    }
 }
 
 pub type LspCompletion = lsp_types::CompletionItem;
@@ -57,6 +54,7 @@ pub type TypstCompletionKind = typst::ide::CompletionKind;
 pub mod lsp_to_typst {
     use anyhow::Context;
     use typst::file::FileId;
+    use typst::syntax::Source;
 
     use super::*;
 
@@ -91,7 +89,7 @@ pub mod lsp_to_typst {
     pub fn position_to_offset(
         lsp_position: LspPosition,
         lsp_position_encoding: LspPositionEncoding,
-        typst_source: &TypstSource,
+        typst_source: &Source,
     ) -> TypstOffset {
         match lsp_position_encoding {
             LspPositionEncoding::Utf8 => {
@@ -130,7 +128,7 @@ pub mod lsp_to_typst {
         }
     }
 
-    pub fn range(lsp_range: &LspRange, source: &TypstSource) -> TypstRange {
+    pub fn range(lsp_range: &LspRange, source: &Source) -> TypstRange {
         let lsp_start = lsp_range.raw_range.start;
         let typst_start = position_to_offset(lsp_start, lsp_range.encoding, source);
 
@@ -149,13 +147,16 @@ pub mod typst_to_lsp {
     use lazy_static::lazy_static;
     use regex::{Captures, Regex};
     use tower_lsp::lsp_types::{
-        DiagnosticSeverity, InsertTextFormat, LanguageString, MarkedString,
+        Diagnostic, DiagnosticSeverity, InsertTextFormat, LanguageString, MarkedString,
     };
     use tracing::error;
+    use typst::diag::SourceError;
+    use typst::syntax::Source;
     use typst::World;
     use typst_library::prelude::EcoString;
 
     use crate::config::ConstConfig;
+    use crate::server::diagnostics::DiagnosticsMap;
 
     use super::world::WorkspaceWorld;
     use super::*;
@@ -170,7 +171,7 @@ pub mod typst_to_lsp {
     pub fn offset_to_position(
         typst_offset: TypstOffset,
         lsp_position_encoding: LspPositionEncoding,
-        typst_source: &TypstSource,
+        typst_source: &Source,
     ) -> LspPosition {
         let line_index = typst_source.byte_to_line(typst_offset).unwrap();
         let column_index = typst_source.byte_to_column(typst_offset).unwrap();
@@ -200,7 +201,7 @@ pub mod typst_to_lsp {
 
     pub fn range(
         typst_range: TypstRange,
-        typst_source: &TypstSource,
+        typst_source: &Source,
         lsp_position_encoding: LspPositionEncoding,
     ) -> LspRange {
         let typst_start = typst_range.start;
@@ -257,10 +258,10 @@ pub mod typst_to_lsp {
     }
 
     pub fn source_error_to_diagnostic(
-        typst_error: &TypstSourceError,
+        typst_error: &SourceError,
         world: &WorkspaceWorld,
         const_config: &ConstConfig,
-    ) -> anyhow::Result<(LspUri, LspDiagnostic)> {
+    ) -> anyhow::Result<(LspUri, Diagnostic)> {
         let typst_span = typst_error.span;
         let typst_source = world.source(typst_span.id())?;
 
@@ -269,7 +270,7 @@ pub mod typst_to_lsp {
 
         let lsp_message = typst_error.message.to_string();
 
-        let diagnostic = LspDiagnostic {
+        let diagnostic = Diagnostic {
             range: lsp_range.raw_range,
             severity: Some(DiagnosticSeverity::ERROR),
             message: lsp_message,
@@ -282,10 +283,10 @@ pub mod typst_to_lsp {
     }
 
     pub fn source_errors_to_diagnostics<'a>(
-        errors: impl IntoIterator<Item = &'a TypstSourceError>,
+        errors: impl IntoIterator<Item = &'a SourceError>,
         world: &WorkspaceWorld,
         const_config: &ConstConfig,
-    ) -> LspDiagnostics {
+    ) -> DiagnosticsMap {
         errors
             .into_iter()
             .map(|error| source_error_to_diagnostic(error, world, const_config))
@@ -312,6 +313,8 @@ pub mod typst_to_lsp {
 
 #[cfg(test)]
 mod test {
+    use typst::syntax::Source;
+
     use crate::config::PositionEncoding;
     use crate::lsp_typst_boundary::lsp_to_typst;
 
@@ -321,7 +324,7 @@ mod test {
 
     #[test]
     fn utf16_position_to_utf8_offset() {
-        let source = TypstSource::detached(ENCODING_TEST_STRING);
+        let source = Source::detached(ENCODING_TEST_STRING);
 
         let start = LspPosition {
             line: 0,
@@ -363,7 +366,7 @@ mod test {
 
     #[test]
     fn utf8_offset_to_utf16_position() {
-        let source = TypstSource::detached(ENCODING_TEST_STRING);
+        let source = Source::detached(ENCODING_TEST_STRING);
 
         let start = 0;
         let emoji = 5;

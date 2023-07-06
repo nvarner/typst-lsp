@@ -1,16 +1,14 @@
 use std::collections::HashMap;
 
 use futures::future::join_all;
-use futures::Future;
-use tower_lsp::lsp_types::Url;
+use tower_lsp::lsp_types::{Diagnostic, Url};
 use tower_lsp::Client;
 
-use crate::lsp_typst_boundary::LspDiagnostic;
 use crate::workspace::Workspace;
 
 use super::TypstServer;
 
-pub type DiagnosticsMap = HashMap<Url, Vec<LspDiagnostic>>;
+pub type DiagnosticsMap = HashMap<Url, Vec<Diagnostic>>;
 
 impl TypstServer {
     pub async fn update_all_diagnostics(&self, workspace: &Workspace, diagnostics: DiagnosticsMap) {
@@ -47,7 +45,7 @@ impl DiagnosticsManager {
     fn should_clear<'a>(
         &'a self,
         next_diagnostics: &'a DiagnosticsMap,
-    ) -> impl Iterator<Item = (Url, Vec<LspDiagnostic>)> + 'a {
+    ) -> impl Iterator<Item = (Url, Vec<Diagnostic>)> + 'a {
         self.last_published_for
             .iter()
             .filter(|uri| !next_diagnostics.contains_key(uri))
@@ -61,14 +59,10 @@ impl DiagnosticsManager {
             .extend(next_diagnostics.keys().cloned());
     }
 
-    async fn push(&self, diagnostics: impl IntoIterator<Item = (Url, Vec<LspDiagnostic>)>) {
-        let futures = diagnostics
-            .into_iter()
-            .map(|(uri, diags)| self.prepare_future(uri, diags));
-        join_all(futures).await;
-    }
+    async fn push(&self, diagnostics: impl IntoIterator<Item = (Url, Vec<Diagnostic>)>) {
+        let prepare_future = |(uri, diags)| self.client.publish_diagnostics(uri, diags, None);
 
-    fn prepare_future(&self, uri: Url, diagnostics: Vec<LspDiagnostic>) -> impl Future + '_ {
-        self.client.publish_diagnostics(uri, diagnostics, None)
+        let futures = diagnostics.into_iter().map(prepare_future);
+        join_all(futures).await;
     }
 }

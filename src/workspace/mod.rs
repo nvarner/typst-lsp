@@ -12,7 +12,6 @@ use self::source_manager::SourceManager;
 pub mod file_manager;
 pub mod font_manager;
 pub mod resource_manager;
-pub mod source;
 pub mod source_manager;
 
 pub struct Workspace {

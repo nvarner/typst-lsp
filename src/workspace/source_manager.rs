@@ -5,30 +5,30 @@ use tower_lsp::lsp_types::Url;
 use tracing::{info, trace, warn};
 use typst::diag::{FileError, FileResult};
 use typst::file::FileId;
+use typst::syntax::Source;
 use walkdir::WalkDir;
 
-use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp, TypstSource};
+use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
 
 use super::file_manager::FileManager;
-use super::source::Source;
 
 /// Provides access to [`Source`] documents via [`FileId`]s
 ///
 /// A document can be open or closed. "Open" and "closed" correspond to the document's reported
 /// state in the LSP client.
 pub trait SourceManager {
-    fn source(self, id: FileId) -> FileResult<TypstSource>;
+    fn source(self, id: FileId) -> FileResult<Source>;
 }
 
 impl<'a> SourceManager for &'a FileManager {
-    fn source(self, id: FileId) -> FileResult<TypstSource> {
+    fn source(self, id: FileId) -> FileResult<Source> {
         self.file(id).cacheable_source(id).read(self).cloned()
     }
 }
 
 pub enum CacheableSource {
-    Open(TypstSource),
-    Closed(FileId, OnceCell<TypstSource>),
+    Open(Source),
+    Closed(FileId, OnceCell<Source>),
 }
 
 impl CacheableSource {
@@ -37,7 +37,7 @@ impl CacheableSource {
     }
 
     /// Read the underlying source, or from cache if available
-    pub fn read<'a, 'b>(&'a self, file_manager: &'b FileManager) -> FileResult<&'a TypstSource> {
+    pub fn read<'a, 'b>(&'a self, file_manager: &'b FileManager) -> FileResult<&'a Source> {
         match self {
             Self::Open(source) => Ok(source),
             Self::Closed(id, cell) => {
@@ -46,13 +46,13 @@ impl CacheableSource {
         }
     }
 
-    fn read_from_file(id: FileId, file_manager: &FileManager) -> FileResult<TypstSource> {
+    fn read_from_file(id: FileId, file_manager: &FileManager) -> FileResult<Source> {
         let raw = file_manager.read_raw(id)?;
         let text = String::from_utf8(raw).map_err(|err| {
             warn!("failed to convert raw bytes into UTF-8 string: {err}");
             FileError::InvalidUtf8
         })?;
-        Ok(TypstSource::new(id, text))
+        Ok(Source::new(id, text))
     }
 }
 
