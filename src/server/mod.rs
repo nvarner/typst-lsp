@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use itertools::Itertools;
 use once_cell::sync::OnceCell;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 use tower_lsp::lsp_types::{InitializeParams, Url};
 use tower_lsp::{jsonrpc, Client};
 use tracing::info;
@@ -15,6 +15,7 @@ use crate::lsp_typst_boundary::world::WorkspaceWorld;
 use crate::server::semantic_tokens::SemanticTokenCache;
 use crate::workspace::Workspace;
 
+use self::diagnostics::DiagnosticsManager;
 use self::log::LspLayer;
 
 pub mod command;
@@ -37,6 +38,7 @@ pub struct TypstServer {
     config: Arc<RwLock<Config>>,
     const_config: OnceCell<ConstConfig>,
     semantic_tokens_delta_cache: Arc<parking_lot::RwLock<SemanticTokenCache>>,
+    diagnostics: Mutex<DiagnosticsManager>,
     lsp_tracing_layer_handle: reload::Handle<Option<LspLayer>, Registry>,
 }
 
@@ -46,12 +48,13 @@ impl TypstServer {
         lsp_tracing_layer_handle: reload::Handle<Option<LspLayer>, Registry>,
     ) -> Self {
         Self {
-            client,
             workspace: Default::default(),
             config: Default::default(),
             const_config: Default::default(),
             semantic_tokens_delta_cache: Default::default(),
+            diagnostics: Mutex::new(DiagnosticsManager::new(client.clone())),
             lsp_tracing_layer_handle,
+            client,
         }
     }
 
