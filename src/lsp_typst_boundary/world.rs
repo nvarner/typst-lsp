@@ -5,16 +5,15 @@ use typst::diag::{EcoString, FileResult};
 use typst::eval::{Datetime, Library};
 use typst::file::{FileId, PackageSpec};
 use typst::font::{Font, FontBook};
+use typst::syntax::Source;
 use typst::util::Bytes;
 use typst::World;
 
 use crate::workspace::resource_manager::ResourceManager;
-use crate::workspace::source::Source;
 use crate::workspace::source_manager::SourceManager;
 use crate::workspace::Workspace;
 
 use super::clock::Now;
-use super::TypstSource;
 
 /// Short-lived struct to implement [`World`] for [`Workspace`]. It wraps a `Workspace` with a main
 /// file and exists for the lifetime of a Typst invocation.
@@ -37,13 +36,6 @@ impl WorkspaceWorld {
     pub fn get_workspace(&self) -> &OwnedRwLockReadGuard<Workspace> {
         &self.workspace
     }
-
-    pub fn get_main(&self) -> &Source {
-        self.get_workspace()
-            .sources
-            .get_source_by_id(self.main)
-            .expect("main should be cached and so won't cause errors")
-    }
 }
 
 impl World for WorkspaceWorld {
@@ -56,7 +48,7 @@ impl World for WorkspaceWorld {
         self.get_workspace().fonts().book()
     }
 
-    fn main(&self) -> TypstSource {
+    fn main(&self) -> Source {
         match self.source(self.main) {
             Ok(main) => main,
             Err(err) => {
@@ -65,12 +57,12 @@ impl World for WorkspaceWorld {
                     self.main
                 );
                 warn!("returning fake main file");
-                TypstSource::detached("")
+                Source::detached("")
             }
         }
     }
 
-    fn source(&self, id: FileId) -> FileResult<TypstSource> {
+    fn source(&self, id: FileId) -> FileResult<Source> {
         self.get_workspace().sources().source(id)
     }
 

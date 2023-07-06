@@ -3,6 +3,7 @@ use tower_lsp::{
     jsonrpc::{Error, Result},
     lsp_types::Url,
 };
+use typst::World;
 
 use super::TypstServer;
 
@@ -52,9 +53,9 @@ impl TypstServer {
             .map_err(|_| Error::invalid_params("Parameter is not a valid URI"))?;
 
         let world = self.get_world_with_main(file_uri).await.unwrap();
-        let source = world.get_main();
+        let source = world.main();
 
-        self.run_export(&world, source).await;
+        self.run_export(&world, &source).await;
 
         Ok(())
     }

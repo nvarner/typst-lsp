@@ -1,10 +1,10 @@
 use tower_lsp::lsp_types::{Position, SemanticToken};
+use typst::syntax::Source;
 use typst_library::prelude::EcoString;
 
 use crate::config::PositionEncoding;
 use crate::ext::{PositionExt, StrExt};
 use crate::lsp_typst_boundary::typst_to_lsp;
-use crate::workspace::source::Source;
 
 use super::Token;
 
@@ -27,7 +27,7 @@ fn encode_token(
     source: &Source,
     encoding: PositionEncoding,
 ) -> (SemanticToken, EcoString, Position) {
-    let position = typst_to_lsp::offset_to_position(token.offset, encoding, source.as_ref());
+    let position = typst_to_lsp::offset_to_position(token.offset, encoding, source);
     let delta = last_position.delta(&position);
 
     let length = token.source.as_str().encoded_len(encoding);

@@ -1,9 +1,9 @@
 use tower_lsp::lsp_types::TextDocumentContentChangeEvent;
+use typst::syntax::Source;
 
 use crate::config::{Config, ExportPdfMode};
 use crate::lsp_typst_boundary::world::WorkspaceWorld;
 use crate::lsp_typst_boundary::LspRange;
-use crate::workspace::source::Source;
 
 use super::TypstServer;
 
@@ -17,9 +17,10 @@ impl TypstServer {
         let replacement = change.text;
 
         match change.range {
-            Some(range) => {
-                let range = LspRange::new(range, self.get_const_config().position_encoding);
-                source.edit(&range, &replacement);
+            Some(lsp_range) => {
+                let range = LspRange::new(lsp_range, self.get_const_config().position_encoding)
+                    .to_range_on(source);
+                source.edit(range, &replacement);
             }
             None => source.replace(replacement),
         }

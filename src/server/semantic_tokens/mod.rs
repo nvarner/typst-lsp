@@ -4,10 +4,8 @@ use tower_lsp::lsp_types::{
     Registration, SemanticToken, SemanticTokensEdit, SemanticTokensFullOptions,
     SemanticTokensLegend, SemanticTokensOptions, Unregistration,
 };
-use typst::syntax::{ast, LinkedNode, SyntaxKind};
+use typst::syntax::{ast, LinkedNode, Source, SyntaxKind};
 use typst_library::prelude::EcoString;
-
-use crate::workspace::source::Source;
 
 use self::delta::token_delta;
 use self::modifier_set::ModifierSet;
@@ -64,7 +62,7 @@ impl TypstServer {
     pub fn get_semantic_tokens_full(&self, source: &Source) -> (Vec<SemanticToken>, String) {
         let encoding = self.get_const_config().position_encoding;
 
-        let root = LinkedNode::new(source.as_ref().root());
+        let root = LinkedNode::new(source.root());
 
         let tokens = tokenize_tree(&root, ModifierSet::empty());
         let encoded_tokens = encode_tokens(tokens, source, encoding);

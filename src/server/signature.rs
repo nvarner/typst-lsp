@@ -4,13 +4,12 @@ use tower_lsp::lsp_types::{
     SignatureInformation,
 };
 use typst::eval::{CastInfo, FuncInfo, Scope, Value};
-use typst::syntax::{ast, LinkedNode, SyntaxKind};
+use typst::syntax::{ast, LinkedNode, Source, SyntaxKind};
 use typst::World;
 
 use crate::ext::StrExt;
 use crate::lsp_typst_boundary::world::WorkspaceWorld;
 use crate::lsp_typst_boundary::{lsp_to_typst, LspCharacterOffset, LspPosition, TypstOffset};
-use crate::workspace::source::Source;
 
 use super::TypstServer;
 
@@ -26,7 +25,7 @@ impl TypstServer {
         let typst_offset = lsp_to_typst::position_to_offset(
             position,
             self.get_const_config().position_encoding,
-            source.as_ref(),
+            source,
         );
 
         self.get_signature_info_at_offset(source, typst_offset, global)
@@ -64,7 +63,7 @@ impl TypstServer {
         source: &'a Source,
         typst_offset: TypstOffset,
     ) -> Option<LinkedNode<'a>> {
-        LinkedNode::new(source.as_ref().root()).leaf_at(typst_offset)
+        LinkedNode::new(source.root()).leaf_at(typst_offset)
     }
 
     pub fn get_surrounding_function(&self, leaf: &LinkedNode) -> Option<(ast::Ident, ast::Args)> {

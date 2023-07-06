@@ -1,10 +1,9 @@
 use tower_lsp::lsp_types::Hover;
 use typst::ide::tooltip;
-use typst::syntax::LinkedNode;
+use typst::syntax::{LinkedNode, Source};
 
 use crate::lsp_typst_boundary::world::WorkspaceWorld;
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp, LspPosition};
-use crate::workspace::source::Source;
 
 use super::TypstServer;
 
@@ -18,16 +17,16 @@ impl TypstServer {
         let typst_offset = lsp_to_typst::position_to_offset(
             position,
             self.get_const_config().position_encoding,
-            source.as_ref(),
+            source,
         );
 
-        let typst_tooltip = tooltip(world, &[], source.as_ref(), typst_offset)?;
+        let typst_tooltip = tooltip(world, &[], source, typst_offset)?;
         let lsp_tooltip = typst_to_lsp::tooltip(&typst_tooltip);
 
-        let typst_hovered_node = LinkedNode::new(source.as_ref().root()).leaf_at(typst_offset)?;
+        let typst_hovered_node = LinkedNode::new(source.root()).leaf_at(typst_offset)?;
         let lsp_hovered_range = typst_to_lsp::range(
             typst_hovered_node.range(),
-            source.as_ref(),
+            source,
             self.get_const_config().position_encoding,
         );
 
