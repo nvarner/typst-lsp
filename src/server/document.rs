@@ -49,8 +49,7 @@ impl TypstServer {
     pub async fn run_diagnostics_and_export(&self, world: &WorkspaceWorld, source: &Source) {
         let (document, diagnostics) = self.compile_source(world);
 
-        self.update_all_diagnostics(world.get_workspace(), diagnostics)
-            .await;
+        self.update_all_diagnostics(diagnostics).await;
         if let Some(document) = document {
             self.export_pdf(source, &document).await;
         }
@@ -59,7 +58,6 @@ impl TypstServer {
     pub async fn run_diagnostics(&self, world: &WorkspaceWorld, source: &Source) {
         let (_, diagnostics) = self.eval_source(world, source);
 
-        self.update_all_diagnostics(world.get_workspace(), diagnostics)
-            .await;
+        self.update_all_diagnostics(diagnostics).await;
     }
 }

@@ -4,14 +4,12 @@ use futures::future::join_all;
 use tower_lsp::lsp_types::{Diagnostic, Url};
 use tower_lsp::Client;
 
-use crate::workspace::Workspace;
-
 use super::TypstServer;
 
 pub type DiagnosticsMap = HashMap<Url, Vec<Diagnostic>>;
 
 impl TypstServer {
-    pub async fn update_all_diagnostics(&self, workspace: &Workspace, diagnostics: DiagnosticsMap) {
+    pub async fn update_all_diagnostics(&self, diagnostics: DiagnosticsMap) {
         self.diagnostics.lock().await.publish(diagnostics).await;
     }
 }

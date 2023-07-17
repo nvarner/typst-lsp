@@ -65,7 +65,7 @@ pub mod lsp_to_typst {
         Ok(FileId::new(None, &project_relative))
     }
 
-    fn uri_to_path(lsp_uri: &LspUri) -> anyhow::Result<TypstPathOwned> {
+    pub fn uri_to_path(lsp_uri: &LspUri) -> anyhow::Result<TypstPathOwned> {
         lsp_uri
             .to_file_path()
             .map_err(|()| anyhow::anyhow!("could not get path for URI {lsp_uri}"))
@@ -292,7 +292,7 @@ pub mod typst_to_lsp {
             .map(|error| source_error_to_diagnostic(error, world, const_config))
             .inspect(|result| {
                 if let Err(err) = result {
-                    error!("could not convert Typst error to diagnostic: {err}");
+                    error!(?err, "could not convert Typst error to diagnostic");
                 }
             })
             .filter_map(Result::ok)
