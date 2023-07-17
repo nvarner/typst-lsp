@@ -310,7 +310,7 @@
         "@types/node": "^20.3.0",
         "@types/vscode": "~1.71.0",
         "@typescript-eslint/eslint-plugin": "^5.59.9",
-        "@typescript-eslint/parser": "^5.59.9",
+        "@typescript-eslint/parser": "^5.62.0",
         "@vscode/vsce": "^2.19.0",
         "ovsx": "^0.8.1",
         "esbuild": "^0.18.0",
