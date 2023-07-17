@@ -5,14 +5,15 @@ use once_cell::sync::OnceCell;
 use tokio::sync::{Mutex, RwLock};
 use tower_lsp::lsp_types::{InitializeParams, Url};
 use tower_lsp::{jsonrpc, Client};
-use tracing::info;
+use tracing::{error, info};
 use tracing_subscriber::{reload, Registry};
-use typst::diag::FileResult;
+use typst::diag::{FileError, FileResult};
 use typst::file::FileId;
 
 use crate::config::{Config, ConstConfig};
 use crate::lsp_typst_boundary::world::WorkspaceWorld;
 use crate::server::semantic_tokens::SemanticTokenCache;
+use crate::workspace::source_manager::SourceManager;
 use crate::workspace::Workspace;
 
 use self::diagnostics::DiagnosticsManager;
@@ -66,21 +67,22 @@ impl TypstServer {
 
     pub async fn get_world_with_main(&self, main_uri: Url) -> FileResult<WorkspaceWorld> {
         let workspace = self.workspace.read().await;
-        let main_id = workspace.sources.get_id_by_uri(main_uri)?;
+        let main_id = workspace.id_for(&main_uri).map_err(|err| {
+            error!(%err, %main_uri, "couldn't get id for main URI");
+            FileError::Other
+        })?;
         drop(workspace);
 
         Ok(self.get_world_with_main_by_id(main_id).await)
     }
 
     async fn get_world_with_main_by_id(&self, main: FileId) -> WorkspaceWorld {
-        let config = self.config.read().await;
         WorkspaceWorld::new(Arc::clone(&self.workspace).read_owned().await, main)
     }
 
     #[tracing::instrument(skip(self))]
     pub async fn register_workspace_files(&self, params: &InitializeParams) -> jsonrpc::Result<()> {
-        let workspace = self.workspace.read().await;
-        let source_manager = &workspace.sources;
+        let mut workspace = self.workspace.write().await;
 
         let workspace_uris = params
             .workspace_folders
@@ -93,9 +95,14 @@ impl TypstServer {
         let uris_to_register = workspace_uris.chain(root_uri).unique_by(|x| *x);
 
         for uri in uris_to_register {
-            source_manager.register_workspace_files(uri).map_err(|e| {
-                jsonrpc::Error::invalid_params(format!("failed to register workspace files: {e:#}"))
-            })?;
+            workspace
+                .source_manager_mut()
+                .register_workspace_files(uri)
+                .map_err(|e| {
+                    jsonrpc::Error::invalid_params(format!(
+                        "failed to register workspace files: {e:#}"
+                    ))
+                })?;
             info!(%uri, "folder added to workspace");
         }
 

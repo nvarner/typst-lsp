@@ -3,9 +3,12 @@ use std::path::{Path, PathBuf};
 
 use elsa::sync::FrozenMap;
 use once_cell::sync::OnceCell;
+use tower_lsp::lsp_types::Url;
 use typst::diag::{FileError, FileResult};
 use typst::file::FileId;
 use typst::util::{Bytes, PathExt};
+
+use crate::lsp_typst_boundary::lsp_to_typst;
 
 use super::source_manager::CacheableSource;
 
@@ -24,7 +27,7 @@ impl FileManager {
             .unwrap_or_else(|| self.files.insert(id, Box::default()))
     }
 
-    pub fn get_file_mut(&mut self, id: FileId) -> &mut File {
+    pub fn file_mut(&mut self, id: FileId) -> &mut File {
         self.files.as_mut().entry(id).or_default()
     }
 
@@ -33,7 +36,7 @@ impl FileManager {
     }
 
     pub fn read_raw(&self, id: FileId) -> FileResult<Vec<u8>> {
-        let path = self.resolve_path(id)?;
+        let path = self.id_to_path(id)?;
         Self::read_path_raw(&path)
     }
 
@@ -42,14 +45,27 @@ impl FileManager {
         fs::read(&path).map_err(|err| FileError::from_io(err, path))
     }
 
-    fn resolve_path(&self, id: FileId) -> FileResult<PathBuf> {
+    pub fn id_to_path(&self, id: FileId) -> FileResult<PathBuf> {
         match id.package() {
             None => self
-                .project_root
+                .project_root()
                 .join_rooted(id.path())
                 .ok_or_else(|| FileError::NotFound(id.path().to_owned())),
-            Some(package) => todo!("packages not yet implemented"),
+            Some(_package) => todo!("packages not yet implemented"),
         }
+    }
+
+    pub fn uri_to_id(&self, uri: &Url) -> anyhow::Result<FileId> {
+        let root = self.project_root();
+        lsp_to_typst::uri_to_file_id(uri, root)
+    }
+
+    pub fn all_file_ids(&self) -> Vec<FileId> {
+        self.files.keys_cloned()
+    }
+
+    fn project_root(&self) -> &Path {
+        &self.project_root
     }
 
     pub fn clear(&mut self) {
@@ -75,7 +91,20 @@ impl File {
     }
 
     pub fn cacheable_source(&self, id: FileId) -> &CacheableSource {
-        self.source.get_or_init(|| CacheableSource::closed(id))
+        self.source.get_or_init(|| CacheableSource::new_closed(id))
+    }
+
+    pub fn cacheable_source_mut(&mut self, id: FileId) -> &mut CacheableSource {
+        self.source.get_or_init(|| CacheableSource::new_closed(id));
+        self.source
+            .get_mut()
+            .expect("should be available just after init")
+    }
+
+    /// Determines if this file is a source file or not. That is, if `cacheable_source(_mut)` has
+    /// even been called on it.
+    pub fn is_source(&self) -> bool {
+        self.source.get().is_some()
     }
 
     pub fn bytes(&self, id: FileId, file_manager: &FileManager) -> FileResult<&Bytes> {

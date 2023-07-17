@@ -36,7 +36,7 @@ impl FontManager {
         match font {
             Ok(font) => Some(font),
             Err(err) => {
-                error!("failed to load font with id {id}: {err}");
+                error!(?err, "failed to load font with id {}", id);
                 None
             }
         }
@@ -213,7 +213,7 @@ impl Builder {
                 for (i, info) in FontInfo::iter(&mmap).enumerate() {
                     self.book.push(info);
                     self.fonts.push(FontSlot {
-                        path: Some(path),
+                        path: Some(path.clone()),
                         index: i as u32,
                         font: OnceCell::new(),
                     });

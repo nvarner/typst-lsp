@@ -3,7 +3,6 @@ use tower_lsp::lsp_types::{
     Registration,
 };
 
-use crate::lsp_typst_boundary::lsp_to_typst;
 use crate::workspace::Workspace;
 
 use super::TypstServer;
@@ -31,17 +30,7 @@ impl TypstServer {
     pub fn handle_file_change_event(&self, workspace: &mut Workspace, event: FileEvent) {
         let uri = event.uri;
 
-        let path = lsp_to_typst::uri_to_path(&uri);
-
-        let is_typst = path
-            .ok()
-            .and_then(|path| path.extension().map(|extension| extension == "typ"))
-            .unwrap_or(false);
-
-        if is_typst {
-            workspace.sources.invalidate(&uri);
-        } else {
-            workspace.resources.write().invalidate(uri);
-        }
+        let Ok(id) = workspace.id_for(&uri) else{ return };
+        workspace.invalidate(id);
     }
 }

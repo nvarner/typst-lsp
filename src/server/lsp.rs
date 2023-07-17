@@ -13,6 +13,7 @@ use crate::config::{
 };
 use crate::ext::InitializeParamsExt;
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
+use crate::workspace::source_manager::SourceManager;
 
 use super::command::LspCommand;
 use super::semantic_tokens::{
@@ -177,10 +178,16 @@ impl LanguageServer for TypstServer {
         let text = params.text_document.text;
 
         let mut workspace = self.workspace.write().await;
-        if let Err(err) = workspace.sources.open(&uri, text) {
-            error!(?err, uri = ?uri, "could not open file");
-            return;
-        }
+        let id = match workspace.id_for(&uri) {
+            Ok(id) => id,
+            Err(err) => {
+                error!(?err, %uri, "could not get file ID while opening document");
+                return;
+            }
+        };
+
+        workspace.source_manager_mut().open(id, text);
+
         drop(workspace);
 
         let config = self.config.read().await;
@@ -198,8 +205,15 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document.uri;
 
         let mut workspace = self.workspace.write().await;
-        workspace.sources.close(uri.clone());
+        let id = match workspace.id_for(&uri) {
+            Ok(id) => id,
+            Err(err) => {
+                error!(?err, %uri, "could not get file ID while closing document");
+                return;
+            }
+        };
 
+        workspace.source_manager_mut().close(id);
         self.client.publish_diagnostics(uri, Vec::new(), None).await;
     }
 
@@ -209,10 +223,21 @@ impl LanguageServer for TypstServer {
         let changes = params.content_changes;
 
         let mut workspace = self.workspace.write().await;
-        let source = workspace
-            .sources
-            .get_mut_source_by_uri(uri.clone())
-            .expect("changed sources should be open, so should be cached");
+        let id = match workspace.id_for(&uri) {
+            Ok(id) => id,
+            Err(err) => {
+                error!(?err, %uri, "could not get file ID while changing document");
+                return;
+            }
+        };
+
+        let source = match workspace.source_manager_mut().source_mut(id) {
+            Ok(source) => source,
+            Err(err) => {
+                error!(?err, %id, %uri, "could not open file while changing document");
+                return;
+            }
+        };
 
         for change in changes {
             self.apply_single_document_change(source, change);
@@ -272,7 +297,7 @@ impl LanguageServer for TypstServer {
                 self.command_clear_cache(arguments).await?;
             }
             None => {
-                error!("asked to execute known command");
+                error!("asked to execute unknown command");
                 return Err(jsonrpc::Error::method_not_found());
             }
         };
@@ -356,15 +381,22 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document.uri;
 
         let workspace = self.workspace.read().await;
-        let source = workspace.sources.get_source_by_uri(uri.clone()).unwrap();
+        let id = workspace.id_for(&uri).map_err(|err| {
+            error!(?err, %uri, "could not get file ID while getting document symbols");
+            jsonrpc::Error::internal_error()
+        })?;
+
+        let source = workspace.source_manager().source(id).map_err(|err| {
+            error!(?err, %uri, "could not open file while getting document symbols");
+            jsonrpc::Error::internal_error()
+        })?;
 
         let symbols: Vec<_> = self
-            .get_document_symbols(source.as_ref(), &uri, None)
+            .get_document_symbols(&source, &uri, None)
             .try_collect()
-            .map_err(|e| jsonrpc::Error {
-                code: jsonrpc::ErrorCode::InternalError,
-                message: format!("Failed to get document symbols: {:#}", e),
-                data: None,
+            .map_err(|err| {
+                error!(?err, %uri, "failed to get document symbols");
+                jsonrpc::Error::internal_error()
             })?;
 
         Ok(Some(symbols.into()))
@@ -379,24 +411,38 @@ impl LanguageServer for TypstServer {
 
         let workspace = self.workspace.read().await;
 
-        let uris = workspace.sources.get_uris();
-        let uris_sources = uris
+        let ids = workspace.source_manager().all_file_ids();
+
+        let uris = ids
             .iter()
-            .map(|uri| {
+            .map(|id| {
                 workspace
-                    .sources
-                    .get_source_by_uri(uri.clone())
-                    .map(|source| (uri, source))
+                    .id_to_path(*id)
+                    .context("could not convert id to path")
             })
-            .filter_map(Result::ok);
+            .map_ok(|path| typst_to_lsp::path_to_uri(&path))
+            .flatten()
+            .collect_vec();
+
+        let sources = ids.iter().map(|id| workspace.source_manager().source(*id));
+
+        let uris_sources = uris.iter().zip(sources).filter_map(|(uri, source)| {
+            let uri = uri
+                .as_ref()
+                .map_err(|err| error!(?err, "could not get URI"))
+                .ok()?;
+            let source = source
+                .map_err(|err| error!(?err, "could not get source"))
+                .ok()?;
+            Some((uri, source))
+        });
 
         let symbols = uris_sources
-            .flat_map(|(uri, source)| self.get_document_symbols(source.as_ref(), uri, query))
+            .flat_map(|(uri, source)| self.get_document_symbols(source, &uri, query).collect_vec())
             .try_collect()
-            .map_err(|e| jsonrpc::Error {
-                code: jsonrpc::ErrorCode::InternalError,
-                message: format!("Failed to get document symbols: {:#}", e),
-                data: None,
+            .map_err(|err| {
+                error!(?err, "failed to get document symbols");
+                jsonrpc::Error::internal_error()
             });
 
         Some(symbols).transpose()
@@ -410,15 +456,25 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document.uri;
 
         let workspace = self.workspace.read().await;
-        let source = workspace.sources.get_source_by_uri(uri).unwrap();
+        let id = workspace.id_for(&uri).map_err(|err| {
+            error!(?err, %uri, "could not get file ID while getting full semantic tokens");
+            jsonrpc::Error::internal_error()
+        })?;
 
-        let (tokens, result_id) = self.get_semantic_tokens_full(source);
+        let source = workspace.source_manager().source(id).map_err(|err| {
+            error!(?err, %uri, "could not open file while getting full semantic tokens");
+            jsonrpc::Error::internal_error()
+        })?;
 
-        let tokens = SemanticTokens {
-            result_id: Some(result_id),
-            data: tokens,
-        };
-        Ok(Some(SemanticTokensResult::Tokens(tokens)))
+        let (tokens, result_id) = self.get_semantic_tokens_full(&source);
+
+        Ok(Some(
+            SemanticTokens {
+                result_id: Some(result_id),
+                data: tokens,
+            }
+            .into(),
+        ))
     }
 
     #[tracing::instrument(skip_all, fields(uri = %params.text_document.uri))]
@@ -430,10 +486,18 @@ impl LanguageServer for TypstServer {
         let previous_result_id = params.previous_result_id;
 
         let workspace = self.workspace.read().await;
-        let source = workspace.sources.get_source_by_uri(uri).unwrap();
+        let id = workspace.id_for(&uri).map_err(|err| {
+            error!(?err, %uri, "could not get file ID while getting full semantic tokens delta");
+            jsonrpc::Error::internal_error()
+        })?;
+
+        let source = workspace.source_manager().source(id).map_err(|err| {
+            error!(?err, %uri, "could not open file while getting full semantic tokens delta");
+            jsonrpc::Error::internal_error()
+        })?;
 
         let (tokens, result_id) =
-            self.try_semantic_tokens_delta_from_result_id(source, &previous_result_id);
+            self.try_semantic_tokens_delta_from_result_id(&source, &previous_result_id);
         match tokens {
             Ok(edits) => Ok(Some(
                 SemanticTokensDelta {

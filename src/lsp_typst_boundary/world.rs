@@ -45,7 +45,7 @@ impl World for WorkspaceWorld {
     }
 
     fn book(&self) -> &Prehashed<FontBook> {
-        self.get_workspace().fonts().book()
+        self.get_workspace().font_manager().book()
     }
 
     fn main(&self) -> Source {
@@ -53,8 +53,8 @@ impl World for WorkspaceWorld {
             Ok(main) => main,
             Err(err) => {
                 error!(
-                    "this is a bug: failed to get main with id {} with error {err}",
-                    self.main
+                    ?err,
+                    "this is a bug: failed to get main with id {}", self.main
                 );
                 warn!("returning fake main file");
                 Source::detached("")
@@ -63,15 +63,15 @@ impl World for WorkspaceWorld {
     }
 
     fn source(&self, id: FileId) -> FileResult<Source> {
-        self.get_workspace().sources().source(id)
+        self.get_workspace().source_manager().source(id).cloned()
     }
 
     fn file(&self, id: FileId) -> FileResult<Bytes> {
-        self.get_workspace().resources().resource(id)
+        self.get_workspace().resource_manager().resource(id)
     }
 
     fn font(&self, id: usize) -> Option<Font> {
-        self.get_workspace().fonts().font(id)
+        self.get_workspace().font_manager().font(id)
     }
 
     fn today(&self, offset: Option<i64>) -> Option<Datetime> {
