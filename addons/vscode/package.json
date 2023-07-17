@@ -314,7 +314,7 @@
         "@vscode/vsce": "^2.19.0",
         "ovsx": "^0.8.1",
         "esbuild": "^0.18.0",
-        "eslint": "^8.43.0",
+        "eslint": "^8.45.0",
         "eslint-config-prettier": "^8.8.0",
         "eslint-plugin-import": "^2.27.5",
         "eslint-plugin-n": "^16.0.0",
