@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use tower_lsp::lsp_types::{
     InitializeParams, Position, PositionEncodingKind, SemanticTokensClientCapabilities,
 };
@@ -57,6 +59,23 @@ impl StrExt for str {
             PositionEncoding::Utf8 => self.len(),
             PositionEncoding::Utf16 => self.len_utf16(),
         }
+    }
+}
+
+pub trait PathExt {
+    /// Creates a [`PathBuf`] with `self` adjoined to `prefix`. See [`PathBuf::push`] for semantics.
+    fn push_front(&self, prefix: impl AsRef<Path>) -> PathBuf;
+
+    fn root() -> &'static Path;
+}
+
+impl PathExt for Path {
+    fn push_front(&self, prefix: impl AsRef<Path>) -> PathBuf {
+        prefix.as_ref().join(self)
+    }
+
+    fn root() -> &'static Path {
+        Path::new("/")
     }
 }
 

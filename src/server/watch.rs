@@ -30,7 +30,7 @@ impl TypstServer {
     pub fn handle_file_change_event(&self, workspace: &mut Workspace, event: FileEvent) {
         let uri = event.uri;
 
-        let Ok(id) = workspace.id_for(&uri) else{ return };
+        let Ok(id) = workspace.uri_to_id(&uri) else{ return };
         workspace.invalidate(id);
     }
 }

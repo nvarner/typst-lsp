@@ -4,77 +4,111 @@ use tracing::{trace, warn};
 use typst::diag::{FileError, FileResult};
 use typst::file::FileId;
 use typst::syntax::Source;
+use typst::util::Bytes;
 use walkdir::WalkDir;
 
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
 
-use super::file_manager::FileManager;
+use super::fs::cache::FsCache;
+use super::fs::TypstFs;
 
 /// Provides access to [`Source`] documents via [`FileId`]s
 ///
 /// A document can be open or closed. "Open" and "closed" correspond to the document's reported
 /// state in the LSP client.
-pub trait SourceManager {
-    fn source(&self, id: FileId) -> FileResult<&Source>;
-    fn source_mut(&mut self, id: FileId) -> FileResult<&mut Source>;
-    fn open(&mut self, id: FileId, text: String);
-    fn close(&mut self, id: FileId);
+pub struct SourceManager {}
 
-    /// Get the file IDs of all sources
-    fn all_file_ids(&self) -> Vec<FileId>;
+// impl FsCache {
+//     #[tracing::instrument(skip(self))]
+//     fn source(&self, id: FileId) -> FileResult<&Source> {
+//         self.file(id).cacheable_source(id).read(self)
+//     }
 
-    /// Add all Typst files in `workspace` to the `SourceManager`, caching them as needed
-    fn register_workspace_files(&mut self, workspace: &Url) -> anyhow::Result<()>;
+//     #[tracing::instrument(skip(self))]
+//     fn source_mut(&mut self, id: FileId) -> FileResult<&mut Source> {
+//         self.file_mut(id).cacheable_source_mut(id).read_mut(self)
+//     }
+
+//     #[tracing::instrument(skip(self, text))]
+//     fn open(&mut self, id: FileId, text: String) {
+//         self.file_mut(id).cacheable_source_mut(id).open(text)
+//     }
+
+//     #[tracing::instrument(skip(self))]
+//     fn close(&mut self, id: FileId) {
+//         self.file_mut(id).cacheable_source_mut(id).close();
+//     }
+
+//     /// Get the file IDs of all sources
+//     #[tracing::instrument(skip(self))]
+//     fn all_file_ids(&self) -> Vec<FileId> {
+//         self.all_file_ids()
+//             .into_iter()
+//             .filter(|id| self.file(*id).is_source())
+//             .collect()
+//     }
+
+//     /// Add all Typst files in `workspace` to the `SourceManager`, caching them as needed
+//     #[tracing::instrument(skip_all, fields(%workspace))]
+//     fn register_workspace_files(&mut self, workspace: &Url) -> anyhow::Result<()> {
+//         let workspace_path = lsp_to_typst::uri_to_path(workspace)?;
+
+//         WalkDir::new(&workspace_path)
+//             .into_iter()
+//             .filter_map(Result::ok)
+//             .filter(|entry| entry.file_type().is_file())
+//             .filter(|file| file.path().extension().map_or(false, |ext| ext == "typ"))
+//             .map(|file| typst_to_lsp::path_to_uri(file.path()))
+//             .filter_map(|x| x.map_err(|err| warn!(?err, "could not get uri")).ok())
+//             .map(|uri| lsp_to_typst::uri_to_file_id(&uri, &workspace_path))
+//             .filter_map(|x| x.map_err(|err| warn!(?err, "could not get file id")).ok())
+//             .inspect(|id| trace!(%id, "registering file"))
+//             .map(|id| self.source(id))
+//             .filter_map(|x| x.map_err(|err| warn!(?err, "could not register file")).ok())
+//             .for_each(|_| ());
+
+//         Ok(())
+//     }
+// }
+
+#[derive(Default)]
+pub struct CacheEntry {
+    source: OnceCell<CacheableSource>,
+    bytes: OnceCell<Bytes>,
 }
 
-impl SourceManager for FileManager {
-    #[tracing::instrument(skip(self))]
-    fn source(&self, id: FileId) -> FileResult<&Source> {
-        self.file(id).cacheable_source(id).read(self)
+impl CacheEntry {
+    fn from_source(source: CacheableSource) -> Self {
+        Self {
+            source: OnceCell::with_value(source),
+            bytes: OnceCell::new(),
+        }
     }
 
-    #[tracing::instrument(skip(self))]
-    fn source_mut(&mut self, id: FileId) -> FileResult<&mut Source> {
-        self.file_mut(id).cacheable_source_mut(id).read_mut(self)
+    pub fn cacheable_source(&self, id: FileId) -> &CacheableSource {
+        self.source.get_or_init(|| CacheableSource::new_closed(id))
     }
 
-    #[tracing::instrument(skip(self, text))]
-    fn open(&mut self, id: FileId, text: String) {
-        self.file_mut(id).cacheable_source_mut(id).open(text)
+    pub fn cacheable_source_mut(&mut self, id: FileId) -> &mut CacheableSource {
+        self.source.get_or_init(|| CacheableSource::new_closed(id));
+        self.source
+            .get_mut()
+            .expect("should be available just after init")
     }
 
-    #[tracing::instrument(skip(self))]
-    fn close(&mut self, id: FileId) {
-        self.file_mut(id).cacheable_source_mut(id).close();
+    /// Determines if this file is a source file or not. That is, if `cacheable_source(_mut)` has
+    /// even been called on it.
+    pub fn is_source(&self) -> bool {
+        self.source.get().is_some()
     }
 
-    #[tracing::instrument(skip(self))]
-    fn all_file_ids(&self) -> Vec<FileId> {
-        self.all_file_ids()
-            .into_iter()
-            .filter(|id| self.file(*id).is_source())
-            .collect()
+    pub fn bytes(&self, id: FileId, typst_fs: &impl TypstFs) -> FileResult<&Bytes> {
+        self.bytes.get_or_try_init(|| typst_fs.read_bytes(id))
     }
 
-    #[tracing::instrument(skip_all, fields(%workspace))]
-    fn register_workspace_files(&mut self, workspace: &Url) -> anyhow::Result<()> {
-        let workspace_path = lsp_to_typst::uri_to_path(workspace)?;
-
-        WalkDir::new(&workspace_path)
-            .into_iter()
-            .filter_map(Result::ok)
-            .filter(|entry| entry.file_type().is_file())
-            .filter(|file| file.path().extension().map_or(false, |ext| ext == "typ"))
-            .map(|file| typst_to_lsp::path_to_uri(file.path()))
-            .filter_map(|x| x.map_err(|err| warn!(?err, "could not get uri")).ok())
-            .map(|uri| lsp_to_typst::uri_to_file_id(&uri, &workspace_path))
-            .filter_map(|x| x.map_err(|err| warn!(?err, "could not get file id")).ok())
-            .inspect(|id| trace!(%id, "registering file"))
-            .map(|id| self.source(id))
-            .filter_map(|x| x.map_err(|err| warn!(?err, "could not register file")).ok())
-            .for_each(|_| ());
-
-        Ok(())
+    pub fn invalidate(&mut self) {
+        self.source.take();
+        self.bytes.take();
     }
 }
 
@@ -110,11 +144,11 @@ impl CacheableSource {
     }
 
     /// Read the underlying source, or from cache if available
-    pub fn read<'a, 'b>(&'a self, file_manager: &'b FileManager) -> FileResult<&'a Source> {
+    pub fn read<'a, 'b>(&'a self, project_fs: &'b impl TypstFs) -> FileResult<&'a Source> {
         match self {
             Self::Open(_, source) => Ok(source),
             Self::Closed(id, cell) => {
-                cell.get_or_try_init(|| Self::read_from_file(*id, file_manager))
+                cell.get_or_try_init(|| Self::read_from_file(*id, project_fs))
             }
         }
     }
@@ -122,19 +156,19 @@ impl CacheableSource {
     /// Read the underlying source, or from cache if available
     pub fn read_mut<'a, 'b>(
         &'a mut self,
-        file_manager: &'b FileManager,
+        project_fs: &'b impl TypstFs,
     ) -> FileResult<&'a mut Source> {
         match self {
             Self::Open(_, source) => Ok(source),
             Self::Closed(id, cell) => {
-                cell.get_or_try_init(|| Self::read_from_file(*id, file_manager))?;
+                cell.get_or_try_init(|| Self::read_from_file(*id, project_fs))?;
                 Ok(cell.get_mut().expect("should be available just after init"))
             }
         }
     }
 
-    fn read_from_file(id: FileId, file_manager: &FileManager) -> FileResult<Source> {
-        let raw = file_manager.read_raw(id)?;
+    fn read_from_file(id: FileId, project_fs: &impl TypstFs) -> FileResult<Source> {
+        let raw = project_fs.read_raw(id)?;
         let text = String::from_utf8(raw).map_err(|err| {
             warn!(?err, "failed to convert raw bytes into UTF-8 string");
             FileError::InvalidUtf8
@@ -143,17 +177,17 @@ impl CacheableSource {
     }
 }
 
-impl FileManager {
-    // fn get_inner_source(&self, id: SourceId) -> &InnerSource {
-    //     // We treat all `SourceId`s as valid
-    //     self.sources.get(id.as_u16() as usize).unwrap()
-    // }
+// impl FsCache {
+//     fn get_inner_source(&self, id: SourceId) -> &InnerSource {
+//         // We treat all `SourceId`s as valid
+//         self.sources.get(id.as_u16() as usize).unwrap()
+//     }
 
-    // fn get_mut_inner_source(&mut self, id: SourceId) -> &mut InnerSource {
-    //     // We treat all `SourceId`s as valid
-    //     self.sources.as_mut().get_mut(id.as_u16() as usize).unwrap()
-    // }
-}
+//     fn get_mut_inner_source(&mut self, id: SourceId) -> &mut InnerSource {
+//         // We treat all `SourceId`s as valid
+//         self.sources.as_mut().get_mut(id.as_u16() as usize).unwrap()
+//     }
+// }
 
 #[derive(Debug)]
 enum InnerSource {

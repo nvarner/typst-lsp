@@ -19,11 +19,8 @@ impl TypstServer {
             Err(errors) => (Default::default(), errors),
         };
 
-        let diagnostics = typst_to_lsp::source_errors_to_diagnostics(
-            errors.as_ref(),
-            world,
-            self.get_const_config(),
-        );
+        let diagnostics =
+            typst_to_lsp::source_errors_to_diagnostics(errors.as_ref(), world, self.const_config());
 
         // Garbage collect incremental cache. This evicts all memoized results that haven't been
         // used in the last 30 compilations.
@@ -51,11 +48,8 @@ impl TypstServer {
             Err(errors) => (Default::default(), errors),
         };
 
-        let diagnostics = typst_to_lsp::source_errors_to_diagnostics(
-            errors.as_ref(),
-            world,
-            self.get_const_config(),
-        );
+        let diagnostics =
+            typst_to_lsp::source_errors_to_diagnostics(errors.as_ref(), world, self.const_config());
 
         // Garbage collect incremental cache. This evicts all memoized results that haven't been
         // used in the last 30 compilations.

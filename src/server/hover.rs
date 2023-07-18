@@ -16,7 +16,7 @@ impl TypstServer {
     ) -> Option<Hover> {
         let typst_offset = lsp_to_typst::position_to_offset(
             position,
-            self.get_const_config().position_encoding,
+            self.const_config().position_encoding,
             source,
         );
 
@@ -27,7 +27,7 @@ impl TypstServer {
         let lsp_hovered_range = typst_to_lsp::range(
             typst_hovered_node.range(),
             source,
-            self.get_const_config().position_encoding,
+            self.const_config().position_encoding,
         );
 
         Some(Hover {
