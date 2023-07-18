@@ -35,7 +35,7 @@ pub mod watch;
 
 pub struct TypstServer {
     client: Client,
-    workspace: Arc<RwLock<Workspace>>,
+    workspace: OnceCell<Arc<RwLock<Workspace>>>,
     config: Arc<RwLock<Config>>,
     const_config: OnceCell<ConstConfig>,
     semantic_tokens_delta_cache: Arc<parking_lot::RwLock<SemanticTokenCache>>,
@@ -59,15 +59,21 @@ impl TypstServer {
         }
     }
 
-    pub fn get_const_config(&self) -> &ConstConfig {
+    pub fn const_config(&self) -> &ConstConfig {
         self.const_config
             .get()
             .expect("const config should be initialized")
     }
 
+    pub fn workspace(&self) -> &Arc<RwLock<Workspace>> {
+        self.workspace
+            .get()
+            .expect("workspace should be initialized")
+    }
+
     pub async fn get_world_with_main(&self, main_uri: Url) -> FileResult<WorkspaceWorld> {
-        let workspace = self.workspace.read().await;
-        let main_id = workspace.id_for(&main_uri).map_err(|err| {
+        let workspace = self.workspace().read().await;
+        let main_id = workspace.uri_to_id(&main_uri).map_err(|err| {
             error!(%err, %main_uri, "couldn't get id for main URI");
             FileError::Other
         })?;
@@ -77,12 +83,12 @@ impl TypstServer {
     }
 
     async fn get_world_with_main_by_id(&self, main: FileId) -> WorkspaceWorld {
-        WorkspaceWorld::new(Arc::clone(&self.workspace).read_owned().await, main)
+        WorkspaceWorld::new(Arc::clone(&self.workspace()).read_owned().await, main)
     }
 
     #[tracing::instrument(skip(self))]
     pub async fn register_workspace_files(&self, params: &InitializeParams) -> jsonrpc::Result<()> {
-        let mut workspace = self.workspace.write().await;
+        let mut workspace = self.workspace().write().await;
 
         let workspace_uris = params
             .workspace_folders

@@ -26,7 +26,7 @@ impl TypstServer {
         source: &Source,
         positions: &[LspPosition],
     ) -> Option<Vec<SelectionRange>> {
-        let position_encoding = self.get_const_config().position_encoding;
+        let position_encoding = self.const_config().position_encoding;
         let mut ranges = Vec::new();
         for &position in positions {
             let typst_offset =

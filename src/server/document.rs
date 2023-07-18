@@ -18,7 +18,7 @@ impl TypstServer {
 
         match change.range {
             Some(lsp_range) => {
-                let range = LspRange::new(lsp_range, self.get_const_config().position_encoding)
+                let range = LspRange::new(lsp_range, self.const_config().position_encoding)
                     .to_range_on(source);
                 source.edit(range, &replacement);
             }

@@ -12,7 +12,7 @@ use typst::font::{Font, FontBook, FontInfo};
 use typst::util::Bytes;
 use walkdir::WalkDir;
 
-use super::file_manager::FileManager;
+use super::fs::local::LocalFs;
 
 /// Searches for fonts.
 pub struct FontManager {
@@ -64,7 +64,7 @@ impl FontSlot {
 
     fn init(&self) -> FileResult<Font> {
         let path = self.path()?;
-        let data = FileManager::read_path_raw(path)?;
+        let data = LocalFs::read_path_raw(path)?;
 
         Font::new(data.into(), self.index).ok_or_else(|| {
             warn!("failed to parse font from file {}", path.display());

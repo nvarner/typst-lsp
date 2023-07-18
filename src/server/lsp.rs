@@ -1,7 +1,10 @@
+use std::sync::Arc;
+
 use anyhow::Context;
 use futures::FutureExt;
 use itertools::Itertools;
 use serde_json::Value as JsonValue;
+use tokio::sync::RwLock;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, LanguageServer};
 use tracing::{error, info, trace};
@@ -14,6 +17,7 @@ use crate::config::{
 use crate::ext::InitializeParamsExt;
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
 use crate::workspace::source_manager::SourceManager;
+use crate::workspace::Workspace;
 
 use super::command::LspCommand;
 use super::semantic_tokens::{
@@ -27,6 +31,9 @@ impl LanguageServer for TypstServer {
     #[tracing::instrument(skip(self))]
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
         self.tracing_init();
+
+        self.workspace()
+            .set(Arc::new(RwLock::new(Workspace::new(params))));
 
         self.const_config
             .set(ConstConfig::from(&params))
@@ -98,7 +105,7 @@ impl LanguageServer for TypstServer {
 
     #[tracing::instrument(skip_all)]
     async fn initialized(&self, _: InitializedParams) {
-        let const_config = self.get_const_config();
+        let const_config = self.const_config();
         let mut config = self.config.write().await;
 
         if const_config.supports_semantic_tokens_dynamic_registration {
@@ -177,8 +184,8 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document.uri;
         let text = params.text_document.text;
 
-        let mut workspace = self.workspace.write().await;
-        let id = match workspace.id_for(&uri) {
+        let mut workspace = self.workspace().write().await;
+        let id = match workspace.uri_to_id(&uri) {
             Ok(id) => id,
             Err(err) => {
                 error!(?err, %uri, "could not get file ID while opening document");
@@ -204,8 +211,8 @@ impl LanguageServer for TypstServer {
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
         let uri = params.text_document.uri;
 
-        let mut workspace = self.workspace.write().await;
-        let id = match workspace.id_for(&uri) {
+        let mut workspace = self.workspace().write().await;
+        let id = match workspace.uri_to_id(&uri) {
             Ok(id) => id,
             Err(err) => {
                 error!(?err, %uri, "could not get file ID while closing document");
@@ -222,8 +229,8 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document.uri;
         let changes = params.content_changes;
 
-        let mut workspace = self.workspace.write().await;
-        let id = match workspace.id_for(&uri) {
+        let mut workspace = self.workspace().write().await;
+        let id = match workspace.uri_to_id(&uri) {
             Ok(id) => id,
             Err(err) => {
                 error!(?err, %uri, "could not get file ID while changing document");
@@ -269,7 +276,7 @@ impl LanguageServer for TypstServer {
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         let changes = params.changes;
 
-        let mut workspace = self.workspace.write().await;
+        let mut workspace = self.workspace().write().await;
 
         for change in changes {
             self.handle_file_change_event(&mut workspace, change);
@@ -344,7 +351,7 @@ impl LanguageServer for TypstServer {
 
         let typst_offset = lsp_to_typst::position_to_offset(
             position,
-            self.get_const_config().position_encoding,
+            self.const_config().position_encoding,
             &source,
         );
 
@@ -380,8 +387,8 @@ impl LanguageServer for TypstServer {
     ) -> jsonrpc::Result<Option<DocumentSymbolResponse>> {
         let uri = params.text_document.uri;
 
-        let workspace = self.workspace.read().await;
-        let id = workspace.id_for(&uri).map_err(|err| {
+        let workspace = self.workspace().read().await;
+        let id = workspace.uri_to_id(&uri).map_err(|err| {
             error!(?err, %uri, "could not get file ID while getting document symbols");
             jsonrpc::Error::internal_error()
         })?;
@@ -409,18 +416,13 @@ impl LanguageServer for TypstServer {
     ) -> jsonrpc::Result<Option<Vec<SymbolInformation>>> {
         let query = (!params.query.is_empty()).then_some(params.query.as_str());
 
-        let workspace = self.workspace.read().await;
+        let workspace = self.workspace().read().await;
 
         let ids = workspace.source_manager().all_file_ids();
 
         let uris = ids
             .iter()
-            .map(|id| {
-                workspace
-                    .id_to_path(*id)
-                    .context("could not convert id to path")
-            })
-            .map_ok(|path| typst_to_lsp::path_to_uri(&path))
+            .map(|id| workspace.id_to_uri(id))
             .flatten()
             .collect_vec();
 
@@ -455,8 +457,8 @@ impl LanguageServer for TypstServer {
     ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
         let uri = params.text_document.uri;
 
-        let workspace = self.workspace.read().await;
-        let id = workspace.id_for(&uri).map_err(|err| {
+        let workspace = self.workspace().read().await;
+        let id = workspace.uri_to_id(&uri).map_err(|err| {
             error!(?err, %uri, "could not get file ID while getting full semantic tokens");
             jsonrpc::Error::internal_error()
         })?;
@@ -485,8 +487,8 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document.uri;
         let previous_result_id = params.previous_result_id;
 
-        let workspace = self.workspace.read().await;
-        let id = workspace.id_for(&uri).map_err(|err| {
+        let workspace = self.workspace().read().await;
+        let id = workspace.uri_to_id(&uri).map_err(|err| {
             error!(?err, %uri, "could not get file ID while getting full semantic tokens delta");
             jsonrpc::Error::internal_error()
         })?;

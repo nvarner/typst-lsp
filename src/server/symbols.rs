@@ -136,7 +136,7 @@ impl TypstServer {
         uri: &'a Url,
         query_string: Option<&'a str>,
     ) -> impl Iterator<Item = Result<SymbolInformation>> + 'a {
-        let const_config = self.get_const_config();
+        let const_config = self.const_config();
 
         let root = LinkedNode::new(source.root());
         get_symbols(

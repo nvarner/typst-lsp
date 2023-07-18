@@ -24,7 +24,7 @@ impl TypstServer {
 
         let typst_offset = lsp_to_typst::position_to_offset(
             position,
-            self.get_const_config().position_encoding,
+            self.const_config().position_encoding,
             source,
         );
 
@@ -169,7 +169,7 @@ impl TypstServer {
 
     /// Returns the signature label as well as parameter offsets of the function
     pub fn get_param_information(&self, info: &FuncInfo) -> (String, Vec<ParameterInformation>) {
-        let encoding = self.get_const_config().position_encoding;
+        let encoding = self.const_config().position_encoding;
 
         let label_start = format!("{}(", info.name);
         let param_joiner = ", ";

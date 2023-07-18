@@ -1,26 +1,24 @@
 //! Holds types relating to the LSP concept of a "workspace". That is, the directories a user has
 //! open in their editor, the files in them, the files they're currently editing, and so on.
 
-use std::path::PathBuf;
-
 use comemo::Prehashed;
-use tower_lsp::lsp_types::Url;
+use tower_lsp::lsp_types::{InitializeParams, Url};
 use typst::diag::FileResult;
 use typst::eval::Library;
 use typst::file::FileId;
 
-use self::file_manager::FileManager;
 use self::font_manager::FontManager;
-use self::resource_manager::ResourceManager;
+use self::fs::cache::FsCache;
+use self::fs::local::LocalFs;
+use self::fs::TypstFs;
 use self::source_manager::SourceManager;
 
-pub mod file_manager;
 pub mod font_manager;
-pub mod resource_manager;
+pub mod fs;
 pub mod source_manager;
 
 pub struct Workspace {
-    files: FileManager,
+    fs: FsCache<LocalFs>,
     fonts: FontManager,
 
     // Needed so that `Workspace` can implement Typst's `World` trait
@@ -28,46 +26,48 @@ pub struct Workspace {
 }
 
 impl Workspace {
-    pub fn source_manager(&self) -> &impl SourceManager {
-        &self.files
+    #[allow(deprecated)] // `params.root_path` is marked as deprecated
+    pub fn new(params: InitializeParams) -> Self {
+        // TODO: multi-root workspaces
+        let project_root = params
+            .root_uri
+            .and_then(|uri| uri.to_file_path().ok())
+            .or_else(|| params.root_path?.try_into().ok())
+            .expect("could not get project root");
+
+        Self {
+            fs: FsCache::new(LocalFs::new(project_root)),
+            fonts: FontManager::builder().with_system().with_embedded().build(),
+            typst_stdlib: Prehashed::new(typst_library::build()),
+        }
     }
 
-    pub fn source_manager_mut(&mut self) -> &mut impl SourceManager {
-        &mut self.files
-    }
+    // pub fn source_manager(&self) -> &impl SourceManager {
+    //     &self.files
+    // }
 
-    pub fn resource_manager(&self) -> impl ResourceManager + '_ {
-        &self.files
-    }
+    // pub fn source_manager_mut(&mut self) -> &mut impl SourceManager {
+    //     &mut self.files
+    // }
 
     pub fn font_manager(&self) -> &FontManager {
         &self.fonts
     }
 
-    pub fn id_for(&self, uri: &Url) -> anyhow::Result<FileId> {
-        self.files.uri_to_id(uri)
+    pub fn uri_to_id(&self, uri: &Url) -> FileResult<FileId> {
+        self.fs.uri_to_id(uri)
     }
 
-    pub fn id_to_path(&self, id: FileId) -> FileResult<PathBuf> {
-        self.files.id_to_path(id)
+    pub fn id_to_uri(&self, id: FileId) -> FileResult<Url> {
+        self.fs.id_to_uri(id)
     }
 
     pub fn invalidate(&mut self, id: FileId) {
-        self.files.file_mut(id).invalidate()
+        self.fs.invalidate(id)
     }
 
     pub fn clear(&mut self) {
         self.fonts.clear();
-        self.files.clear();
-    }
-}
-
-impl Default for Workspace {
-    fn default() -> Self {
-        Self {
-            files: FileManager::default(),
-            typst_stdlib: Prehashed::new(typst_library::build()),
-            fonts: FontManager::builder().with_system().with_embedded().build(),
-        }
+        self.fs.clear();
     }
 }
