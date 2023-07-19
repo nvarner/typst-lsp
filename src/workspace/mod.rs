@@ -6,19 +6,19 @@ use tower_lsp::lsp_types::{InitializeParams, Url};
 use typst::diag::FileResult;
 use typst::eval::Library;
 use typst::file::FileId;
+use typst::syntax::Source;
+use typst::util::Bytes;
 
 use self::font_manager::FontManager;
-use self::fs::cache::FsCache;
-use self::fs::local::LocalFs;
-use self::fs::TypstFs;
-use self::source_manager::SourceManager;
+use self::fs::local::{FsLocalCache, LocalFs};
+use self::fs::FsProvider;
 
 pub mod font_manager;
 pub mod fs;
 pub mod source_manager;
 
 pub struct Workspace {
-    fs: FsCache<LocalFs>,
+    fs: FsLocalCache,
     fonts: FontManager,
 
     // Needed so that `Workspace` can implement Typst's `World` trait
@@ -36,7 +36,7 @@ impl Workspace {
             .expect("could not get project root");
 
         Self {
-            fs: FsCache::new(LocalFs::new(project_root)),
+            fs: FsLocalCache::new(LocalFs::new(project_root)),
             fonts: FontManager::builder().with_system().with_embedded().build(),
             typst_stdlib: Prehashed::new(typst_library::build()),
         }
@@ -52,6 +52,14 @@ impl Workspace {
 
     pub fn font_manager(&self) -> &FontManager {
         &self.fonts
+    }
+
+    pub fn read_file(&self, id: FileId) -> FileResult<Bytes> {
+        self.fs.read_bytes(id)
+    }
+
+    pub fn read_source(&self, id: FileId) -> FileResult<Source> {
+        self.fs.read_source(id)
     }
 
     pub fn uri_to_id(&self, uri: &Url) -> FileResult<FileId> {

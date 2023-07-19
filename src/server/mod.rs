@@ -13,7 +13,6 @@ use typst::file::FileId;
 use crate::config::{Config, ConstConfig};
 use crate::lsp_typst_boundary::world::WorkspaceWorld;
 use crate::server::semantic_tokens::SemanticTokenCache;
-use crate::workspace::source_manager::SourceManager;
 use crate::workspace::Workspace;
 
 use self::diagnostics::DiagnosticsManager;
@@ -100,17 +99,19 @@ impl TypstServer {
 
         let uris_to_register = workspace_uris.chain(root_uri).unique_by(|x| *x);
 
-        for uri in uris_to_register {
-            workspace
-                .source_manager_mut()
-                .register_workspace_files(uri)
-                .map_err(|e| {
-                    jsonrpc::Error::invalid_params(format!(
-                        "failed to register workspace files: {e:#}"
-                    ))
-                })?;
-            info!(%uri, "folder added to workspace");
-        }
+        // TODO: replace this
+
+        // for uri in uris_to_register {
+        //     workspace
+        //         .source_manager_mut()
+        //         .register_workspace_files(uri)
+        //         .map_err(|e| {
+        //             jsonrpc::Error::invalid_params(format!(
+        //                 "failed to register workspace files: {e:#}"
+        //             ))
+        //         })?;
+        //     info!(%uri, "folder added to workspace");
+        // }
 
         Ok(())
     }

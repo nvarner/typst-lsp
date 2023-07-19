@@ -9,8 +9,6 @@ use typst::syntax::Source;
 use typst::util::Bytes;
 use typst::World;
 
-use crate::workspace::resource_manager::ResourceManager;
-use crate::workspace::source_manager::SourceManager;
 use crate::workspace::Workspace;
 
 use super::clock::Now;
@@ -33,45 +31,43 @@ impl WorkspaceWorld {
         }
     }
 
-    pub fn get_workspace(&self) -> &OwnedRwLockReadGuard<Workspace> {
+    pub fn workspace(&self) -> &OwnedRwLockReadGuard<Workspace> {
         &self.workspace
     }
 }
 
 impl World for WorkspaceWorld {
     fn library(&self) -> &Prehashed<Library> {
-        let workspace = self.get_workspace();
-        &workspace.typst_stdlib
+        &self.workspace().typst_stdlib
     }
 
     fn book(&self) -> &Prehashed<FontBook> {
-        self.get_workspace().font_manager().book()
+        self.workspace().font_manager().book()
     }
 
     fn main(&self) -> Source {
-        match self.source(self.main) {
-            Ok(main) => main,
-            Err(err) => {
-                error!(
-                    ?err,
-                    "this is a bug: failed to get main with id {}", self.main
-                );
-                warn!("returning fake main file");
-                Source::detached("")
-            }
-        }
+        let handle_no_main = |err| {
+            error!(
+                ?err,
+                "this is a bug: failed to get main with id {}", self.main
+            );
+            warn!("returning fake main file");
+            Source::detached("")
+        };
+
+        self.source(self.main).unwrap_or_else(handle_no_main)
     }
 
     fn source(&self, id: FileId) -> FileResult<Source> {
-        self.get_workspace().source_manager().source(id).cloned()
+        self.workspace().read_source(id)
     }
 
     fn file(&self, id: FileId) -> FileResult<Bytes> {
-        self.get_workspace().resource_manager().resource(id)
+        self.workspace().read_file(id)
     }
 
     fn font(&self, id: usize) -> Option<Font> {
-        self.get_workspace().font_manager().font(id)
+        self.workspace().font_manager().font(id)
     }
 
     fn today(&self, offset: Option<i64>) -> Option<Datetime> {

@@ -63,7 +63,7 @@ impl TypstServer {
     /// Clear all cached resources.
     #[tracing::instrument(skip_all)]
     pub async fn command_clear_cache(&self, _arguments: Vec<Value>) -> Result<()> {
-        self.workspace.write().await.clear();
+        self.workspace().write().await.clear();
 
         // this will only clear the comemo cache for the current thread
         // TODO: is it possible to clear the comemo cache across all threads?
