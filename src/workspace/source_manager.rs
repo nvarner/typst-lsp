@@ -9,8 +9,7 @@ use walkdir::WalkDir;
 
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
 
-use super::fs::cache::FsCache;
-use super::fs::TypstFs;
+use super::fs::FsProvider;
 
 /// Provides access to [`Source`] documents via [`FileId`]s
 ///
@@ -102,7 +101,7 @@ impl CacheEntry {
         self.source.get().is_some()
     }
 
-    pub fn bytes(&self, id: FileId, typst_fs: &impl TypstFs) -> FileResult<&Bytes> {
+    pub fn bytes(&self, id: FileId, typst_fs: &impl FsProvider) -> FileResult<&Bytes> {
         self.bytes.get_or_try_init(|| typst_fs.read_bytes(id))
     }
 
@@ -144,7 +143,7 @@ impl CacheableSource {
     }
 
     /// Read the underlying source, or from cache if available
-    pub fn read<'a, 'b>(&'a self, project_fs: &'b impl TypstFs) -> FileResult<&'a Source> {
+    pub fn read<'a, 'b>(&'a self, project_fs: &'b impl FsProvider) -> FileResult<&'a Source> {
         match self {
             Self::Open(_, source) => Ok(source),
             Self::Closed(id, cell) => {
@@ -156,7 +155,7 @@ impl CacheableSource {
     /// Read the underlying source, or from cache if available
     pub fn read_mut<'a, 'b>(
         &'a mut self,
-        project_fs: &'b impl TypstFs,
+        project_fs: &'b impl FsProvider,
     ) -> FileResult<&'a mut Source> {
         match self {
             Self::Open(_, source) => Ok(source),
@@ -167,7 +166,7 @@ impl CacheableSource {
         }
     }
 
-    fn read_from_file(id: FileId, project_fs: &impl TypstFs) -> FileResult<Source> {
+    fn read_from_file(id: FileId, project_fs: &impl FsProvider) -> FileResult<Source> {
         let raw = project_fs.read_raw(id)?;
         let text = String::from_utf8(raw).map_err(|err| {
             warn!(?err, "failed to convert raw bytes into UTF-8 string");

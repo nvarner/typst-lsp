@@ -1,15 +1,18 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use elsa::sync::FrozenMap;
+use once_cell::sync::OnceCell;
 use tower_lsp::lsp_types::Url;
 use tracing::error;
 use typst::diag::{FileError, FileResult};
 use typst::file::FileId;
-use typst::util::PathExt as TypstPathExt;
+use typst::syntax::Source;
+use typst::util::{Bytes, PathExt as TypstPathExt};
 
 use crate::ext::PathExt;
 
-use super::TypstFs;
+use super::FsProvider;
 
 /// Implements the Typst filesystem on the local filesystem, mapping Typst files to local files, and
 /// providing conversions using [`Path`]s as an intermediate.
@@ -19,13 +22,35 @@ use super::TypstFs;
 /// but are meaningless when interpreted as local paths without accounting for the project or
 /// package root. So, for consistency, we avoid using these Typst paths and prefer filesystem paths.
 pub struct LocalFs {
-    pub(crate) project_root: PathBuf,
+    project_root: PathBuf,
 }
 
-impl TypstFs for LocalFs {
+impl FsProvider for LocalFs {
     fn read_raw(&self, id: FileId) -> FileResult<Vec<u8>> {
         let path = self.id_to_path(id)?;
         Self::read_path_raw(&path)
+    }
+
+    fn read_bytes(&self, id: FileId) -> FileResult<Bytes> {
+        self.read_raw(id).map(Bytes::from)
+    }
+
+    fn read_source(&self, id: FileId) -> FileResult<Source> {
+        let extension_is_typ = || {
+            id.path()
+                .extension()
+                .map(|ext| ext == "typ")
+                .unwrap_or(false)
+        };
+
+        let raw = self.read_raw(id)?;
+
+        if !extension_is_typ() {
+            return Err(FileError::NotSource);
+        };
+
+        let text = String::from_utf8(raw).map_err(|_| FileError::InvalidUtf8)?;
+        Ok(Source::new(id, text))
     }
 
     fn uri_to_id(&self, uri: &Url) -> FileResult<FileId> {
@@ -132,5 +157,88 @@ impl LocalFs {
             .map_err(handle_error)?
             .push_front(Path::root());
         Ok(project_path)
+    }
+}
+
+pub struct FsLocalCache {
+    entries: FrozenMap<FileId, Box<CacheEntry>>,
+    fs: LocalFs,
+}
+
+impl FsProvider for FsLocalCache {
+    fn read_raw(&self, id: FileId) -> FileResult<Vec<u8>> {
+        self.read_bytes_ref(id).map(|bytes| bytes.to_vec())
+    }
+
+    fn read_bytes(&self, id: FileId) -> FileResult<Bytes> {
+        self.read_bytes_ref(id).cloned()
+    }
+
+    fn read_source(&self, id: FileId) -> FileResult<Source> {
+        self.read_source_ref(id).cloned()
+    }
+
+    fn uri_to_id(&self, uri: &Url) -> FileResult<FileId> {
+        self.fs.uri_to_id(uri)
+    }
+
+    fn id_to_uri(&self, id: FileId) -> FileResult<Url> {
+        self.fs.id_to_uri(id)
+    }
+}
+
+impl FsLocalCache {
+    pub fn new(fs: LocalFs) -> Self {
+        Self {
+            entries: Default::default(),
+            fs,
+        }
+    }
+
+    pub fn read_bytes_ref(&self, id: FileId) -> FileResult<&Bytes> {
+        self.entry(id).read_bytes(id, &self.fs)
+    }
+
+    pub fn read_source_ref(&self, id: FileId) -> FileResult<&Source> {
+        self.entry(id).read_source(id, &self.fs)
+    }
+
+    pub fn invalidate(&mut self, id: FileId) {
+        self.entry_mut(id).invalidate()
+    }
+
+    pub fn clear(&mut self) {
+        self.entries.as_mut().clear()
+    }
+
+    fn entry(&self, id: FileId) -> &CacheEntry {
+        self.entries
+            .get(&id) // don't take write lock unnecessarily
+            .unwrap_or_else(|| self.entries.insert(id, Box::default()))
+    }
+
+    fn entry_mut(&mut self, id: FileId) -> &mut CacheEntry {
+        self.entries.as_mut().entry(id).or_default()
+    }
+}
+
+#[derive(Default)]
+pub struct CacheEntry {
+    source: OnceCell<Source>,
+    bytes: OnceCell<Bytes>,
+}
+
+impl CacheEntry {
+    pub fn read_source(&self, id: FileId, fs: &impl FsProvider) -> FileResult<&Source> {
+        self.source.get_or_try_init(|| fs.read_source(id))
+    }
+
+    pub fn read_bytes(&self, id: FileId, fs: &impl FsProvider) -> FileResult<&Bytes> {
+        self.bytes.get_or_try_init(|| fs.read_bytes(id))
+    }
+
+    pub fn invalidate(&mut self) {
+        self.source.take();
+        self.bytes.take();
     }
 }

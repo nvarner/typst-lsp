@@ -32,7 +32,7 @@ impl LanguageServer for TypstServer {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
         self.tracing_init();
 
-        self.workspace()
+        self.workspace
             .set(Arc::new(RwLock::new(Workspace::new(params))));
 
         self.const_config
@@ -393,7 +393,7 @@ impl LanguageServer for TypstServer {
             jsonrpc::Error::internal_error()
         })?;
 
-        let source = workspace.source_manager().source(id).map_err(|err| {
+        let source = workspace.read_source(id).map_err(|err| {
             error!(?err, %uri, "could not open file while getting document symbols");
             jsonrpc::Error::internal_error()
         })?;
@@ -426,7 +426,7 @@ impl LanguageServer for TypstServer {
             .flatten()
             .collect_vec();
 
-        let sources = ids.iter().map(|id| workspace.source_manager().source(*id));
+        let sources = ids.iter().map(|id| workspace.read_source(*id));
 
         let uris_sources = uris.iter().zip(sources).filter_map(|(uri, source)| {
             let uri = uri
@@ -463,7 +463,7 @@ impl LanguageServer for TypstServer {
             jsonrpc::Error::internal_error()
         })?;
 
-        let source = workspace.source_manager().source(id).map_err(|err| {
+        let source = workspace.read_source(id).map_err(|err| {
             error!(?err, %uri, "could not open file while getting full semantic tokens");
             jsonrpc::Error::internal_error()
         })?;
@@ -493,7 +493,7 @@ impl LanguageServer for TypstServer {
             jsonrpc::Error::internal_error()
         })?;
 
-        let source = workspace.source_manager().source(id).map_err(|err| {
+        let source = workspace.read_source(id).map_err(|err| {
             error!(?err, %uri, "could not open file while getting full semantic tokens delta");
             jsonrpc::Error::internal_error()
         })?;
