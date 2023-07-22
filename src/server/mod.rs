@@ -82,7 +82,7 @@ impl TypstServer {
     }
 
     async fn get_world_with_main_by_id(&self, main: FileId) -> WorkspaceWorld {
-        WorkspaceWorld::new(Arc::clone(&self.workspace()).read_owned().await, main)
+        WorkspaceWorld::new(Arc::clone(self.workspace()).read_owned().await, main)
     }
 
     #[tracing::instrument(skip(self))]

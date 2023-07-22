@@ -14,7 +14,7 @@ pub fn get_symbols<'a>(
     query_string: Option<&'a str>,
     position_encoding: PositionEncoding,
 ) -> Box<dyn Iterator<Item = Result<SymbolInformation>> + 'a> {
-    let own_symbol = get_ident(&node, source, &uri, query_string, position_encoding).transpose();
+    let own_symbol = get_ident(&node, source, uri, query_string, position_encoding).transpose();
     let children_symbols = node
         .children()
         .flat_map(move |child| get_symbols(child, source, uri, query_string, position_encoding));

@@ -1,31 +1,11 @@
-use tower_lsp::lsp_types::TextDocumentContentChangeEvent;
 use typst::syntax::Source;
 
 use crate::config::{Config, ExportPdfMode};
 use crate::lsp_typst_boundary::world::WorkspaceWorld;
-use crate::lsp_typst_boundary::LspRange;
 
 use super::TypstServer;
 
 impl TypstServer {
-    /// Apply a single change event to a document
-    pub fn apply_single_document_change(
-        &self,
-        source: &mut Source,
-        change: TextDocumentContentChangeEvent,
-    ) {
-        let replacement = change.text;
-
-        match change.range {
-            Some(lsp_range) => {
-                let range = LspRange::new(lsp_range, self.const_config().position_encoding)
-                    .to_range_on(source);
-                source.edit(range, &replacement);
-            }
-            None => source.replace(replacement),
-        }
-    }
-
     pub async fn on_source_changed(
         &self,
         world: &WorkspaceWorld,

@@ -1,7 +1,8 @@
 use tower_lsp::lsp_types::{
-    DidChangeWatchedFilesRegistrationOptions, FileEvent, FileSystemWatcher, GlobPattern,
-    Registration,
+    DidChangeWatchedFilesRegistrationOptions, FileChangeType, FileEvent, FileSystemWatcher,
+    GlobPattern, Registration,
 };
+use tracing::warn;
 
 use crate::workspace::Workspace;
 
@@ -28,9 +29,14 @@ impl TypstServer {
     }
 
     pub fn handle_file_change_event(&self, workspace: &mut Workspace, event: FileEvent) {
-        let uri = event.uri;
+        let Ok(id) = workspace.uri_to_id(&event.uri) else { return };
 
-        let Ok(id) = workspace.uri_to_id(&uri) else{ return };
-        workspace.invalidate(id);
+        match event.typ {
+            FileChangeType::CHANGED | FileChangeType::CREATED => workspace.invalidate_local(id),
+            FileChangeType::DELETED => workspace.delete_local(id),
+            _ => {
+                warn!("unexpected event type");
+            }
+        }
     }
 }

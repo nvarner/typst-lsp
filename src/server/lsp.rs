@@ -16,7 +16,6 @@ use crate::config::{
 };
 use crate::ext::InitializeParamsExt;
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
-use crate::workspace::source_manager::SourceManager;
 use crate::workspace::Workspace;
 
 use super::command::LspCommand;
@@ -33,7 +32,9 @@ impl LanguageServer for TypstServer {
         self.tracing_init();
 
         self.workspace
-            .set(Arc::new(RwLock::new(Workspace::new(params))));
+            .set(Arc::new(RwLock::new(Workspace::new(&params))))
+            .map_err(|_| ())
+            .expect("workspace should not yet be initialized");
 
         self.const_config
             .set(ConstConfig::from(&params))
@@ -193,7 +194,7 @@ impl LanguageServer for TypstServer {
             }
         };
 
-        workspace.source_manager_mut().open(id, text);
+        workspace.open_lsp(id, text);
 
         drop(workspace);
 
@@ -220,7 +221,7 @@ impl LanguageServer for TypstServer {
             }
         };
 
-        workspace.source_manager_mut().close(id);
+        workspace.close_lsp(id);
         self.client.publish_diagnostics(uri, Vec::new(), None).await;
     }
 
@@ -238,17 +239,7 @@ impl LanguageServer for TypstServer {
             }
         };
 
-        let source = match workspace.source_manager_mut().source_mut(id) {
-            Ok(source) => source,
-            Err(err) => {
-                error!(?err, %id, %uri, "could not open file while changing document");
-                return;
-            }
-        };
-
-        for change in changes {
-            self.apply_single_document_change(source, change);
-        }
+        workspace.edit_lsp(id, changes, self.const_config().position_encoding);
 
         drop(workspace);
 
@@ -418,36 +409,39 @@ impl LanguageServer for TypstServer {
 
         let workspace = self.workspace().read().await;
 
-        let ids = workspace.source_manager().all_file_ids();
+        // TODO: replace this
 
-        let uris = ids
-            .iter()
-            .map(|id| workspace.id_to_uri(id))
-            .flatten()
-            .collect_vec();
+        // let ids = workspace.source_manager().all_file_ids();
 
-        let sources = ids.iter().map(|id| workspace.read_source(*id));
+        // let uris = ids
+        //     .iter()
+        //     .map(|id| workspace.id_to_uri(id))
+        //     .flatten()
+        //     .collect_vec();
 
-        let uris_sources = uris.iter().zip(sources).filter_map(|(uri, source)| {
-            let uri = uri
-                .as_ref()
-                .map_err(|err| error!(?err, "could not get URI"))
-                .ok()?;
-            let source = source
-                .map_err(|err| error!(?err, "could not get source"))
-                .ok()?;
-            Some((uri, source))
-        });
+        // let sources = ids.iter().map(|id| workspace.read_source(*id));
 
-        let symbols = uris_sources
-            .flat_map(|(uri, source)| self.get_document_symbols(source, &uri, query).collect_vec())
-            .try_collect()
-            .map_err(|err| {
-                error!(?err, "failed to get document symbols");
-                jsonrpc::Error::internal_error()
-            });
+        // let uris_sources = uris.iter().zip(sources).filter_map(|(uri, source)| {
+        //     let uri = uri
+        //         .as_ref()
+        //         .map_err(|err| error!(?err, "could not get URI"))
+        //         .ok()?;
+        //     let source = source
+        //         .map_err(|err| error!(?err, "could not get source"))
+        //         .ok()?;
+        //     Some((uri, source))
+        // });
 
-        Some(symbols).transpose()
+        // let symbols = uris_sources
+        //     .flat_map(|(uri, source)| self.get_document_symbols(source, &uri, query).collect_vec())
+        //     .try_collect()
+        //     .map_err(|err| {
+        //         error!(?err, "failed to get document symbols");
+        //         jsonrpc::Error::internal_error()
+        //     });
+
+        // Some(symbols).transpose()
+        todo!()
     }
 
     #[tracing::instrument(skip_all, fields(uri = %params.text_document.uri))]
