@@ -26,6 +26,8 @@ pub struct LocalFs {
 }
 
 impl FsProvider for LocalFs {
+    type Error = FileError;
+
     fn read_raw(&self, id: FileId) -> FileResult<Vec<u8>> {
         let path = self.id_to_path(id)?;
         Self::read_path_raw(&path)
@@ -160,12 +162,14 @@ impl LocalFs {
     }
 }
 
-pub struct FsLocalCache {
+pub struct LocalFsCache {
     entries: FrozenMap<FileId, Box<CacheEntry>>,
     fs: LocalFs,
 }
 
-impl FsProvider for FsLocalCache {
+impl FsProvider for LocalFsCache {
+    type Error = FileError;
+
     fn read_raw(&self, id: FileId) -> FileResult<Vec<u8>> {
         self.read_bytes_ref(id).map(|bytes| bytes.to_vec())
     }
@@ -187,7 +191,7 @@ impl FsProvider for FsLocalCache {
     }
 }
 
-impl FsLocalCache {
+impl LocalFsCache {
     pub fn new(fs: LocalFs) -> Self {
         Self {
             entries: Default::default(),
@@ -229,11 +233,11 @@ pub struct CacheEntry {
 }
 
 impl CacheEntry {
-    pub fn read_source(&self, id: FileId, fs: &impl FsProvider) -> FileResult<&Source> {
+    pub fn read_source(&self, id: FileId, fs: &LocalFs) -> FileResult<&Source> {
         self.source.get_or_try_init(|| fs.read_source(id))
     }
 
-    pub fn read_bytes(&self, id: FileId, fs: &impl FsProvider) -> FileResult<&Bytes> {
+    pub fn read_bytes(&self, id: FileId, fs: &LocalFs) -> FileResult<&Bytes> {
         self.bytes.get_or_try_init(|| fs.read_bytes(id))
     }
 
