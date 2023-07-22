@@ -73,7 +73,7 @@ impl LocalFs {
 
     /// Regular read from filesystem, returning a [`FileResult`] on failure
     pub fn read_path_raw(path: &Path) -> FileResult<Vec<u8>> {
-        fs::read(&path).map_err(|err| FileError::from_io(err, path))
+        fs::read(path).map_err(|err| FileError::from_io(err, path))
     }
 
     fn project_root(&self) -> &Path {
@@ -209,6 +209,10 @@ impl LocalFsCache {
 
     pub fn invalidate(&mut self, id: FileId) {
         self.entry_mut(id).invalidate()
+    }
+
+    pub fn delete(&mut self, id: FileId) {
+        self.entries.as_mut().remove(&id);
     }
 
     pub fn clear(&mut self) {

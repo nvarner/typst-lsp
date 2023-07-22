@@ -8,7 +8,6 @@ pub mod world;
 
 pub type LspUri = lsp_types::Url;
 pub type TypstPath = std::path::Path;
-pub type TypstPathOwned = std::path::PathBuf;
 
 pub type LspPosition = lsp_types::Position;
 /// The interpretation of an `LspCharacterOffset` depends on the `LspPositionEncoding`
@@ -52,39 +51,9 @@ pub type TypstCompletion = typst::ide::Completion;
 pub type TypstCompletionKind = typst::ide::CompletionKind;
 
 pub mod lsp_to_typst {
-    use anyhow::Context;
-    use typst::file::FileId;
     use typst::syntax::Source;
 
     use super::*;
-
-    pub fn uri_to_file_id(lsp_uri: &LspUri, project_root: &TypstPath) -> anyhow::Result<FileId> {
-        let path = uri_to_path(lsp_uri)?;
-        let project_relative = path_to_project_relative(project_root, &path)?;
-        // TODO: should we also detect URIs in packages?
-        Ok(FileId::new(None, &project_relative))
-    }
-
-    pub fn uri_to_path(lsp_uri: &LspUri) -> anyhow::Result<TypstPathOwned> {
-        lsp_uri
-            .to_file_path()
-            .map_err(|()| anyhow::anyhow!("could not get path for URI {lsp_uri}"))
-    }
-
-    fn path_to_project_relative<'a, 'b>(
-        project_root: &TypstPath,
-        path: &TypstPath,
-    ) -> anyhow::Result<TypstPathOwned> {
-        path.strip_prefix(project_root)
-            .map(|path| TypstPath::new("/").join(path))
-            .with_context(|| {
-                format!(
-                    "path {} is not in the project root {}",
-                    path.display(),
-                    project_root.display()
-                )
-            })
-    }
 
     pub fn position_to_offset(
         lsp_position: LspPosition,
