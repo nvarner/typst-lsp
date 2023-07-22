@@ -8,9 +8,7 @@ use tracing::error;
 use typst::diag::{FileError, FileResult};
 use typst::file::FileId;
 use typst::syntax::Source;
-use typst::util::{Bytes, PathExt as TypstPathExt};
-
-use crate::ext::PathExt;
+use typst::util::Bytes;
 
 use super::FsProvider;
 
@@ -28,41 +26,23 @@ pub struct LocalFs {
 impl FsProvider for LocalFs {
     type Error = FileError;
 
-    fn read_raw(&self, id: FileId) -> FileResult<Vec<u8>> {
-        let path = self.id_to_path(id)?;
-        Self::read_path_raw(&path)
+    fn read_bytes(&self, uri: &Url) -> FileResult<Bytes> {
+        let path = self.uri_to_path(uri)?;
+        Self::read_path_raw(&path).map(Bytes::from)
     }
 
-    fn read_bytes(&self, id: FileId) -> FileResult<Bytes> {
-        self.read_raw(id).map(Bytes::from)
-    }
+    fn read_source(&self, uri: &Url) -> FileResult<Source> {
+        let path = self.uri_to_path(uri)?;
 
-    fn read_source(&self, id: FileId) -> FileResult<Source> {
-        let extension_is_typ = || {
-            id.path()
-                .extension()
-                .map(|ext| ext == "typ")
-                .unwrap_or(false)
-        };
-
-        let raw = self.read_raw(id)?;
-
+        let extension_is_typ = || path.extension().map(|ext| ext == "typ").unwrap_or(false);
         if !extension_is_typ() {
             return Err(FileError::NotSource);
         };
 
+        let raw = Self::read_path_raw(&path)?;
+
         let text = String::from_utf8(raw).map_err(|_| FileError::InvalidUtf8)?;
-        Ok(Source::new(id, text))
-    }
-
-    fn uri_to_id(&self, uri: &Url) -> FileResult<FileId> {
-        let path = self.uri_to_path(uri)?;
-        self.path_to_id(&path)
-    }
-
-    fn id_to_uri(&self, id: FileId) -> FileResult<Url> {
-        let path = self.id_to_path(id)?;
-        self.path_to_uri(&path)
+        Ok(Source::new(uri, text))
     }
 }
 
@@ -78,30 +58,6 @@ impl LocalFs {
 
     fn project_root(&self) -> &Path {
         &self.project_root
-    }
-}
-
-// Conversions between file ID/path, URI/path, and project path/fs path
-impl LocalFs {
-    fn id_to_path(&self, id: FileId) -> FileResult<PathBuf> {
-        match id.package() {
-            None => self.project_path_to_fs_path(id.path()),
-            Some(_package) => todo!("packages not yet implemented"),
-        }
-    }
-
-    fn path_to_id(&self, path: &Path) -> FileResult<FileId> {
-        let to_project_id = || {
-            let project_path = self.fs_path_to_project_path(path).ok()?;
-            Some(FileId::new(None, &project_path))
-        };
-
-        let to_package_id = || todo!("packages not yet implemented");
-
-        to_project_id().or_else(to_package_id).ok_or_else(|| {
-            error!(path = %path.display(), "path is not in a project or package");
-            FileError::NotFound(path.to_owned())
-        })
     }
 
     fn uri_to_path(&self, uri: &Url) -> FileResult<PathBuf> {
@@ -128,66 +84,22 @@ impl LocalFs {
 
         Url::from_file_path(path).map_err(handle_error)
     }
-
-    fn project_path_to_fs_path(&self, path_in_project: &Path) -> FileResult<PathBuf> {
-        let handle_error = || {
-            error!(
-                "path `{}` in project `{}` could not be made absolute",
-                path_in_project.display(),
-                self.project_root().display()
-            );
-            FileError::NotFound(path_in_project.to_owned())
-        };
-
-        self.project_root()
-            .join_rooted(path_in_project)
-            .ok_or_else(handle_error)
-    }
-
-    fn fs_path_to_project_path(&self, path: &Path) -> FileResult<PathBuf> {
-        let handle_error = |_| {
-            error!(
-                "path `{}` is not in the project root `{}`",
-                path.display(),
-                self.project_root().display()
-            );
-            FileError::NotFound(path.to_owned())
-        };
-
-        let project_path = path
-            .strip_prefix(self.project_root())
-            .map_err(handle_error)?
-            .push_front(Path::root());
-        Ok(project_path)
-    }
 }
 
 pub struct LocalFsCache {
-    entries: FrozenMap<FileId, Box<CacheEntry>>,
+    entries: FrozenMap<Url, Box<CacheEntry>>,
     fs: LocalFs,
 }
 
 impl FsProvider for LocalFsCache {
     type Error = FileError;
 
-    fn read_raw(&self, id: FileId) -> FileResult<Vec<u8>> {
-        self.read_bytes_ref(id).map(|bytes| bytes.to_vec())
+    fn read_bytes(&self, uri: &Url) -> FileResult<Bytes> {
+        self.read_bytes_ref(uri).cloned()
     }
 
-    fn read_bytes(&self, id: FileId) -> FileResult<Bytes> {
-        self.read_bytes_ref(id).cloned()
-    }
-
-    fn read_source(&self, id: FileId) -> FileResult<Source> {
-        self.read_source_ref(id).cloned()
-    }
-
-    fn uri_to_id(&self, uri: &Url) -> FileResult<FileId> {
-        self.fs.uri_to_id(uri)
-    }
-
-    fn id_to_uri(&self, id: FileId) -> FileResult<Url> {
-        self.fs.id_to_uri(id)
+    fn read_source(&self, uri: &Url) -> FileResult<Source> {
+        self.read_source_ref(uri).cloned()
     }
 }
 
@@ -199,20 +111,16 @@ impl LocalFsCache {
         }
     }
 
-    pub fn read_bytes_ref(&self, id: FileId) -> FileResult<&Bytes> {
-        self.entry(id).read_bytes(id, &self.fs)
+    pub fn read_bytes_ref(&self, uri: &Url) -> FileResult<&Bytes> {
+        self.entry(uri.clone()).read_bytes(uri, &self.fs)
     }
 
-    pub fn read_source_ref(&self, id: FileId) -> FileResult<&Source> {
-        self.entry(id).read_source(id, &self.fs)
+    pub fn read_source_ref(&self, uri: &Url) -> FileResult<&Source> {
+        self.entry(uri.clone()).read_source(uri, &self.fs)
     }
 
-    pub fn invalidate(&mut self, id: FileId) {
-        self.entry_mut(id).invalidate()
-    }
-
-    pub fn delete(&mut self, id: FileId) {
-        self.entries.as_mut().remove(&id);
+    pub fn invalidate(&mut self, uri: &Url) {
+        self.entries.as_mut().remove(uri);
     }
 
     pub fn clear(&mut self) {
@@ -224,10 +132,6 @@ impl LocalFsCache {
             .get(&id) // don't take write lock unnecessarily
             .unwrap_or_else(|| self.entries.insert(id, Box::default()))
     }
-
-    fn entry_mut(&mut self, id: FileId) -> &mut CacheEntry {
-        self.entries.as_mut().entry(id).or_default()
-    }
 }
 
 #[derive(Default)]
@@ -237,16 +141,11 @@ pub struct CacheEntry {
 }
 
 impl CacheEntry {
-    pub fn read_source(&self, id: FileId, fs: &LocalFs) -> FileResult<&Source> {
-        self.source.get_or_try_init(|| fs.read_source(id))
+    pub fn read_source(&self, uri: &Url, fs: &LocalFs) -> FileResult<&Source> {
+        self.source.get_or_try_init(|| fs.read_source(uri))
     }
 
-    pub fn read_bytes(&self, id: FileId, fs: &LocalFs) -> FileResult<&Bytes> {
-        self.bytes.get_or_try_init(|| fs.read_bytes(id))
-    }
-
-    pub fn invalidate(&mut self) {
-        self.source.take();
-        self.bytes.take();
+    pub fn read_bytes(&self, uri: &Url, fs: &LocalFs) -> FileResult<&Bytes> {
+        self.bytes.get_or_try_init(|| fs.read_bytes(uri))
     }
 }

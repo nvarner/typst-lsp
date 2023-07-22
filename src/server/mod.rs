@@ -11,8 +11,9 @@ use typst::diag::{FileError, FileResult};
 use typst::file::FileId;
 
 use crate::config::{Config, ConstConfig};
-use crate::lsp_typst_boundary::world::WorkspaceWorld;
+use crate::lsp_typst_boundary::world::ProjectWorld;
 use crate::server::semantic_tokens::SemanticTokenCache;
+use crate::workspace::project::Project;
 use crate::workspace::Workspace;
 
 use self::diagnostics::DiagnosticsManager;
@@ -70,7 +71,7 @@ impl TypstServer {
             .expect("workspace should be initialized")
     }
 
-    pub async fn get_world_with_main(&self, main_uri: Url) -> FileResult<WorkspaceWorld> {
+    pub async fn get_world_with_main(&self, main_uri: Url) -> FileResult<ProjectWorld> {
         let workspace = self.workspace().read().await;
         let main_id = workspace.uri_to_id(&main_uri).map_err(|err| {
             error!(%err, %main_uri, "couldn't get id for main URI");
@@ -81,8 +82,8 @@ impl TypstServer {
         Ok(self.get_world_with_main_by_id(main_id).await)
     }
 
-    async fn get_world_with_main_by_id(&self, main: FileId) -> WorkspaceWorld {
-        WorkspaceWorld::new(Arc::clone(self.workspace()).read_owned().await, main)
+    async fn get_world_with_main_by_id(&self, main: FileId) -> ProjectWorld {
+        ProjectWorld::new(Arc::clone(self.workspace()).read_owned().await, main)
     }
 
     #[tracing::instrument(skip(self))]

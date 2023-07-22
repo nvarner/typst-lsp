@@ -2,7 +2,7 @@ use tower_lsp::lsp_types::Hover;
 use typst::ide::tooltip;
 use typst::syntax::{LinkedNode, Source};
 
-use crate::lsp_typst_boundary::world::WorkspaceWorld;
+use crate::lsp_typst_boundary::world::ProjectWorld;
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp, LspPosition};
 
 use super::TypstServer;
@@ -10,7 +10,7 @@ use super::TypstServer;
 impl TypstServer {
     pub fn get_hover(
         &self,
-        world: &WorkspaceWorld,
+        world: &ProjectWorld,
         source: &Source,
         position: LspPosition,
     ) -> Option<Hover> {
