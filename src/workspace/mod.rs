@@ -10,15 +10,16 @@ use typst::syntax::Source;
 use typst::util::Bytes;
 
 use self::font_manager::FontManager;
-use self::fs::local::{FsLocalCache, LocalFs};
-use self::fs::FsProvider;
+use self::fs::local::{LocalFs, LocalFsCache};
+use self::fs::lsp::LspFs;
+use self::fs::{FsLayer, FsProvider};
 
 pub mod font_manager;
 pub mod fs;
 pub mod source_manager;
 
 pub struct Workspace {
-    fs: FsLocalCache,
+    fs: FsLayer<LspFs, LocalFsCache>,
     fonts: FontManager,
 
     // Needed so that `Workspace` can implement Typst's `World` trait
@@ -35,20 +36,14 @@ impl Workspace {
             .or_else(|| params.root_path?.try_into().ok())
             .expect("could not get project root");
 
+        let local_fs = LocalFsCache::new(LocalFs::new(project_root));
+
         Self {
-            fs: FsLocalCache::new(LocalFs::new(project_root)),
+            fs: LspFs::default().layered_over(local_fs),
             fonts: FontManager::builder().with_system().with_embedded().build(),
             typst_stdlib: Prehashed::new(typst_library::build()),
         }
     }
-
-    // pub fn source_manager(&self) -> &impl SourceManager {
-    //     &self.files
-    // }
-
-    // pub fn source_manager_mut(&mut self) -> &mut impl SourceManager {
-    //     &mut self.files
-    // }
 
     pub fn font_manager(&self) -> &FontManager {
         &self.fonts
@@ -68,10 +63,6 @@ impl Workspace {
 
     pub fn id_to_uri(&self, id: FileId) -> FileResult<Url> {
         self.fs.id_to_uri(id)
-    }
-
-    pub fn invalidate(&mut self, id: FileId) {
-        self.fs.invalidate(id)
     }
 
     pub fn clear(&mut self) {
