@@ -127,7 +127,6 @@ pub mod typst_to_lsp {
     use crate::config::ConstConfig;
     use crate::server::diagnostics::DiagnosticsMap;
 
-    use super::world::WorkspaceWorld;
     use super::*;
 
     pub fn path_to_uri(typst_path: &TypstPath) -> anyhow::Result<LspUri> {
@@ -228,7 +227,7 @@ pub mod typst_to_lsp {
 
     pub fn source_error_to_diagnostic(
         typst_error: &SourceError,
-        world: &WorkspaceWorld,
+        world: &impl World,
         const_config: &ConstConfig,
     ) -> anyhow::Result<(LspUri, Diagnostic)> {
         let typst_span = typst_error.span;
@@ -253,7 +252,7 @@ pub mod typst_to_lsp {
 
     pub fn source_errors_to_diagnostics<'a>(
         errors: impl IntoIterator<Item = &'a SourceError>,
-        world: &WorkspaceWorld,
+        world: &impl World,
         const_config: &ConstConfig,
     ) -> DiagnosticsMap {
         errors

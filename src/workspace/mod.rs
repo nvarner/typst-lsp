@@ -19,6 +19,7 @@ use self::fs::FsProvider;
 
 pub mod font_manager;
 pub mod fs;
+pub mod project;
 
 pub struct Workspace {
     fs_manager: FsManager,
@@ -47,6 +48,10 @@ impl Workspace {
             fonts: FontManager::builder().with_system().with_embedded().build(),
             typst_stdlib: Prehashed::new(typst_library::build()),
         }
+    }
+
+    pub fn fs_manager(&self) -> &FsManager {
+        &self.fs_manager
     }
 
     pub fn font_manager(&self) -> &FontManager {
@@ -88,10 +93,6 @@ impl Workspace {
 
     pub fn invalidate_local(&mut self, id: FileId) {
         self.fs_manager.invalidate_local(id)
-    }
-
-    pub fn delete_local(&mut self, id: FileId) {
-        self.fs_manager.delete_local(id)
     }
 
     pub fn clear(&mut self) {

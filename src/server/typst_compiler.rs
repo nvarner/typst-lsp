@@ -5,13 +5,13 @@ use typst::syntax::Source;
 use typst::World;
 
 use crate::lsp_typst_boundary::typst_to_lsp;
-use crate::lsp_typst_boundary::world::WorkspaceWorld;
+use crate::lsp_typst_boundary::world::ProjectWorld;
 
 use super::diagnostics::DiagnosticsMap;
 use super::TypstServer;
 
 impl TypstServer {
-    pub fn compile_source(&self, world: &WorkspaceWorld) -> (Option<Document>, DiagnosticsMap) {
+    pub fn compile_source(&self, world: &ProjectWorld) -> (Option<Document>, DiagnosticsMap) {
         let result = typst::compile(world);
 
         let (document, errors) = match result {
@@ -31,7 +31,7 @@ impl TypstServer {
 
     pub fn eval_source(
         &self,
-        world: &WorkspaceWorld,
+        world: &ProjectWorld,
         source: &Source,
     ) -> (Option<Module>, DiagnosticsMap) {
         let route = Route::default();

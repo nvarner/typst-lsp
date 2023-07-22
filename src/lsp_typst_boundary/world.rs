@@ -1,5 +1,4 @@
 use comemo::Prehashed;
-use tokio::sync::OwnedRwLockReadGuard;
 use tracing::{error, warn};
 use typst::diag::{EcoString, FileResult};
 use typst::eval::{Datetime, Library};
@@ -9,40 +8,44 @@ use typst::syntax::Source;
 use typst::util::Bytes;
 use typst::World;
 
+use crate::workspace::fs::FsProvider;
+use crate::workspace::project::{Project, ProjectConverter};
 use crate::workspace::Workspace;
 
 use super::clock::Now;
 
-/// Short-lived struct to implement [`World`] for [`Workspace`]. It wraps a `Workspace` with a main
-/// file and exists for the lifetime of a Typst invocation.
-pub struct WorkspaceWorld {
-    workspace: OwnedRwLockReadGuard<Workspace>,
+/// Short-lived struct to implement [`World`] for [`Project`]. It wraps a `Project` with a main file
+/// and exists for the lifetime of a Typst invocation.
+pub struct ProjectWorld<W: AsRef<Workspace>, C: ProjectConverter, P: AsRef<Project<W, C>>> {
+    project: P,
     main: FileId,
     /// Current time. Will be cached lazily for consistency throughout a compilation.
     now: Now,
 }
 
-impl WorkspaceWorld {
-    pub fn new(workspace: OwnedRwLockReadGuard<Workspace>, main: FileId) -> Self {
+impl<W: AsRef<Workspace>, C: ProjectConverter, P: AsRef<Project<W, C>>> ProjectWorld<W, C, P> {
+    pub fn new(project: P, main: FileId) -> Self {
         Self {
-            workspace,
+            project,
             main,
             now: Now::new(),
         }
     }
 
-    pub fn workspace(&self) -> &OwnedRwLockReadGuard<Workspace> {
-        &self.workspace
+    pub fn project(&self) -> &Project<W, C> {
+        self.project.as_ref()
     }
 }
 
-impl World for WorkspaceWorld {
+impl<W: AsRef<Workspace>, C: ProjectConverter, P: AsRef<Project<W, C>>> World
+    for ProjectWorld<W, C, P>
+{
     fn library(&self) -> &Prehashed<Library> {
-        &self.workspace().typst_stdlib
+        &self.project().workspace().typst_stdlib
     }
 
     fn book(&self) -> &Prehashed<FontBook> {
-        self.workspace().font_manager().book()
+        self.project().workspace().font_manager().book()
     }
 
     fn main(&self) -> Source {
@@ -59,15 +62,15 @@ impl World for WorkspaceWorld {
     }
 
     fn source(&self, id: FileId) -> FileResult<Source> {
-        self.workspace().read_source(id)
+        self.project().read_source(id)
     }
 
     fn file(&self, id: FileId) -> FileResult<Bytes> {
-        self.workspace().read_file(id)
+        self.project().read_bytes(id)
     }
 
     fn font(&self, id: usize) -> Option<Font> {
-        self.workspace().font_manager().font(id)
+        self.project().font_manager().font(id)
     }
 
     fn today(&self, offset: Option<i64>) -> Option<Datetime> {
