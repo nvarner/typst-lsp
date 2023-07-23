@@ -1,8 +1,10 @@
 use serde_json::Value;
+use tower_lsp::jsonrpc;
 use tower_lsp::{
     jsonrpc::{Error, Result},
     lsp_types::Url,
 };
+use tracing::error;
 use typst::World;
 
 use super::TypstServer;
@@ -52,7 +54,10 @@ impl TypstServer {
         let file_uri = Url::parse(file_uri)
             .map_err(|_| Error::invalid_params("Parameter is not a valid URI"))?;
 
-        let world = self.get_world_with_main(file_uri).await.unwrap();
+        let world = self.world_with_main(&file_uri).await.map_err(|err| {
+            error!(?err, %file_uri, "could not get world");
+            jsonrpc::Error::internal_error()
+        })?;
         let source = world.main();
 
         self.run_export(&world, &source).await;

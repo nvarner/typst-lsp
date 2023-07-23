@@ -8,7 +8,6 @@ use typst::syntax::{ast, LinkedNode, Source, SyntaxKind};
 use typst::World;
 
 use crate::ext::StrExt;
-use crate::lsp_typst_boundary::world::ProjectWorld;
 use crate::lsp_typst_boundary::{lsp_to_typst, LspCharacterOffset, LspPosition, TypstOffset};
 
 use super::TypstServer;
@@ -16,7 +15,7 @@ use super::TypstServer;
 impl TypstServer {
     pub fn get_signature_at_position(
         &self,
-        world: &ProjectWorld,
+        world: &impl World,
         source: &Source,
         position: LspPosition,
     ) -> Option<SignatureHelp> {

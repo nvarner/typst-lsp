@@ -7,26 +7,34 @@ use typst::file::FileId;
 use typst::util::PathExt as TypstPathExt;
 
 use crate::ext::PathExt;
+use crate::lsp_typst_boundary::{path_to_uri, uri_to_path};
 
-use super::ProjectConverter;
+use super::ProjectMeta;
 
+#[derive(Debug, Clone)]
 pub struct LocalProjectConverter {
     root_path: PathBuf,
 }
 
-impl ProjectConverter for LocalProjectConverter {
+impl ProjectMeta for LocalProjectConverter {
     fn uri_to_id(&self, uri: &Url) -> FileResult<FileId> {
-        let path = self.uri_to_path(uri)?;
+        let path = uri_to_path(uri)?;
         self.path_to_id(&path)
     }
 
     fn id_to_uri(&self, id: FileId) -> FileResult<Url> {
         let path = self.id_to_path(id)?;
-        self.path_to_uri(&path)
+        path_to_uri(&path)
     }
 }
 
+// TODO: improve return types to prevent `error!`ing on failure, since some failures are expected,
+// e.g. when searching via `ProjectManager`
 impl LocalProjectConverter {
+    pub fn new(root_path: PathBuf) -> Self {
+        Self { root_path }
+    }
+
     fn id_to_path(&self, id: FileId) -> FileResult<PathBuf> {
         match id.package() {
             None => self.project_path_to_fs_path(id.path()),
@@ -53,7 +61,7 @@ impl LocalProjectConverter {
             error!(
                 "path `{}` in project `{}` could not be made absolute",
                 path_in_project.display(),
-                self.project_root().display()
+                self.root_path.display()
             );
             FileError::NotFound(path_in_project.to_owned())
         };
@@ -68,13 +76,13 @@ impl LocalProjectConverter {
             error!(
                 "path `{}` is not in the project root `{}`",
                 path.display(),
-                self.project_root().display()
+                self.root_path.display()
             );
             FileError::NotFound(path.to_owned())
         };
 
         let project_path = path
-            .strip_prefix(self.project_root())
+            .strip_prefix(&self.root_path)
             .map_err(handle_error)?
             .push_front(Path::root());
         Ok(project_path)

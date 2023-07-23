@@ -8,23 +8,21 @@ use typst::syntax::Source;
 use typst::util::Bytes;
 use typst::World;
 
-use crate::workspace::fs::FsProvider;
-use crate::workspace::project::{Project, ProjectConverter};
-use crate::workspace::Workspace;
+use crate::workspace::project::Project;
 
 use super::clock::Now;
 
 /// Short-lived struct to implement [`World`] for [`Project`]. It wraps a `Project` with a main file
 /// and exists for the lifetime of a Typst invocation.
-pub struct ProjectWorld<W: AsRef<Workspace>, C: ProjectConverter, P: AsRef<Project<W, C>>> {
-    project: P,
+pub struct ProjectWorld {
+    project: Project,
     main: FileId,
     /// Current time. Will be cached lazily for consistency throughout a compilation.
     now: Now,
 }
 
-impl<W: AsRef<Workspace>, C: ProjectConverter, P: AsRef<Project<W, C>>> ProjectWorld<W, C, P> {
-    pub fn new(project: P, main: FileId) -> Self {
+impl ProjectWorld {
+    pub fn new(project: Project, main: FileId) -> Self {
         Self {
             project,
             main,
@@ -32,14 +30,12 @@ impl<W: AsRef<Workspace>, C: ProjectConverter, P: AsRef<Project<W, C>>> ProjectW
         }
     }
 
-    pub fn project(&self) -> &Project<W, C> {
-        self.project.as_ref()
+    pub fn project(&self) -> &Project {
+        &self.project
     }
 }
 
-impl<W: AsRef<Workspace>, C: ProjectConverter, P: AsRef<Project<W, C>>> World
-    for ProjectWorld<W, C, P>
-{
+impl World for ProjectWorld {
     fn library(&self) -> &Prehashed<Library> {
         &self.project().workspace().typst_stdlib
     }
@@ -70,7 +66,7 @@ impl<W: AsRef<Workspace>, C: ProjectConverter, P: AsRef<Project<W, C>>> World
     }
 
     fn font(&self, id: usize) -> Option<Font> {
-        self.project().font_manager().font(id)
+        self.project().workspace().font_manager().font(id)
     }
 
     fn today(&self, offset: Option<i64>) -> Option<Datetime> {
