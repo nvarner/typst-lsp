@@ -2,7 +2,9 @@
 //! open in their editor, the files in them, the files they're currently editing, and so on.
 
 use comemo::Prehashed;
-use tower_lsp::lsp_types::{InitializeParams, TextDocumentContentChangeEvent, Url};
+use tower_lsp::lsp_types::{
+    InitializeParams, TextDocumentContentChangeEvent, Url, WorkspaceFoldersChangeEvent,
+};
 use typst::diag::FileResult;
 use typst::eval::Library;
 use typst::file::FileId;
@@ -81,6 +83,13 @@ impl Workspace {
 
     pub fn invalidate_local(&mut self, uri: &Url) {
         self.fs.invalidate_local(uri)
+    }
+
+    pub fn handle_workspace_folders_change_event(&mut self, event: &WorkspaceFoldersChangeEvent) {
+        self.projects.handle_change_event(event);
+
+        // The canonical project/id of URIs might have changed, so we need to invalidate the cache
+        self.clear();
     }
 
     pub fn clear(&mut self) {

@@ -98,6 +98,13 @@ impl LanguageServer for TypstServer {
                 document_symbol_provider: Some(OneOf::Left(true)),
                 workspace_symbol_provider: Some(OneOf::Left(true)),
                 selection_range_provider: Some(SelectionRangeProviderCapability::Simple(true)),
+                workspace: Some(WorkspaceServerCapabilities {
+                    workspace_folders: Some(WorkspaceFoldersServerCapabilities {
+                        supported: Some(true),
+                        change_notifications: Some(OneOf::Left(true)),
+                    }),
+                    ..Default::default()
+                }),
                 ..Default::default()
             },
             ..Default::default()
@@ -273,6 +280,15 @@ impl LanguageServer for TypstServer {
         for change in changes {
             self.handle_file_change_event(&mut workspace, change);
         }
+    }
+
+    #[tracing::instrument(skip(self))]
+    async fn did_change_workspace_folders(&self, params: DidChangeWorkspaceFoldersParams) {
+        let event = params.event;
+
+        let mut workspace = self.workspace().write().await;
+
+        workspace.handle_workspace_folders_change_event(&event);
     }
 
     #[tracing::instrument(
