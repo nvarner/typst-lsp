@@ -45,31 +45,27 @@ impl SourceManager {
     }
 
     pub fn get_source_by_id(&self, id: SourceId) -> FileResult<&Source> {
-        match self.get_inner_source(id) {
-            InnerSource::Closed(cell, uri) => {
-                cell.get_or_try_init(|| Source::read_from_file(id, uri))
-            }
-            InnerSource::Open(source) => Ok(source),
-        }
+        self.get_inner_source(id).get_or_init_source(id)
     }
 
     /// Open a document, adding it to the `SourceManager` if needed
     #[tracing::instrument(skip_all, fields(%uri))]
     pub fn open(&mut self, uri: &Url, text: String) -> anyhow::Result<()> {
-        let ids = self.ids.get_mut();
-        let (index, uri_is_new) = ids.insert_full(uri.clone());
-        let id = SourceId::from_u16(index as u16);
-        let source = Source::new(id, uri, text)?;
-
-        if uri_is_new {
-            info!(id = id.as_u16(), "new source opened");
-            self.sources.push(Box::new(InnerSource::Open(source)));
-        } else {
-            info!(id = id.as_u16(), "existing source opened");
-            *self.get_mut_inner_source(id) = InnerSource::Open(source);
-        }
-
-        Ok(())
+        Self::with_id(self.ids.get_mut(), uri.clone(), |id, is_new| {
+            let inner = InnerSource::Open(Source::new(id, uri, text)?);
+            if is_new {
+                info!(id = id.as_u16(), "new source opened");
+                self.sources.push(Box::new(inner));
+            } else {
+                info!(id = id.as_u16(), "existing source opened");
+                **self
+                    .sources
+                    .as_mut()
+                    .get_mut(usize::from(id.as_u16()))
+                    .unwrap() = inner;
+            }
+            Ok(())
+        })
     }
 
     /// Close a document
@@ -122,57 +118,54 @@ impl SourceManager {
     /// `SourceManager` if needed
     #[tracing::instrument(skip_all, fields(%uri))]
     pub fn get_all_by_uri(&self, uri: Url) -> FileResult<(&Source, SourceId)> {
-        let mut ids = self.ids.write();
-        let (index, uri_is_new) = ids.insert_full(uri.clone());
-        let id = SourceId::from_u16(index as u16);
-
-        let source = if uri_is_new {
-            let source = Source::read_from_file(id, &uri)?;
-            self.sources
-                .push_get(Box::new(InnerSource::closed(source, uri)))
-                .get_source()
-                .unwrap()
-        } else {
-            match self.get_inner_source(id) {
-                InnerSource::Closed(cell, _) => {
-                    cell.get_or_try_init(|| Source::read_from_file(id, &uri))?
-                }
-                InnerSource::Open(source) => source,
-            }
-        };
-
-        Ok((source, id))
+        Self::with_id(&mut self.ids.write(), uri.clone(), |id, is_new| {
+            let source = if is_new {
+                self.sources
+                    .push_get(Box::new(InnerSource::closed(
+                        Source::read_from_file(id, &uri)?,
+                        uri,
+                    )))
+                    .get_source()
+                    .unwrap()
+            } else {
+                self.sources
+                    .get(id.as_u16().into())
+                    .unwrap()
+                    .get_or_init_source(id)?
+            };
+            Ok((source, id))
+        })
     }
 
     /// Get a [`Source`] and its [`SourceId`] by its URI, caching it and adding it to the
     /// `SourceManager` if needed
     #[tracing::instrument(skip_all, fields(%uri))]
     pub fn get_mut_all_by_uri(&mut self, uri: Url) -> FileResult<(&mut Source, SourceId)> {
-        let ids = self.ids.get_mut();
-        let (index, uri_is_new) = ids.insert_full(uri.clone());
-        let id = SourceId::from_u16(index as u16);
-
-        let source = if uri_is_new {
-            let source = Source::read_from_file(id, &uri)?;
-            let sources = self.sources.as_mut();
-            sources.push(Box::new(InnerSource::closed(source, uri)));
-            sources
-                .last_mut()
+        Self::with_id(self.ids.get_mut(), uri.clone(), |id, is_new| {
+            let source =
+                if is_new {
+                    let sources = self.sources.as_mut();
+                    sources.push(Box::new(InnerSource::closed(
+                        Source::read_from_file(id, &uri)?,
+                        uri,
+                    )));
+                    sources.last_mut()
                 .expect("`sources` should be nonempty since we just pushed to it")
                 .get_mut_source()
-                .expect("last element should have a source since we just pushed one with a source")
-        } else {
-            match self.get_mut_inner_source(id) {
-                InnerSource::Closed(cell, _) => {
-                    cell.get_or_try_init(|| Source::read_from_file(id, &uri))?;
-                    cell.get_mut()
+                 .expect("last element should have a source since we just pushed one with a source")
+                } else {
+                    let inner = self
+                        .sources
+                        .as_mut()
+                        .get_mut(usize::from(id.as_u16()))
+                        .unwrap();
+                    inner.get_or_init_source(id)?;
+                    inner
+                        .get_mut_source()
                         .expect("cell should have just been initialized")
-                }
-                InnerSource::Open(source) => source,
-            }
-        };
-
-        Ok((source, id))
+                };
+            Ok((source, id))
+        })
     }
 
     fn get_id_by_known_uri(&self, uri: &Url) -> Option<SourceId> {
@@ -191,6 +184,26 @@ impl SourceManager {
         // We treat all `SourceId`s as valid
         self.sources.as_mut().get_mut(id.as_u16() as usize).unwrap()
     }
+
+    /// Retrieve or generate the ID for `uri` and run a function on it.
+    ///
+    /// `op` is required to add an entry to [`Self::sources`] or return [`Result::Err`]
+    /// when the bool argument is true, meaning the URI was not yet cached.
+    /// Otherwise the IndexSet and sources Vec would become out of sync.
+    fn with_id<T, E>(
+        ids: &mut IndexSet<Url>,
+        uri: Url,
+        op: impl FnOnce(SourceId, bool) -> Result<T, E>,
+    ) -> Result<T, E> {
+        let (index, uri_is_new) = ids.insert_full(uri);
+        let id = SourceId::from_u16(index.try_into().unwrap());
+        op(id, uri_is_new).map_err(|err| {
+            if uri_is_new {
+                ids.pop();
+            }
+            err
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -208,6 +221,13 @@ impl InnerSource {
         match self {
             Self::Open(source) => Some(source),
             Self::Closed(cell, _) => cell.get(),
+        }
+    }
+
+    pub fn get_or_init_source(&self, id: SourceId) -> FileResult<&Source> {
+        match self {
+            Self::Open(source) => Ok(source),
+            Self::Closed(cell, uri) => cell.get_or_try_init(|| Source::read_from_file(id, uri)),
         }
     }
 
