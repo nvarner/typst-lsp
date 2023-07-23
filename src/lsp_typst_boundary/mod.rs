@@ -44,7 +44,7 @@ impl LspRange {
         }
     }
 
-    pub fn to_range_on(self, source: &Source) -> TypstRange {
+    pub fn into_range_on(self, source: &Source) -> TypstRange {
         lsp_to_typst::range(&self, source)
     }
 }

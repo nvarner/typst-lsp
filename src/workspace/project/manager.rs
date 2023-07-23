@@ -62,15 +62,26 @@ impl ProjectManager {
         &self,
         uri: &Url,
     ) -> FileResult<(Box<dyn ProjectMeta + Send + Sync>, FileId)> {
-        let mut candidates = self
+        let candidates = self
             .local
             .iter()
             .map(|meta| (meta, meta.uri_to_id(uri).ok()))
-            .filter_map(|(x, y)| {
-                y.map(|y| (Box::new(x.clone()) as Box<dyn ProjectMeta + Send + Sync>, y))
-            });
+            .filter_map(|(x, y)| y.map(|y| (x, y)));
 
-        // TODO: select the best candidate, not the first one
-        candidates.next().ok_or_else(|| FileError::Other)
+        // Our candidates are projects containing a URI, so we expect to get a set of
+        // subdirectories. The "best" is the "most specific", that is, the project that is a
+        // subdirectory of the rest. This must have the longest length.
+        let (best_meta, best_id) = candidates
+            .max_by_key(|(local, _)| local.path().components().count())
+            .ok_or_else(|| {
+                uri.to_file_path()
+                    .map(FileError::NotFound)
+                    .unwrap_or(FileError::Other)
+            })?;
+
+        Ok((
+            Box::new(best_meta.clone()) as Box<dyn ProjectMeta + Send + Sync>,
+            best_id,
+        ))
     }
 }

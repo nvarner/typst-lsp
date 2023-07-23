@@ -71,7 +71,7 @@ impl TypstServer {
 
     pub async fn world_with_main(&self, uri: &Url) -> FileResult<ProjectWorld> {
         let workspace = Arc::clone(self.workspace()).read_owned().await;
-        let (meta, id) = workspace.uri_to_project_and_id(&uri)?;
+        let (meta, id) = workspace.uri_to_project_and_id(uri)?;
         let project = Project::new(workspace, meta);
         let world = ProjectWorld::new(project, id);
         Ok(world)

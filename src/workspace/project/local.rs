@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use tower_lsp::lsp_types::Url;
-use tracing::error;
+use tracing::{error, warn};
 use typst::diag::{FileError, FileResult};
 use typst::file::FileId;
 use typst::util::PathExt as TypstPathExt;
@@ -11,7 +11,7 @@ use crate::lsp_typst_boundary::{path_to_uri, uri_to_path};
 
 use super::ProjectMeta;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalProjectMeta {
     root_path: PathBuf,
 }
@@ -52,12 +52,15 @@ impl LocalProjectMeta {
             Some(FileId::new(None, &project_path))
         };
 
-        let to_package_id = || todo!("packages not yet implemented");
+        // TODO: implement packages
+        let to_package_id = || {
+            warn!("packages not yet implemented");
+            None
+        };
 
-        to_project_id().or_else(to_package_id).ok_or_else(|| {
-            error!(path = %path.display(), "path is not in a project or package");
-            FileError::NotFound(path.to_owned())
-        })
+        to_project_id()
+            .or_else(to_package_id)
+            .ok_or(FileError::Other)
     }
 
     fn project_path_to_fs_path(&self, path_in_project: &Path) -> FileResult<PathBuf> {
@@ -76,18 +79,9 @@ impl LocalProjectMeta {
     }
 
     fn fs_path_to_project_path(&self, path: &Path) -> FileResult<PathBuf> {
-        let handle_error = |_| {
-            error!(
-                "path `{}` is not in the project root `{}`",
-                path.display(),
-                self.root_path.display()
-            );
-            FileError::NotFound(path.to_owned())
-        };
-
         let project_path = path
             .strip_prefix(&self.root_path)
-            .map_err(handle_error)?
+            .map_err(|_| FileError::Other)?
             .push_front(Path::root());
         Ok(project_path)
     }

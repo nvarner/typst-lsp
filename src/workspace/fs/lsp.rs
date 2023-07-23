@@ -55,7 +55,7 @@ impl LspFs {
 
         match change.range {
             Some(lsp_range) => {
-                let range = LspRange::new(lsp_range, position_encoding).to_range_on(source);
+                let range = LspRange::new(lsp_range, position_encoding).into_range_on(source);
                 source.edit(range, &replacement);
             }
             None => source.replace(replacement),
