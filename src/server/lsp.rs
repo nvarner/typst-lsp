@@ -186,23 +186,23 @@ impl LanguageServer for TypstServer {
         let text = params.text_document.text;
 
         let mut workspace = self.workspace().write().await;
-        let id = match workspace.uri_to_id(&uri) {
-            Ok(id) => id,
-            Err(err) => {
-                error!(?err, %uri, "could not get file ID while opening document");
-                return;
-            }
-        };
 
-        workspace.open_lsp(id, text);
+        if let Err(err) = workspace.open_lsp(uri.clone(), text) {
+            error!(?err, %uri, "could not open file from LSP client");
+            return;
+        };
 
         drop(workspace);
 
         let config = self.config.read().await;
-        let world = self
-            .get_world_with_main(uri)
-            .await
-            .expect("source should be cached just after opening it");
+
+        let world = match self.world_with_main(&uri).await {
+            Ok(world) => world,
+            Err(err) => {
+                error!(?err, %uri, "could not get world");
+                return;
+            }
+        };
         let source = world.main();
 
         self.on_source_changed(&world, &config, &source).await;
@@ -213,15 +213,8 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document.uri;
 
         let mut workspace = self.workspace().write().await;
-        let id = match workspace.uri_to_id(&uri) {
-            Ok(id) => id,
-            Err(err) => {
-                error!(?err, %uri, "could not get file ID while closing document");
-                return;
-            }
-        };
 
-        workspace.close_lsp(id);
+        workspace.close_lsp(&uri);
         self.client.publish_diagnostics(uri, Vec::new(), None).await;
     }
 
@@ -231,20 +224,20 @@ impl LanguageServer for TypstServer {
         let changes = params.content_changes;
 
         let mut workspace = self.workspace().write().await;
-        let id = match workspace.uri_to_id(&uri) {
-            Ok(id) => id,
-            Err(err) => {
-                error!(?err, %uri, "could not get file ID while changing document");
-                return;
-            }
-        };
 
-        workspace.edit_lsp(id, changes, self.const_config().position_encoding);
+        workspace.edit_lsp(&uri, changes, self.const_config().position_encoding);
 
         drop(workspace);
 
         let config = self.config.read().await;
-        let world = self.get_world_with_main(uri).await.unwrap();
+        let world = self.world_with_main(&uri).await;
+        let world = match world {
+            Ok(world) => world,
+            Err(err) => {
+                error!(?err, %uri, "could not get world");
+                return;
+            }
+        };
         let source = world.main();
 
         self.on_source_changed(&world, &config, &source).await;
@@ -255,10 +248,18 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document.uri;
 
         let config = self.config.read().await;
-        let world = self.get_world_with_main(uri).await.unwrap();
-        let source = world.main();
 
         if config.export_pdf == ExportPdfMode::OnSave {
+            let world = self.world_with_main(&uri).await;
+            let world = match world {
+                Ok(world) => world,
+                Err(err) => {
+                    error!(?err, %uri, "could not get world");
+                    return;
+                }
+            };
+            let source = world.main();
+
             self.run_diagnostics_and_export(&world, &source).await;
         }
     }
@@ -313,7 +314,10 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
 
-        let world = self.get_world_with_main(uri).await.unwrap();
+        let world = self.world_with_main(&uri).await.map_err(|err| {
+            error!(?err, %uri, "could not get world");
+            jsonrpc::Error::internal_error()
+        })?;
         let source = world.main();
 
         Ok(self.get_hover(&world, &source, position))
@@ -337,7 +341,10 @@ impl LanguageServer for TypstServer {
             .map(|context| context.trigger_kind == CompletionTriggerKind::INVOKED)
             .unwrap_or(false);
 
-        let world = self.get_world_with_main(uri).await.unwrap();
+        let world = self.world_with_main(&uri).await.map_err(|err| {
+            error!(?err, %uri, "could not get world");
+            jsonrpc::Error::internal_error()
+        })?;
         let source = world.main();
 
         let typst_offset = lsp_to_typst::position_to_offset(
@@ -365,7 +372,10 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
 
-        let world = self.get_world_with_main(uri).await.unwrap();
+        let world = self.world_with_main(&uri).await.map_err(|err| {
+            error!(?err, %uri, "could not get world");
+            jsonrpc::Error::internal_error()
+        })?;
         let source = world.main();
 
         Ok(self.get_signature_at_position(&world, &source, position))
@@ -379,12 +389,8 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document.uri;
 
         let workspace = self.workspace().read().await;
-        let id = workspace.uri_to_id(&uri).map_err(|err| {
-            error!(?err, %uri, "could not get file ID while getting document symbols");
-            jsonrpc::Error::internal_error()
-        })?;
 
-        let source = workspace.read_source(id).map_err(|err| {
+        let source = workspace.read_source(&uri).map_err(|err| {
             error!(?err, %uri, "could not open file while getting document symbols");
             jsonrpc::Error::internal_error()
         })?;
@@ -452,12 +458,8 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document.uri;
 
         let workspace = self.workspace().read().await;
-        let id = workspace.uri_to_id(&uri).map_err(|err| {
-            error!(?err, %uri, "could not get file ID while getting full semantic tokens");
-            jsonrpc::Error::internal_error()
-        })?;
 
-        let source = workspace.read_source(id).map_err(|err| {
+        let source = workspace.read_source(&uri).map_err(|err| {
             error!(?err, %uri, "could not open file while getting full semantic tokens");
             jsonrpc::Error::internal_error()
         })?;
@@ -482,12 +484,8 @@ impl LanguageServer for TypstServer {
         let previous_result_id = params.previous_result_id;
 
         let workspace = self.workspace().read().await;
-        let id = workspace.uri_to_id(&uri).map_err(|err| {
-            error!(?err, %uri, "could not get file ID while getting full semantic tokens delta");
-            jsonrpc::Error::internal_error()
-        })?;
 
-        let source = workspace.read_source(id).map_err(|err| {
+        let source = workspace.read_source(&uri).map_err(|err| {
             error!(?err, %uri, "could not open file while getting full semantic tokens delta");
             jsonrpc::Error::internal_error()
         })?;
@@ -542,7 +540,10 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document.uri;
         let positions = params.positions;
 
-        let world = self.get_world_with_main(uri).await.unwrap();
+        let world = self.world_with_main(&uri).await.map_err(|err| {
+            error!(?err, %uri, "could not get world");
+            jsonrpc::Error::internal_error()
+        })?;
         let source = world.main();
 
         Ok(self.get_selection_range(&source, &positions))

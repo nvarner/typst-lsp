@@ -5,10 +5,8 @@ use once_cell::sync::OnceCell;
 use tokio::sync::{Mutex, RwLock};
 use tower_lsp::lsp_types::{InitializeParams, Url};
 use tower_lsp::{jsonrpc, Client};
-use tracing::{error, info};
 use tracing_subscriber::{reload, Registry};
-use typst::diag::{FileError, FileResult};
-use typst::file::FileId;
+use typst::diag::FileResult;
 
 use crate::config::{Config, ConstConfig};
 use crate::lsp_typst_boundary::world::ProjectWorld;
@@ -71,19 +69,12 @@ impl TypstServer {
             .expect("workspace should be initialized")
     }
 
-    pub async fn get_world_with_main(&self, main_uri: Url) -> FileResult<ProjectWorld> {
-        let workspace = self.workspace().read().await;
-        let main_id = workspace.uri_to_id(&main_uri).map_err(|err| {
-            error!(%err, %main_uri, "couldn't get id for main URI");
-            FileError::Other
-        })?;
-        drop(workspace);
-
-        Ok(self.get_world_with_main_by_id(main_id).await)
-    }
-
-    async fn get_world_with_main_by_id(&self, main: FileId) -> ProjectWorld {
-        ProjectWorld::new(Arc::clone(self.workspace()).read_owned().await, main)
+    pub async fn world_with_main(&self, uri: &Url) -> FileResult<ProjectWorld> {
+        let workspace = Arc::clone(self.workspace()).read_owned().await;
+        let (meta, id) = workspace.uri_to_project_and_id(&uri)?;
+        let project = Project::new(workspace, meta);
+        let world = ProjectWorld::new(project, id);
+        Ok(world)
     }
 
     #[tracing::instrument(skip(self))]

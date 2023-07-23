@@ -2,6 +2,8 @@ use tower_lsp::lsp_types::Url;
 use typst::syntax::Source;
 use typst::util::Bytes;
 
+use super::project::manager::ProjectManager;
+
 pub mod local;
 pub mod lsp;
 pub mod manager;
@@ -14,5 +16,9 @@ pub trait FsProvider {
     type Error;
 
     fn read_bytes(&self, uri: &Url) -> Result<Bytes, Self::Error>;
-    fn read_source(&self, uri: &Url) -> Result<Source, Self::Error>;
+    fn read_source(
+        &self,
+        uri: &Url,
+        project_manager: &ProjectManager,
+    ) -> Result<Source, Self::Error>;
 }

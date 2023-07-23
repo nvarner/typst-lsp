@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use itertools::Itertools;
 use tower_lsp::lsp_types::{
     InitializeParams, Position, PositionEncodingKind, SemanticTokensClientCapabilities,
 };
@@ -12,6 +13,7 @@ pub trait InitializeParamsExt {
     fn supports_config_change_registration(&self) -> bool;
     fn semantic_tokens_capabilities(&self) -> Option<&SemanticTokensClientCapabilities>;
     fn supports_semantic_tokens_dynamic_registration(&self) -> bool;
+    fn root_paths(&self) -> Vec<PathBuf>;
 }
 
 static DEFAULT_ENCODING: [PositionEncodingKind; 1] = [PositionEncodingKind::UTF16];
@@ -46,6 +48,23 @@ impl InitializeParamsExt for InitializeParams {
         self.semantic_tokens_capabilities()
             .and_then(|semantic_tokens| semantic_tokens.dynamic_registration)
             .unwrap_or(false)
+    }
+
+    #[allow(deprecated)] // `self.root_path` is marked as deprecated
+    fn root_paths(&self) -> Vec<PathBuf> {
+        match self.workspace_folders.as_ref() {
+            Some(roots) => roots
+                .iter()
+                .map(|root| &root.uri)
+                .filter_map(|uri| uri.to_file_path().ok())
+                .collect_vec(),
+            None => {
+                let root_uri = || self.root_uri.as_ref()?.to_file_path().ok();
+                let root_path = || self.root_path.as_ref()?.try_into().ok();
+
+                root_uri().or_else(root_path).into_iter().collect()
+            }
+        }
     }
 }
 

@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 
 use tower_lsp::lsp_types::{TextDocumentContentChangeEvent, Url};
+use typst::diag::FileResult;
 use typst::syntax::Source;
 use typst::util::Bytes;
 
 use crate::config::PositionEncoding;
 use crate::lsp_typst_boundary::LspRange;
+use crate::workspace::project::manager::ProjectManager;
 
 use super::FsProvider;
 
@@ -16,8 +18,16 @@ pub struct LspFs {
 }
 
 impl LspFs {
-    pub fn open(&mut self, uri: Url, source: Source) {
+    pub fn open(
+        &mut self,
+        uri: Url,
+        text: String,
+        project_manager: &ProjectManager,
+    ) -> FileResult<()> {
+        let id = project_manager.uri_to_id(&uri)?;
+        let source = Source::new(id, text);
         self.files.insert(uri, source);
+        Ok(())
     }
 
     pub fn close(&mut self, uri: &Url) {
@@ -57,11 +67,11 @@ impl LspFs {
     }
 
     fn read_source_ref(&self, uri: &Url) -> Result<&Source, ()> {
-        self.files.get(&uri).ok_or(())
+        self.files.get(uri).ok_or(())
     }
 
     fn read_source_mut(&mut self, uri: &Url) -> Result<&mut Source, ()> {
-        self.files.get_mut(&uri).ok_or(())
+        self.files.get_mut(uri).ok_or(())
     }
 }
 
@@ -69,11 +79,11 @@ impl FsProvider for LspFs {
     type Error = ();
 
     fn read_bytes(&self, uri: &Url) -> Result<Bytes, ()> {
-        self.read_source(uri)
+        self.read_source_ref(uri)
             .map(|source| source.text().as_bytes().into())
     }
 
-    fn read_source(&self, uri: &Url) -> Result<Source, ()> {
+    fn read_source(&self, uri: &Url, _project_manager: &ProjectManager) -> Result<Source, ()> {
         self.read_source_ref(uri).cloned()
     }
 }
