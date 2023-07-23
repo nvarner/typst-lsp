@@ -1,6 +1,6 @@
 use tower_lsp::lsp_types::{
-    DidChangeWatchedFilesRegistrationOptions, FileEvent, FileSystemWatcher, GlobPattern,
-    Registration,
+    DidChangeWatchedFilesRegistrationOptions, FileChangeType, FileEvent, FileSystemWatcher,
+    GlobPattern, Registration,
 };
 
 use crate::workspace::Workspace;
@@ -28,6 +28,13 @@ impl TypstServer {
     }
 
     pub fn handle_file_change_event(&self, workspace: &mut Workspace, event: FileEvent) {
-        workspace.invalidate_local(&event.uri);
+        let uri = event.uri;
+
+        match event.typ {
+            FileChangeType::CREATED => workspace.new_local(&uri),
+            FileChangeType::CHANGED => workspace.invalidate_local(&uri),
+            FileChangeType::DELETED => workspace.delete_local(&uri),
+            _ => (),
+        }
     }
 }

@@ -40,8 +40,16 @@ impl FsManager {
         self.lsp.edit(uri, changes, position_encoding)
     }
 
+    pub fn new_local(&mut self, uri: &Url) {
+        self.local.cache_new(uri)
+    }
+
     pub fn invalidate_local(&mut self, uri: &Url) {
         self.local.invalidate(uri)
+    }
+
+    pub fn delete_local(&mut self, uri: &Url) {
+        self.local.delete(uri)
     }
 
     pub fn clear(&mut self) {

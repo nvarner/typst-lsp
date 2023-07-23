@@ -86,7 +86,15 @@ impl LocalFsCache {
             .read_source(uri, &self.fs, project_manager)
     }
 
+    pub fn cache_new(&mut self, uri: &Url) {
+        self.entry_mut(uri.clone());
+    }
+
     pub fn invalidate(&mut self, uri: &Url) {
+        self.entry_mut(uri.clone()).invalidate()
+    }
+
+    pub fn delete(&mut self, uri: &Url) {
         self.entries.as_mut().remove(uri);
     }
 
@@ -98,6 +106,10 @@ impl LocalFsCache {
         self.entries
             .get(&uri) // don't take write lock unnecessarily
             .unwrap_or_else(|| self.entries.insert(uri, Box::default()))
+    }
+
+    fn entry_mut(&mut self, uri: Url) -> &mut CacheEntry {
+        self.entries.as_mut().entry(uri).or_default()
     }
 }
 
@@ -120,5 +132,10 @@ impl CacheEntry {
     ) -> FileResult<&Source> {
         self.source
             .get_or_try_init(|| fs.read_source(uri, project_manager))
+    }
+
+    pub fn invalidate(&mut self) {
+        self.source.take();
+        self.bytes.take();
     }
 }
