@@ -81,8 +81,16 @@ impl Workspace {
         self.fs.edit_lsp(uri, changes, position_encoding)
     }
 
+    pub fn new_local(&mut self, uri: &Url) {
+        self.fs.new_local(uri)
+    }
+
     pub fn invalidate_local(&mut self, uri: &Url) {
         self.fs.invalidate_local(uri)
+    }
+
+    pub fn delete_local(&mut self, uri: &Url) {
+        self.fs.delete_local(uri)
     }
 
     pub fn handle_workspace_folders_change_event(&mut self, event: &WorkspaceFoldersChangeEvent) {
