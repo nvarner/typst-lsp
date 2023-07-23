@@ -12,11 +12,11 @@ use crate::lsp_typst_boundary::{path_to_uri, uri_to_path};
 use super::ProjectMeta;
 
 #[derive(Debug, Clone)]
-pub struct LocalProjectConverter {
+pub struct LocalProjectMeta {
     root_path: PathBuf,
 }
 
-impl ProjectMeta for LocalProjectConverter {
+impl ProjectMeta for LocalProjectMeta {
     fn uri_to_id(&self, uri: &Url) -> FileResult<FileId> {
         let path = uri_to_path(uri)?;
         self.path_to_id(&path)
@@ -30,9 +30,13 @@ impl ProjectMeta for LocalProjectConverter {
 
 // TODO: improve return types to prevent `error!`ing on failure, since some failures are expected,
 // e.g. when searching via `ProjectManager`
-impl LocalProjectConverter {
+impl LocalProjectMeta {
     pub fn new(root_path: PathBuf) -> Self {
         Self { root_path }
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.root_path
     }
 
     fn id_to_path(&self, id: FileId) -> FileResult<PathBuf> {
