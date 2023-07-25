@@ -5,6 +5,7 @@ use comemo::Prehashed;
 use tower_lsp::lsp_types::{
     InitializeParams, TextDocumentContentChangeEvent, Url, WorkspaceFoldersChangeEvent,
 };
+use tracing::trace;
 use typst::diag::FileResult;
 use typst::eval::Library;
 use typst::file::FileId;
@@ -42,6 +43,15 @@ impl Workspace {
             fonts: FontManager::builder().with_system().with_embedded().build(),
             projects: ProjectManager::new(root_paths),
             typst_stdlib: Prehashed::new(typst_library::build()),
+        }
+    }
+
+    pub fn register_files(&mut self) {
+        let uris = self.projects.find_source_uris();
+
+        for uri in uris {
+            trace!(%uri, "registering file");
+            self.new_local(&uri);
         }
     }
 
@@ -103,5 +113,6 @@ impl Workspace {
     pub fn clear(&mut self) {
         self.fonts.clear();
         self.fs.clear();
+        self.register_files();
     }
 }

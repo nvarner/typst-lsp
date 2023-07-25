@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
-use itertools::Itertools;
 use once_cell::sync::OnceCell;
 use tokio::sync::{Mutex, RwLock};
-use tower_lsp::lsp_types::{InitializeParams, Url};
-use tower_lsp::{jsonrpc, Client};
+use tower_lsp::lsp_types::Url;
+use tower_lsp::Client;
 use tracing_subscriber::{reload, Registry};
 use typst::diag::FileResult;
 
@@ -78,33 +77,9 @@ impl TypstServer {
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn register_workspace_files(&self, params: &InitializeParams) -> jsonrpc::Result<()> {
+    pub async fn register_workspace_files(&self) {
         let mut workspace = self.workspace().write().await;
 
-        let workspace_uris = params
-            .workspace_folders
-            .iter()
-            .flat_map(|folders| folders.iter())
-            .map(|folder| &folder.uri);
-
-        let root_uri = params.root_uri.iter();
-
-        let uris_to_register = workspace_uris.chain(root_uri).unique_by(|x| *x);
-
-        // TODO: replace this
-
-        // for uri in uris_to_register {
-        //     workspace
-        //         .source_manager_mut()
-        //         .register_workspace_files(uri)
-        //         .map_err(|e| {
-        //             jsonrpc::Error::invalid_params(format!(
-        //                 "failed to register workspace files: {e:#}"
-        //             ))
-        //         })?;
-        //     info!(%uri, "folder added to workspace");
-        // }
-
-        Ok(())
+        workspace.register_files();
     }
 }

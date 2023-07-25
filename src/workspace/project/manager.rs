@@ -54,6 +54,15 @@ impl ProjectManager {
             .collect_vec();
     }
 
+    pub fn find_source_uris(&self) -> impl Iterator<Item = Url> {
+        self.local
+            .iter()
+            .map(LocalProjectMeta::find_source_uris)
+            .collect_vec()
+            .into_iter()
+            .flatten()
+    }
+
     pub fn uri_to_id(&self, uri: &Url) -> FileResult<FileId> {
         self.uri_to_project_and_id(uri).map(|(_, id)| id)
     }
