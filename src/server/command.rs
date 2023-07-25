@@ -60,7 +60,7 @@ impl TypstServer {
         })?;
         let source = world.main();
 
-        self.run_export(&world, &source).await;
+        self.run_export(&world, &source);
 
         Ok(())
     }

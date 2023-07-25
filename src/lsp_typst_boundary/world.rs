@@ -14,6 +14,7 @@ use super::clock::Now;
 
 /// Short-lived struct to implement [`World`] for [`Project`]. It wraps a `Project` with a main file
 /// and exists for the lifetime of a Typst invocation.
+#[derive(Debug)]
 pub struct ProjectWorld {
     project: Project,
     main: FileId,

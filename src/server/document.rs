@@ -13,11 +13,11 @@ impl TypstServer {
         }
     }
 
-    pub async fn run_export(&self, world: &ProjectWorld, source: &Source) {
+    pub fn run_export(&self, world: &ProjectWorld, source: &Source) {
         let (document, _) = self.compile_source(world);
 
         if let Some(document) = document {
-            self.export_pdf(source, &document).await;
+            self.export_pdf(world, source, &document);
         }
     }
 
@@ -26,7 +26,7 @@ impl TypstServer {
 
         self.update_all_diagnostics(diagnostics).await;
         if let Some(document) = document {
-            self.export_pdf(source, &document).await;
+            self.export_pdf(world, source, &document);
         }
     }
 
