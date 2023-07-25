@@ -6,15 +6,16 @@ use typst::util::Bytes;
 use crate::config::PositionEncoding;
 use crate::workspace::project::manager::ProjectManager;
 
-use super::local::LocalFsCache;
+use super::cache::Cache;
+use super::local::LocalFs;
 use super::lsp::LspFs;
-use super::FsProvider;
+use super::{ReadProvider, WriteProvider};
 
 /// Composes [`FsProvider`]s into a single provider for a workspace
 #[derive(Default)]
 pub struct FsManager {
     lsp: LspFs,
-    local: LocalFsCache,
+    local: Cache<LocalFs>,
 }
 
 impl FsManager {
@@ -58,7 +59,7 @@ impl FsManager {
     }
 }
 
-impl FsProvider for FsManager {
+impl ReadProvider for FsManager {
     type Error = FileError;
 
     fn read_bytes(&self, uri: &Url) -> FileResult<Bytes> {
@@ -71,5 +72,13 @@ impl FsProvider for FsManager {
         self.lsp
             .read_source(uri, project_manager)
             .or_else(|()| self.local.read_source(uri, project_manager))
+    }
+}
+
+impl WriteProvider for FsManager {
+    type Error = FileError;
+
+    fn write_raw(&self, uri: &Url, data: &[u8]) -> FileResult<()> {
+        self.local.inner().write_raw(uri, data)
     }
 }
