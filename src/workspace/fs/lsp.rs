@@ -9,7 +9,7 @@ use crate::config::PositionEncoding;
 use crate::lsp_typst_boundary::LspRange;
 use crate::workspace::project::manager::ProjectManager;
 
-use super::FsProvider;
+use super::ReadProvider;
 
 /// Implements the Typst filesystem on source files provided by an LSP client
 #[derive(Default)]
@@ -75,7 +75,7 @@ impl LspFs {
     }
 }
 
-impl FsProvider for LspFs {
+impl ReadProvider for LspFs {
     type Error = ();
 
     fn read_bytes(&self, uri: &Url) -> Result<Bytes, ()> {

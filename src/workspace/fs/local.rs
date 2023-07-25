@@ -1,8 +1,6 @@
 use std::fs;
 use std::path::Path;
 
-use elsa::sync::FrozenMap;
-use once_cell::sync::OnceCell;
 use tower_lsp::lsp_types::Url;
 use typst::diag::{FileError, FileResult};
 use typst::syntax::Source;
@@ -11,7 +9,7 @@ use typst::util::Bytes;
 use crate::lsp_typst_boundary::uri_to_path;
 use crate::workspace::project::manager::ProjectManager;
 
-use super::FsProvider;
+use super::{ReadProvider, WriteProvider};
 
 /// Implements the Typst filesystem on the local filesystem, mapping Typst files to local files, and
 /// providing conversions using [`Path`]s as an intermediate.
@@ -23,7 +21,7 @@ use super::FsProvider;
 #[derive(Default)]
 pub struct LocalFs {}
 
-impl FsProvider for LocalFs {
+impl ReadProvider for LocalFs {
     type Error = FileError;
 
     fn read_bytes(&self, uri: &Url) -> FileResult<Bytes> {
@@ -47,95 +45,22 @@ impl FsProvider for LocalFs {
     }
 }
 
+impl WriteProvider for LocalFs {
+    type Error = FileError;
+
+    fn write_raw(&self, uri: &Url, data: &[u8]) -> FileResult<()> {
+        let path = uri_to_path(uri)?;
+        Self::write_path_raw(&path, data)
+    }
+}
+
 impl LocalFs {
     /// Regular read from filesystem, returning a [`FileResult`] on failure
     pub fn read_path_raw(path: &Path) -> FileResult<Vec<u8>> {
         fs::read(path).map_err(|err| FileError::from_io(err, path))
     }
-}
 
-#[derive(Default)]
-pub struct LocalFsCache {
-    entries: FrozenMap<Url, Box<CacheEntry>>,
-    fs: LocalFs,
-}
-
-impl FsProvider for LocalFsCache {
-    type Error = FileError;
-
-    fn read_bytes(&self, uri: &Url) -> FileResult<Bytes> {
-        self.read_bytes_ref(uri).cloned()
-    }
-
-    fn read_source(&self, uri: &Url, project_manager: &ProjectManager) -> FileResult<Source> {
-        self.read_source_ref(uri, project_manager).cloned()
-    }
-}
-
-impl LocalFsCache {
-    pub fn read_bytes_ref(&self, uri: &Url) -> FileResult<&Bytes> {
-        self.entry(uri.clone()).read_bytes(uri, &self.fs)
-    }
-
-    pub fn read_source_ref(
-        &self,
-        uri: &Url,
-        project_manager: &ProjectManager,
-    ) -> FileResult<&Source> {
-        self.entry(uri.clone())
-            .read_source(uri, &self.fs, project_manager)
-    }
-
-    pub fn cache_new(&mut self, uri: &Url) {
-        self.entry_mut(uri.clone());
-    }
-
-    pub fn invalidate(&mut self, uri: &Url) {
-        self.entry_mut(uri.clone()).invalidate()
-    }
-
-    pub fn delete(&mut self, uri: &Url) {
-        self.entries.as_mut().remove(uri);
-    }
-
-    pub fn clear(&mut self) {
-        self.entries.as_mut().clear()
-    }
-
-    fn entry(&self, uri: Url) -> &CacheEntry {
-        self.entries
-            .get(&uri) // don't take write lock unnecessarily
-            .unwrap_or_else(|| self.entries.insert(uri, Box::default()))
-    }
-
-    fn entry_mut(&mut self, uri: Url) -> &mut CacheEntry {
-        self.entries.as_mut().entry(uri).or_default()
-    }
-}
-
-#[derive(Default)]
-pub struct CacheEntry {
-    source: OnceCell<Source>,
-    bytes: OnceCell<Bytes>,
-}
-
-impl CacheEntry {
-    pub fn read_bytes(&self, uri: &Url, fs: &LocalFs) -> FileResult<&Bytes> {
-        self.bytes.get_or_try_init(|| fs.read_bytes(uri))
-    }
-
-    pub fn read_source(
-        &self,
-        uri: &Url,
-        fs: &LocalFs,
-        project_manager: &ProjectManager,
-    ) -> FileResult<&Source> {
-        self.source
-            .get_or_try_init(|| fs.read_source(uri, project_manager))
-    }
-
-    pub fn invalidate(&mut self) {
-        self.source.take();
-        self.bytes.take();
+    pub fn write_path_raw(path: &Path, data: &[u8]) -> FileResult<()> {
+        fs::write(path, data).map_err(|err| FileError::from_io(err, path))
     }
 }

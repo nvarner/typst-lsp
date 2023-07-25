@@ -4,15 +4,13 @@ use typst::util::Bytes;
 
 use super::project::manager::ProjectManager;
 
+pub mod cache;
 pub mod local;
 pub mod lsp;
 pub mod manager;
 
-/// Implements the Typst filesystem for a single workspace.
-///
-/// Implementations provide access to project and package files, downloading packages as needed to
-/// ensure their availability.
-pub trait FsProvider {
+/// Read access to the Typst filesystem for a single workspace
+pub trait ReadProvider {
     type Error;
 
     fn read_bytes(&self, uri: &Url) -> Result<Bytes, Self::Error>;
@@ -21,4 +19,11 @@ pub trait FsProvider {
         uri: &Url,
         project_manager: &ProjectManager,
     ) -> Result<Source, Self::Error>;
+}
+
+/// Write access to the Typst filesystem for a single workspace
+pub trait WriteProvider {
+    type Error;
+
+    fn write_raw(&self, uri: &Url, data: &[u8]) -> Result<(), Self::Error>;
 }
