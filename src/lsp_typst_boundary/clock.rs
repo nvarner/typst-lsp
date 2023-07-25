@@ -3,7 +3,7 @@ use once_cell::sync::OnceCell;
 
 use super::TypstDatetime;
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Now {
     now: OnceCell<chrono::DateTime<Utc>>,
 }

@@ -81,10 +81,7 @@ impl Workspace {
         self.fs.write_raw(uri, data)
     }
 
-    pub fn uri_to_project_and_id(
-        &self,
-        uri: &Url,
-    ) -> FileResult<(Box<dyn ProjectMeta + Send + Sync>, FileId)> {
+    pub fn uri_to_project_and_id(&self, uri: &Url) -> FileResult<(Box<dyn ProjectMeta>, FileId)> {
         self.projects.uri_to_project_and_id(uri)
     }
 

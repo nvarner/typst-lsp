@@ -1,9 +1,11 @@
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use itertools::Itertools;
 use tower_lsp::lsp_types::{
     InitializeParams, Position, PositionEncodingKind, SemanticTokensClientCapabilities,
 };
+use typst::file::FileId;
 use typst::util::StrExt as TypstStrExt;
 
 use crate::config::PositionEncoding;
@@ -95,6 +97,17 @@ impl PathExt for Path {
 
     fn root() -> &'static Path {
         Path::new("/")
+    }
+}
+
+pub trait FileIdExt {
+    fn with_extension(self, extension: impl AsRef<OsStr>) -> Self;
+}
+
+impl FileIdExt for FileId {
+    fn with_extension(self, extension: impl AsRef<OsStr>) -> Self {
+        let path = self.path().with_extension(extension);
+        Self::new(self.package().cloned(), &path)
     }
 }
 

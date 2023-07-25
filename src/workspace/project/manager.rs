@@ -67,10 +67,7 @@ impl ProjectManager {
         self.uri_to_project_and_id(uri).map(|(_, id)| id)
     }
 
-    pub fn uri_to_project_and_id(
-        &self,
-        uri: &Url,
-    ) -> FileResult<(Box<dyn ProjectMeta + Send + Sync>, FileId)> {
+    pub fn uri_to_project_and_id(&self, uri: &Url) -> FileResult<(Box<dyn ProjectMeta>, FileId)> {
         let candidates = self
             .local
             .iter()
