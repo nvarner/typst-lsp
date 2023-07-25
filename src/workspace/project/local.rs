@@ -5,6 +5,7 @@ use tracing::{error, warn};
 use typst::diag::{FileError, FileResult};
 use typst::file::FileId;
 use typst::util::PathExt as TypstPathExt;
+use walkdir::WalkDir;
 
 use crate::ext::PathExt;
 use crate::lsp_typst_boundary::{path_to_uri, uri_to_path};
@@ -37,6 +38,16 @@ impl LocalProjectMeta {
 
     pub fn path(&self) -> &Path {
         &self.root_path
+    }
+
+    pub fn find_source_uris(&self) -> impl Iterator<Item = Url> {
+        WalkDir::new(self.path())
+            .into_iter()
+            .filter_map(Result::ok)
+            .filter(|entry| entry.file_type().is_file())
+            .filter(|file| file.path().extension().map_or(false, |ext| ext == "typ"))
+            .map(|file| path_to_uri(file.path()))
+            .filter_map(Result::ok)
     }
 
     fn id_to_path(&self, id: FileId) -> FileResult<PathBuf> {

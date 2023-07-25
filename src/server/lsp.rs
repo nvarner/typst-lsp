@@ -50,7 +50,7 @@ impl LanguageServer for TypstServer {
                 .map_err(jsonrpc::Error::invalid_params)?;
         }
 
-        self.register_workspace_files(&params).await?;
+        self.register_workspace_files().await;
 
         let config = self.config.read().await;
         let semantic_tokens_provider = match config.semantic_tokens {
