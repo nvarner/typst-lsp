@@ -146,7 +146,7 @@ impl LanguageServer for TypstServer {
 
             if config.semantic_tokens == SemanticTokensMode::Enable {
                 if let Some(err) = register().await.err() {
-                    error!(?err, "could not dynamically register semantic tokens");
+                    error!(%err, "could not dynamically register semantic tokens");
                 }
             }
 
@@ -165,7 +165,7 @@ impl LanguageServer for TypstServer {
                 .await
                 .err();
             if let Some(err) = err {
-                error!(?err, "could not register to watch config changes");
+                error!(%err, "could not register to watch config changes");
             }
         }
 
@@ -176,7 +176,7 @@ impl LanguageServer for TypstServer {
             .await
             .err();
         if let Some(err) = watch_files_error {
-            error!(?err, "could not register to watch Typst files");
+            error!(%err, "could not register to watch Typst files");
         }
 
         info!("server initialized");
@@ -195,7 +195,7 @@ impl LanguageServer for TypstServer {
         let mut workspace = self.workspace().write().await;
 
         if let Err(err) = workspace.open_lsp(uri.clone(), text) {
-            error!(?err, %uri, "could not open file from LSP client");
+            error!(%err, %uri, "could not open file from LSP client");
             return;
         };
 
@@ -206,7 +206,7 @@ impl LanguageServer for TypstServer {
         let world = match self.world_with_main(&uri).await {
             Ok(world) => world,
             Err(err) => {
-                error!(?err, %uri, "could not get world");
+                error!(%err, %uri, "could not get world");
                 return;
             }
         };
@@ -241,7 +241,7 @@ impl LanguageServer for TypstServer {
         let world = match world {
             Ok(world) => world,
             Err(err) => {
-                error!(?err, %uri, "could not get world");
+                error!(%err, %uri, "could not get world");
                 return;
             }
         };
@@ -261,7 +261,7 @@ impl LanguageServer for TypstServer {
             let world = match world {
                 Ok(world) => world,
                 Err(err) => {
-                    error!(?err, %uri, "could not get world");
+                    error!(%err, %uri, "could not get world");
                     return;
                 }
             };
@@ -331,7 +331,7 @@ impl LanguageServer for TypstServer {
         let position = params.text_document_position_params.position;
 
         let world = self.world_with_main(&uri).await.map_err(|err| {
-            error!(?err, %uri, "could not get world");
+            error!(%err, %uri, "could not get world");
             jsonrpc::Error::internal_error()
         })?;
         let source = world.main();
@@ -358,7 +358,7 @@ impl LanguageServer for TypstServer {
             .unwrap_or(false);
 
         let world = self.world_with_main(&uri).await.map_err(|err| {
-            error!(?err, %uri, "could not get world");
+            error!(%err, %uri, "could not get world");
             jsonrpc::Error::internal_error()
         })?;
         let source = world.main();
@@ -389,7 +389,7 @@ impl LanguageServer for TypstServer {
         let position = params.text_document_position_params.position;
 
         let world = self.world_with_main(&uri).await.map_err(|err| {
-            error!(?err, %uri, "could not get world");
+            error!(%err, %uri, "could not get world");
             jsonrpc::Error::internal_error()
         })?;
         let source = world.main();
@@ -407,7 +407,7 @@ impl LanguageServer for TypstServer {
         let workspace = self.workspace().read().await;
 
         let source = workspace.read_source(&uri).map_err(|err| {
-            error!(?err, %uri, "could not open file while getting document symbols");
+            error!(%err, %uri, "could not open file while getting document symbols");
             jsonrpc::Error::internal_error()
         })?;
 
@@ -415,7 +415,7 @@ impl LanguageServer for TypstServer {
             .document_symbols(&source, &uri, None)
             .try_collect()
             .map_err(|err| {
-                error!(?err, %uri, "failed to get document symbols");
+                error!(%err, %uri, "failed to get document symbols");
                 jsonrpc::Error::internal_error()
             })?;
 
@@ -471,7 +471,7 @@ impl LanguageServer for TypstServer {
         let workspace = self.workspace().read().await;
 
         let source = workspace.read_source(&uri).map_err(|err| {
-            error!(?err, %uri, "could not open file while getting full semantic tokens");
+            error!(%err, %uri, "could not open file while getting full semantic tokens");
             jsonrpc::Error::internal_error()
         })?;
 
@@ -497,7 +497,7 @@ impl LanguageServer for TypstServer {
         let workspace = self.workspace().read().await;
 
         let source = workspace.read_source(&uri).map_err(|err| {
-            error!(?err, %uri, "could not open file while getting full semantic tokens delta");
+            error!(%err, %uri, "could not open file while getting full semantic tokens delta");
             jsonrpc::Error::internal_error()
         })?;
 
@@ -538,7 +538,7 @@ impl LanguageServer for TypstServer {
                 info!("new settings applied");
             }
             Err(err) => {
-                error!(?err, "error applying new settings");
+                error!(%err, "error applying new settings");
             }
         }
     }
@@ -552,7 +552,7 @@ impl LanguageServer for TypstServer {
         let positions = params.positions;
 
         let world = self.world_with_main(&uri).await.map_err(|err| {
-            error!(?err, %uri, "could not get world");
+            error!(%err, %uri, "could not get world");
             jsonrpc::Error::internal_error()
         })?;
         let source = world.main();

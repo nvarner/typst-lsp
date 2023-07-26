@@ -1,17 +1,12 @@
 //! Conversions between Typst and LSP types and representations
 
-use std::path::PathBuf;
-
 use tower_lsp::lsp_types;
-use tracing::error;
-use typst::diag::{FileError, FileResult};
 use typst::syntax::Source;
 
 pub mod clock;
 pub mod world;
 
 pub type LspUri = lsp_types::Url;
-pub type TypstPath = std::path::Path;
 
 pub type LspPosition = lsp_types::Position;
 /// The interpretation of an `LspCharacterOffset` depends on the `LspPositionEncoding`
@@ -53,31 +48,6 @@ pub type LspCompletion = lsp_types::CompletionItem;
 pub type LspCompletionKind = lsp_types::CompletionItemKind;
 pub type TypstCompletion = typst::ide::Completion;
 pub type TypstCompletionKind = typst::ide::CompletionKind;
-
-pub fn uri_to_path(uri: &LspUri) -> FileResult<PathBuf> {
-    let is_local = |uri: &LspUri| uri.scheme() == "file";
-    let handle_not_local = || format!("URI scheme `{}` is not `file`", uri.scheme());
-    let verify_local = |uri| is_local(uri).then_some(uri).ok_or_else(handle_not_local);
-
-    let handle_make_local_error = |()| "could not convert URI to path".to_owned();
-    let make_local = |uri: &LspUri| uri.to_file_path().map_err(handle_make_local_error);
-
-    let handle_error = |err| {
-        error!(%uri, message = err);
-        FileError::Other
-    };
-
-    verify_local(uri).and_then(make_local).map_err(handle_error)
-}
-
-pub fn path_to_uri(path: &TypstPath) -> FileResult<LspUri> {
-    let handle_error = |()| {
-        error!(path = %path.display(), "could not convert path to URI");
-        FileError::NotFound(path.to_owned())
-    };
-
-    LspUri::from_file_path(path).map_err(handle_error)
-}
 
 pub mod lsp_to_typst {
     use typst::syntax::Source;
@@ -155,6 +125,7 @@ pub mod typst_to_lsp {
 
     use crate::config::ConstConfig;
     use crate::server::diagnostics::DiagnosticsMap;
+    use crate::workspace::fs::local::LocalFs;
 
     use super::*;
 
@@ -267,7 +238,7 @@ pub mod typst_to_lsp {
             ..Default::default()
         };
 
-        let uri = path_to_uri(typst_source.id().path())?;
+        let uri = LocalFs::path_to_uri(typst_source.id().path())?;
 
         Ok((uri, diagnostic))
     }
@@ -282,7 +253,7 @@ pub mod typst_to_lsp {
             .map(|error| source_error_to_diagnostic(error, world, const_config))
             .inspect(|result| {
                 if let Err(err) = result {
-                    error!(?err, "could not convert Typst error to diagnostic");
+                    error!(%err, "could not convert Typst error to diagnostic");
                 }
             })
             .filter_map(Result::ok)

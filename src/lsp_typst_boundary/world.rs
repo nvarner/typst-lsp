@@ -48,8 +48,9 @@ impl World for ProjectWorld {
     fn main(&self) -> Source {
         let handle_no_main = |err| {
             error!(
-                ?err,
-                "this is a bug: failed to get main with id {}", self.main
+                %err,
+                id = %self.main,
+                "this is a bug: failed to get main"
             );
             warn!("returning fake main file");
             Source::detached("")
@@ -59,11 +60,15 @@ impl World for ProjectWorld {
     }
 
     fn source(&self, id: FileId) -> FileResult<Source> {
-        self.project().read_source(id)
+        self.project()
+            .read_source(id)
+            .map_err(|err| err.report_and_convert(id))
     }
 
     fn file(&self, id: FileId) -> FileResult<Bytes> {
-        self.project().read_bytes(id)
+        self.project()
+            .read_bytes(id)
+            .map_err(|err| err.report_and_convert(id))
     }
 
     fn font(&self, id: usize) -> Option<Font> {

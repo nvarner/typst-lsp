@@ -2698,6 +2698,7 @@ dependencies = [
  "serde_json",
  "siphasher",
  "strum 0.25.0",
+ "thiserror",
  "tokio",
  "tower-lsp",
  "tracing",

@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use tower_lsp::lsp_types::{TextDocumentContentChangeEvent, Url};
-use typst::diag::{FileError, FileResult};
 use typst::syntax::Source;
 use typst::util::Bytes;
 
@@ -11,7 +10,7 @@ use crate::workspace::project::manager::ProjectManager;
 use super::cache::Cache;
 use super::local::LocalFs;
 use super::lsp::LspFs;
-use super::{KnownUriProvider, ReadProvider, WriteProvider};
+use super::{FsResult, KnownUriProvider, ReadProvider, WriteProvider};
 
 /// Composes [`FsProvider`]s into a single provider for a workspace
 #[derive(Default)]
@@ -21,25 +20,21 @@ pub struct FsManager {
 }
 
 impl ReadProvider for FsManager {
-    type Error = FileError;
-
-    fn read_bytes(&self, uri: &Url) -> FileResult<Bytes> {
+    fn read_bytes(&self, uri: &Url) -> FsResult<Bytes> {
         self.lsp
             .read_bytes(uri)
-            .or_else(|()| self.local.read_bytes(uri))
+            .or_else(|_| self.local.read_bytes(uri))
     }
 
-    fn read_source(&self, uri: &Url, project_manager: &ProjectManager) -> FileResult<Source> {
+    fn read_source(&self, uri: &Url, project_manager: &ProjectManager) -> FsResult<Source> {
         self.lsp
             .read_source(uri, project_manager)
-            .or_else(|()| self.local.read_source(uri, project_manager))
+            .or_else(|_| self.local.read_source(uri, project_manager))
     }
 }
 
 impl WriteProvider for FsManager {
-    type Error = FileError;
-
-    fn write_raw(&self, uri: &Url, data: &[u8]) -> FileResult<()> {
+    fn write_raw(&self, uri: &Url, data: &[u8]) -> FsResult<()> {
         self.local.inner().write_raw(uri, data)
     }
 }
@@ -58,7 +53,7 @@ impl FsManager {
         uri: Url,
         text: String,
         project_manager: &ProjectManager,
-    ) -> FileResult<()> {
+    ) -> FsResult<()> {
         self.lsp.open(uri, text, project_manager)
     }
 

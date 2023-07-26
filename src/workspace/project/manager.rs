@@ -1,10 +1,12 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
+use anyhow::anyhow;
 use itertools::Itertools;
 use tower_lsp::lsp_types::{Url, WorkspaceFoldersChangeEvent};
-use typst::diag::{FileError, FileResult};
 use typst::file::FileId;
+
+use crate::workspace::fs::{FsError, FsResult};
 
 use super::local::LocalProjectMeta;
 use super::ProjectMeta;
@@ -63,11 +65,11 @@ impl ProjectManager {
             .flatten()
     }
 
-    pub fn uri_to_id(&self, uri: &Url) -> FileResult<FileId> {
+    pub fn uri_to_id(&self, uri: &Url) -> FsResult<FileId> {
         self.uri_to_project_and_id(uri).map(|(_, id)| id)
     }
 
-    pub fn uri_to_project_and_id(&self, uri: &Url) -> FileResult<(Box<dyn ProjectMeta>, FileId)> {
+    pub fn uri_to_project_and_id(&self, uri: &Url) -> FsResult<(Box<dyn ProjectMeta>, FileId)> {
         let candidates = self
             .local
             .iter()
@@ -79,11 +81,7 @@ impl ProjectManager {
         // subdirectory of the rest. This must have the longest length.
         let (best_meta, best_id) = candidates
             .max_by_key(|(local, _)| local.path().components().count())
-            .ok_or_else(|| {
-                uri.to_file_path()
-                    .map(FileError::NotFound)
-                    .unwrap_or(FileError::Other)
-            })?;
+            .ok_or_else(|| FsError::NotProvided(anyhow!("could not find provider for URI")))?;
 
         Ok((
             Box::new(best_meta.clone()) as Box<dyn ProjectMeta + Send + Sync>,

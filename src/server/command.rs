@@ -55,7 +55,7 @@ impl TypstServer {
             .map_err(|_| Error::invalid_params("Parameter is not a valid URI"))?;
 
         let world = self.world_with_main(&file_uri).await.map_err(|err| {
-            error!(?err, %file_uri, "could not get world");
+            error!(%err, %file_uri, "could not get world");
             jsonrpc::Error::internal_error()
         })?;
         let source = world.main();
