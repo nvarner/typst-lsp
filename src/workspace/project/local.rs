@@ -45,7 +45,7 @@ impl LocalProjectMeta {
             .into_iter()
             .filter_map(Result::ok)
             .filter(|entry| entry.file_type().is_file())
-            .filter(|file| file.path().extension().map_or(false, |ext| ext == "typ"))
+            .filter(|file| file.path().is_typst())
             .map(|file| path_to_uri(file.path()))
             .filter_map(Result::ok)
     }

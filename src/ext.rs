@@ -88,6 +88,7 @@ pub trait PathExt {
     fn push_front(&self, prefix: impl AsRef<Path>) -> PathBuf;
 
     fn root() -> &'static Path;
+    fn is_typst(&self) -> bool;
 }
 
 impl PathExt for Path {
@@ -97,6 +98,10 @@ impl PathExt for Path {
 
     fn root() -> &'static Path {
         Path::new("/")
+    }
+
+    fn is_typst(&self) -> bool {
+        self.extension().map_or(false, |ext| ext == "typ")
     }
 }
 

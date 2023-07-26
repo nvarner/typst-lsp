@@ -6,6 +6,7 @@ use typst::diag::{FileError, FileResult};
 use typst::syntax::Source;
 use typst::util::Bytes;
 
+use crate::ext::PathExt;
 use crate::lsp_typst_boundary::uri_to_path;
 use crate::workspace::project::manager::ProjectManager;
 
@@ -32,8 +33,7 @@ impl ReadProvider for LocalFs {
     fn read_source(&self, uri: &Url, project_manager: &ProjectManager) -> FileResult<Source> {
         let path = uri_to_path(uri)?;
 
-        let extension_is_typ = || path.extension().map(|ext| ext == "typ").unwrap_or(false);
-        if !extension_is_typ() {
+        if !path.is_typst() {
             return Err(FileError::NotSource);
         };
 

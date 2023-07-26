@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use tower_lsp::lsp_types::{TextDocumentContentChangeEvent, Url};
 use typst::diag::FileResult;
@@ -9,12 +9,31 @@ use crate::config::PositionEncoding;
 use crate::lsp_typst_boundary::LspRange;
 use crate::workspace::project::manager::ProjectManager;
 
-use super::ReadProvider;
+use super::{KnownUriProvider, ReadProvider};
 
 /// Implements the Typst filesystem on source files provided by an LSP client
 #[derive(Default)]
 pub struct LspFs {
     files: HashMap<Url, Source>,
+}
+
+impl ReadProvider for LspFs {
+    type Error = ();
+
+    fn read_bytes(&self, uri: &Url) -> Result<Bytes, ()> {
+        self.read_source_ref(uri)
+            .map(|source| source.text().as_bytes().into())
+    }
+
+    fn read_source(&self, uri: &Url, _project_manager: &ProjectManager) -> Result<Source, ()> {
+        self.read_source_ref(uri).cloned()
+    }
+}
+
+impl KnownUriProvider for LspFs {
+    fn known_uris(&self) -> HashSet<Url> {
+        self.files.keys().cloned().collect()
+    }
 }
 
 impl LspFs {
@@ -72,18 +91,5 @@ impl LspFs {
 
     fn read_source_mut(&mut self, uri: &Url) -> Result<&mut Source, ()> {
         self.files.get_mut(uri).ok_or(())
-    }
-}
-
-impl ReadProvider for LspFs {
-    type Error = ();
-
-    fn read_bytes(&self, uri: &Url) -> Result<Bytes, ()> {
-        self.read_source_ref(uri)
-            .map(|source| source.text().as_bytes().into())
-    }
-
-    fn read_source(&self, uri: &Url, _project_manager: &ProjectManager) -> Result<Source, ()> {
-        self.read_source_ref(uri).cloned()
     }
 }

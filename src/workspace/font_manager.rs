@@ -47,7 +47,7 @@ impl FontManager {
     }
 }
 
-// TODO: special handling for fonts that are resources (i.e. are in the project/in a package)?
+// TODO: special handling for fonts that are in the project/in a package?
 
 /// Holds details about the location of a font and lazily the font itself.
 struct FontSlot {

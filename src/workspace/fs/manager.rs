@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use tower_lsp::lsp_types::{TextDocumentContentChangeEvent, Url};
 use typst::diag::{FileError, FileResult};
 use typst::syntax::Source;
@@ -9,13 +11,45 @@ use crate::workspace::project::manager::ProjectManager;
 use super::cache::Cache;
 use super::local::LocalFs;
 use super::lsp::LspFs;
-use super::{ReadProvider, WriteProvider};
+use super::{KnownUriProvider, ReadProvider, WriteProvider};
 
 /// Composes [`FsProvider`]s into a single provider for a workspace
 #[derive(Default)]
 pub struct FsManager {
     lsp: LspFs,
     local: Cache<LocalFs>,
+}
+
+impl ReadProvider for FsManager {
+    type Error = FileError;
+
+    fn read_bytes(&self, uri: &Url) -> FileResult<Bytes> {
+        self.lsp
+            .read_bytes(uri)
+            .or_else(|()| self.local.read_bytes(uri))
+    }
+
+    fn read_source(&self, uri: &Url, project_manager: &ProjectManager) -> FileResult<Source> {
+        self.lsp
+            .read_source(uri, project_manager)
+            .or_else(|()| self.local.read_source(uri, project_manager))
+    }
+}
+
+impl WriteProvider for FsManager {
+    type Error = FileError;
+
+    fn write_raw(&self, uri: &Url, data: &[u8]) -> FileResult<()> {
+        self.local.inner().write_raw(uri, data)
+    }
+}
+
+impl KnownUriProvider for FsManager {
+    fn known_uris(&self) -> HashSet<Url> {
+        let mut uris = self.local.known_uris();
+        uris.extend(self.lsp.known_uris().into_iter());
+        uris
+    }
 }
 
 impl FsManager {
@@ -56,29 +90,5 @@ impl FsManager {
     pub fn clear(&mut self) {
         self.lsp.clear();
         self.local.clear();
-    }
-}
-
-impl ReadProvider for FsManager {
-    type Error = FileError;
-
-    fn read_bytes(&self, uri: &Url) -> FileResult<Bytes> {
-        self.lsp
-            .read_bytes(uri)
-            .or_else(|()| self.local.read_bytes(uri))
-    }
-
-    fn read_source(&self, uri: &Url, project_manager: &ProjectManager) -> FileResult<Source> {
-        self.lsp
-            .read_source(uri, project_manager)
-            .or_else(|()| self.local.read_source(uri, project_manager))
-    }
-}
-
-impl WriteProvider for FsManager {
-    type Error = FileError;
-
-    fn write_raw(&self, uri: &Url, data: &[u8]) -> FileResult<()> {
-        self.local.inner().write_raw(uri, data)
     }
 }

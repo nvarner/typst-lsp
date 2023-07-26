@@ -1,6 +1,8 @@
 //! Holds types relating to the LSP concept of a "workspace". That is, the directories a user has
 //! open in their editor, the files in them, the files they're currently editing, and so on.
 
+use std::collections::HashSet;
+
 use comemo::Prehashed;
 use tower_lsp::lsp_types::{
     InitializeParams, TextDocumentContentChangeEvent, Url, WorkspaceFoldersChangeEvent,
@@ -17,7 +19,7 @@ use crate::ext::InitializeParamsExt;
 
 use self::font_manager::FontManager;
 use self::fs::manager::FsManager;
-use self::fs::{ReadProvider, WriteProvider};
+use self::fs::{KnownUriProvider, ReadProvider, WriteProvider};
 use self::project::manager::ProjectManager;
 use self::project::ProjectMeta;
 
@@ -79,6 +81,10 @@ impl Workspace {
     /// Typst compilation, which is also bad.
     pub fn write_raw(&self, uri: &Url, data: &[u8]) -> FileResult<()> {
         self.fs.write_raw(uri, data)
+    }
+
+    pub fn known_uris(&self) -> HashSet<Url> {
+        self.fs.known_uris()
     }
 
     pub fn uri_to_project_and_id(&self, uri: &Url) -> FileResult<(Box<dyn ProjectMeta>, FileId)> {

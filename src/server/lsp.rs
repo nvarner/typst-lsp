@@ -7,7 +7,7 @@ use serde_json::Value as JsonValue;
 use tokio::sync::RwLock;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, LanguageServer};
-use tracing::{error, info, trace};
+use tracing::{error, info, trace, warn};
 use typst::ide::autocomplete;
 use typst::World;
 
@@ -412,7 +412,7 @@ impl LanguageServer for TypstServer {
         })?;
 
         let symbols: Vec<_> = self
-            .get_document_symbols(&source, &uri, None)
+            .document_symbols(&source, &uri, None)
             .try_collect()
             .map_err(|err| {
                 error!(?err, %uri, "failed to get document symbols");
@@ -427,43 +427,38 @@ impl LanguageServer for TypstServer {
         &self,
         params: WorkspaceSymbolParams,
     ) -> jsonrpc::Result<Option<Vec<SymbolInformation>>> {
+        let handle_read_err = |err| warn!(%err, "could not read source");
+        let handle_symbol_err = |err| {
+            error!(%err, "failed to get document symbols");
+            jsonrpc::Error::internal_error()
+        };
+
         let query = (!params.query.is_empty()).then_some(params.query.as_str());
 
         let workspace = self.workspace().read().await;
 
-        // TODO: replace this
+        let uris = workspace.known_uris();
 
-        // let ids = workspace.source_manager().all_file_ids();
+        trace!(?uris, "getting sources for these URIs");
 
-        // let uris = ids
-        //     .iter()
-        //     .map(|id| workspace.id_to_uri(id))
-        //     .flatten()
-        //     .collect_vec();
+        let uris_sources = uris
+            .into_iter()
+            .map(|uri| workspace.read_source(&uri).map(|source| (uri, source)))
+            .map(|result| result.map_err(handle_read_err))
+            .filter_map(Result::ok)
+            .collect_vec();
 
-        // let sources = ids.iter().map(|id| workspace.read_source(*id));
+        trace!(?uris_sources, "getting symbols for these sources");
 
-        // let uris_sources = uris.iter().zip(sources).filter_map(|(uri, source)| {
-        //     let uri = uri
-        //         .as_ref()
-        //         .map_err(|err| error!(?err, "could not get URI"))
-        //         .ok()?;
-        //     let source = source
-        //         .map_err(|err| error!(?err, "could not get source"))
-        //         .ok()?;
-        //     Some((uri, source))
-        // });
+        let symbols = uris_sources
+            .iter()
+            .flat_map(|(uri, source)| self.document_symbols(source, uri, query))
+            .try_collect()
+            .map_err(handle_symbol_err);
 
-        // let symbols = uris_sources
-        //     .flat_map(|(uri, source)| self.get_document_symbols(source, &uri, query).collect_vec())
-        //     .try_collect()
-        //     .map_err(|err| {
-        //         error!(?err, "failed to get document symbols");
-        //         jsonrpc::Error::internal_error()
-        //     });
+        trace!(?symbols, "got symbols");
 
-        // Some(symbols).transpose()
-        todo!()
+        Some(symbols).transpose()
     }
 
     #[tracing::instrument(skip_all, fields(uri = %params.text_document.uri))]
