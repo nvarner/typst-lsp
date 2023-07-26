@@ -6,13 +6,13 @@ use std::path::{Path, PathBuf};
 use comemo::Prehashed;
 use memmap2::Mmap;
 use once_cell::sync::OnceCell;
-use tracing::{error, warn};
-use typst::diag::{FileError, FileResult};
+use tracing::error;
 use typst::font::{Font, FontBook, FontInfo};
 use typst::util::Bytes;
 use walkdir::WalkDir;
 
 use super::fs::local::LocalFs;
+use super::fs::FsError;
 
 /// Searches for fonts.
 pub struct FontManager {
@@ -36,7 +36,7 @@ impl FontManager {
         match font {
             Ok(font) => Some(font),
             Err(err) => {
-                error!(?err, "failed to load font with id {}", id);
+                error!(%err, font_id = id, "failed to load font");
                 None
             }
         }
@@ -47,7 +47,7 @@ impl FontManager {
     }
 }
 
-// TODO: special handling for fonts that are in the project/in a package?
+// TODO: special handling for fonts that are in a project?
 
 /// Holds details about the location of a font and lazily the font itself.
 struct FontSlot {
@@ -58,25 +58,19 @@ struct FontSlot {
 }
 
 impl FontSlot {
-    pub fn get_font(&self) -> FileResult<&Font> {
+    pub fn get_font(&self) -> FontResult<&Font> {
         self.font.get_or_try_init(|| self.init())
     }
 
-    fn init(&self) -> FileResult<Font> {
-        let path = self.path()?;
+    fn init(&self) -> FontResult<Font> {
+        let path = self.path().expect("should not init font without path");
         let data = LocalFs::read_path_raw(path)?;
 
-        Font::new(data.into(), self.index).ok_or_else(|| {
-            warn!("failed to parse font from file {}", path.display());
-            FileError::Other
-        })
+        Font::new(data.into(), self.index).ok_or(FontError::Parse)
     }
 
-    fn path(&self) -> FileResult<&Path> {
-        self.path.as_deref().ok_or_else(|| {
-            warn!("attempted to init font index {} without a path", self.index);
-            FileError::Other
-        })
+    fn path(&self) -> Option<&Path> {
+        self.path.as_deref()
     }
 
     pub fn invalidate(&mut self) {
@@ -85,6 +79,16 @@ impl FontSlot {
             self.font.take();
         }
     }
+}
+
+pub type FontResult<T> = Result<T, FontError>;
+
+#[derive(thiserror::Error, Debug)]
+pub enum FontError {
+    #[error(transparent)]
+    Fs(#[from] FsError),
+    #[error("failed to parse font")]
+    Parse,
 }
 
 pub struct Builder {

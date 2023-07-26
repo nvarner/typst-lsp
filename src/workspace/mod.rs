@@ -8,7 +8,6 @@ use tower_lsp::lsp_types::{
     InitializeParams, TextDocumentContentChangeEvent, Url, WorkspaceFoldersChangeEvent,
 };
 use tracing::trace;
-use typst::diag::FileResult;
 use typst::eval::Library;
 use typst::file::FileId;
 use typst::syntax::Source;
@@ -19,7 +18,7 @@ use crate::ext::InitializeParamsExt;
 
 use self::font_manager::FontManager;
 use self::fs::manager::FsManager;
-use self::fs::{KnownUriProvider, ReadProvider, WriteProvider};
+use self::fs::{FsResult, KnownUriProvider, ReadProvider, WriteProvider};
 use self::project::manager::ProjectManager;
 use self::project::ProjectMeta;
 
@@ -61,11 +60,11 @@ impl Workspace {
         &self.fonts
     }
 
-    pub fn read_bytes(&self, uri: &Url) -> FileResult<Bytes> {
+    pub fn read_bytes(&self, uri: &Url) -> FsResult<Bytes> {
         self.fs.read_bytes(uri)
     }
 
-    pub fn read_source(&self, uri: &Url) -> FileResult<Source> {
+    pub fn read_source(&self, uri: &Url) -> FsResult<Source> {
         self.fs.read_source(uri, &self.projects)
     }
 
@@ -79,7 +78,7 @@ impl Workspace {
     /// Typst, and we'd rather not lock everything just to export the PDF. However, if we allow for
     /// mutating files stored in the `Cache`, we could update a file while it is being used for a
     /// Typst compilation, which is also bad.
-    pub fn write_raw(&self, uri: &Url, data: &[u8]) -> FileResult<()> {
+    pub fn write_raw(&self, uri: &Url, data: &[u8]) -> FsResult<()> {
         self.fs.write_raw(uri, data)
     }
 
@@ -87,11 +86,11 @@ impl Workspace {
         self.fs.known_uris()
     }
 
-    pub fn uri_to_project_and_id(&self, uri: &Url) -> FileResult<(Box<dyn ProjectMeta>, FileId)> {
+    pub fn uri_to_project_and_id(&self, uri: &Url) -> FsResult<(Box<dyn ProjectMeta>, FileId)> {
         self.projects.uri_to_project_and_id(uri)
     }
 
-    pub fn open_lsp(&mut self, uri: Url, text: String) -> FileResult<()> {
+    pub fn open_lsp(&mut self, uri: Url, text: String) -> FsResult<()> {
         self.fs.open_lsp(uri, text, &self.projects)
     }
 

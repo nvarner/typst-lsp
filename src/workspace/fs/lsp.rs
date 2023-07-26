@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
+use anyhow::anyhow;
 use tower_lsp::lsp_types::{TextDocumentContentChangeEvent, Url};
-use typst::diag::FileResult;
 use typst::syntax::Source;
 use typst::util::Bytes;
 
@@ -9,7 +9,7 @@ use crate::config::PositionEncoding;
 use crate::lsp_typst_boundary::LspRange;
 use crate::workspace::project::manager::ProjectManager;
 
-use super::{KnownUriProvider, ReadProvider};
+use super::{FsError, FsResult, KnownUriProvider, ReadProvider};
 
 /// Implements the Typst filesystem on source files provided by an LSP client
 #[derive(Default)]
@@ -18,14 +18,12 @@ pub struct LspFs {
 }
 
 impl ReadProvider for LspFs {
-    type Error = ();
-
-    fn read_bytes(&self, uri: &Url) -> Result<Bytes, ()> {
+    fn read_bytes(&self, uri: &Url) -> FsResult<Bytes> {
         self.read_source_ref(uri)
             .map(|source| source.text().as_bytes().into())
     }
 
-    fn read_source(&self, uri: &Url, _project_manager: &ProjectManager) -> Result<Source, ()> {
+    fn read_source(&self, uri: &Url, _project_manager: &ProjectManager) -> FsResult<Source> {
         self.read_source_ref(uri).cloned()
     }
 }
@@ -42,7 +40,7 @@ impl LspFs {
         uri: Url,
         text: String,
         project_manager: &ProjectManager,
-    ) -> FileResult<()> {
+    ) -> FsResult<()> {
         let id = project_manager.uri_to_id(&uri)?;
         let source = Source::new(id, text);
         self.files.insert(uri, source);
@@ -85,11 +83,15 @@ impl LspFs {
         self.files.clear();
     }
 
-    fn read_source_ref(&self, uri: &Url) -> Result<&Source, ()> {
-        self.files.get(uri).ok_or(())
+    fn read_source_ref(&self, uri: &Url) -> FsResult<&Source> {
+        self.files
+            .get(uri)
+            .ok_or_else(|| FsError::NotProvided(anyhow!("URI not found")))
     }
 
-    fn read_source_mut(&mut self, uri: &Url) -> Result<&mut Source, ()> {
-        self.files.get_mut(uri).ok_or(())
+    fn read_source_mut(&mut self, uri: &Url) -> FsResult<&mut Source> {
+        self.files
+            .get_mut(uri)
+            .ok_or_else(|| FsError::NotProvided(anyhow!("URI not found")))
     }
 }

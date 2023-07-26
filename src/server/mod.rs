@@ -5,11 +5,11 @@ use tokio::sync::{Mutex, RwLock};
 use tower_lsp::lsp_types::Url;
 use tower_lsp::Client;
 use tracing_subscriber::{reload, Registry};
-use typst::diag::FileResult;
 
 use crate::config::{Config, ConstConfig};
 use crate::lsp_typst_boundary::world::ProjectWorld;
 use crate::server::semantic_tokens::SemanticTokenCache;
+use crate::workspace::fs::FsResult;
 use crate::workspace::project::Project;
 use crate::workspace::Workspace;
 
@@ -68,7 +68,7 @@ impl TypstServer {
             .expect("workspace should be initialized")
     }
 
-    pub async fn world_with_main(&self, uri: &Url) -> FileResult<ProjectWorld> {
+    pub async fn world_with_main(&self, uri: &Url) -> FsResult<ProjectWorld> {
         let workspace = Arc::clone(self.workspace()).read_owned().await;
         let (meta, id) = workspace.uri_to_project_and_id(uri)?;
         let project = Project::new(workspace, meta);

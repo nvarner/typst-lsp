@@ -9,7 +9,7 @@ use typst::util::Bytes;
 use crate::ext::PathExt;
 use crate::workspace::project::manager::ProjectManager;
 
-use super::{KnownUriProvider, ReadProvider};
+use super::{FsResult, KnownUriProvider, ReadProvider};
 
 #[derive(Default)]
 pub struct Cache<Fs: ReadProvider> {
@@ -18,17 +18,11 @@ pub struct Cache<Fs: ReadProvider> {
 }
 
 impl<Fs: ReadProvider> ReadProvider for Cache<Fs> {
-    type Error = Fs::Error;
-
-    fn read_bytes(&self, uri: &Url) -> Result<Bytes, Self::Error> {
+    fn read_bytes(&self, uri: &Url) -> FsResult<Bytes> {
         self.read_bytes_ref(uri).cloned()
     }
 
-    fn read_source(
-        &self,
-        uri: &Url,
-        project_manager: &ProjectManager,
-    ) -> Result<Source, Self::Error> {
+    fn read_source(&self, uri: &Url, project_manager: &ProjectManager) -> FsResult<Source> {
         self.read_source_ref(uri, project_manager).cloned()
     }
 }
@@ -51,7 +45,7 @@ impl<Fs: ReadProvider> Cache<Fs> {
         &self.fs
     }
 
-    pub fn read_bytes_ref(&self, uri: &Url) -> Result<&Bytes, Fs::Error> {
+    pub fn read_bytes_ref(&self, uri: &Url) -> FsResult<&Bytes> {
         self.entry(uri.clone()).read_bytes(uri, &self.fs)
     }
 
@@ -59,7 +53,7 @@ impl<Fs: ReadProvider> Cache<Fs> {
         &self,
         uri: &Url,
         project_manager: &ProjectManager,
-    ) -> Result<&Source, Fs::Error> {
+    ) -> FsResult<&Source> {
         self.entry(uri.clone())
             .read_source(uri, &self.fs, project_manager)
     }
@@ -98,7 +92,7 @@ pub struct CacheEntry {
 }
 
 impl CacheEntry {
-    pub fn read_bytes<Fs: ReadProvider>(&self, uri: &Url, fs: &Fs) -> Result<&Bytes, Fs::Error> {
+    pub fn read_bytes<Fs: ReadProvider>(&self, uri: &Url, fs: &Fs) -> FsResult<&Bytes> {
         self.bytes.get_or_try_init(|| fs.read_bytes(uri))
     }
 
@@ -107,7 +101,7 @@ impl CacheEntry {
         uri: &Url,
         fs: &Fs,
         project_manager: &ProjectManager,
-    ) -> Result<&Source, Fs::Error> {
+    ) -> FsResult<&Source> {
         self.source
             .get_or_try_init(|| fs.read_source(uri, project_manager))
     }

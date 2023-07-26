@@ -7,12 +7,15 @@ use std::ops::Deref;
 
 use tokio::sync::OwnedRwLockReadGuard;
 use tower_lsp::lsp_types::Url;
-use typst::diag::FileResult;
+use tracing::error;
 use typst::file::FileId;
 use typst::syntax::Source;
 use typst::util::Bytes;
 
 use crate::workspace::Workspace;
+
+use super::fs::local::{PathToUriError, UriToPathError};
+use super::fs::FsResult;
 
 pub mod local;
 pub mod manager;
@@ -37,23 +40,52 @@ impl Project {
         self.workspace.deref()
     }
 
-    pub fn read_bytes(&self, id: FileId) -> FileResult<Bytes> {
+    pub fn read_bytes(&self, id: FileId) -> FsResult<Bytes> {
         let uri = self.meta.id_to_uri(id)?;
         self.workspace().read_bytes(&uri)
     }
 
-    pub fn read_source(&self, id: FileId) -> FileResult<Source> {
+    pub fn read_source(&self, id: FileId) -> FsResult<Source> {
         let uri = self.meta.id_to_uri(id)?;
         self.workspace().read_source(&uri)
     }
 
-    pub fn write_raw(&self, id: FileId, data: &[u8]) -> FileResult<()> {
+    pub fn write_raw(&self, id: FileId, data: &[u8]) -> FsResult<()> {
         let uri = self.meta.id_to_uri(id)?;
         self.workspace().write_raw(&uri, data)
     }
 }
 
 pub trait ProjectMeta: Send + Sync + fmt::Debug {
-    fn uri_to_id(&self, uri: &Url) -> FileResult<FileId>;
-    fn id_to_uri(&self, id: FileId) -> FileResult<Url>;
+    fn uri_to_id(&self, uri: &Url) -> Result<FileId, UriToIdError>;
+    fn id_to_uri(&self, id: FileId) -> Result<Url, IdToUriError>;
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum UriToIdError {
+    #[error("cannot convert to ID since URI is not in the described project")]
+    NotInProject,
+    #[error(transparent)]
+    Other(anyhow::Error),
+}
+
+impl From<UriToPathError> for UriToIdError {
+    fn from(err: UriToPathError) -> Self {
+        match err {
+            UriToPathError::SchemeIsNotFile => Self::NotInProject,
+            UriToPathError::Conversion => Self::Other(err.into()),
+        }
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum IdToUriError {
+    #[error(transparent)]
+    Other(anyhow::Error),
+}
+
+impl From<PathToUriError> for IdToUriError {
+    fn from(err: PathToUriError) -> Self {
+        Self::Other(err.into())
+    }
 }
