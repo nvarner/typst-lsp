@@ -1,12 +1,15 @@
+use std::collections::HashSet;
+
 use elsa::sync::FrozenMap;
 use once_cell::sync::OnceCell;
 use tower_lsp::lsp_types::Url;
 use typst::syntax::Source;
 use typst::util::Bytes;
 
+use crate::ext::PathExt;
 use crate::workspace::project::manager::ProjectManager;
 
-use super::ReadProvider;
+use super::{KnownUriProvider, ReadProvider};
 
 #[derive(Default)]
 pub struct Cache<Fs: ReadProvider> {
@@ -27,6 +30,16 @@ impl<Fs: ReadProvider> ReadProvider for Cache<Fs> {
         project_manager: &ProjectManager,
     ) -> Result<Source, Self::Error> {
         self.read_source_ref(uri, project_manager).cloned()
+    }
+}
+
+impl<Fs: ReadProvider> KnownUriProvider for Cache<Fs> {
+    fn known_uris(&self) -> HashSet<Url> {
+        self.entries
+            .keys_cloned()
+            .into_iter()
+            .filter(|key| key.to_file_path().is_ok_and(|path| path.is_typst()))
+            .collect()
     }
 }
 

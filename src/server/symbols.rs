@@ -130,7 +130,7 @@ fn get_ident(
 }
 
 impl TypstServer {
-    pub fn get_document_symbols<'a>(
+    pub fn document_symbols<'a>(
         &'a self,
         source: &'a Source,
         uri: &'a Url,

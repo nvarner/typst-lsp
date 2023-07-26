@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use tower_lsp::lsp_types::Url;
 use typst::syntax::Source;
 use typst::util::Bytes;
@@ -26,4 +28,9 @@ pub trait WriteProvider {
     type Error;
 
     fn write_raw(&self, uri: &Url, data: &[u8]) -> Result<(), Self::Error>;
+}
+
+/// Remembers URIs if available sources
+pub trait KnownUriProvider {
+    fn known_uris(&self) -> HashSet<Url>;
 }
