@@ -6,6 +6,7 @@ use itertools::Itertools;
 use tower_lsp::lsp_types::{Url, WorkspaceFoldersChangeEvent};
 use typst::file::FileId;
 
+use crate::workspace::fs::local::LocalFs;
 use crate::workspace::fs::{FsError, FsResult};
 
 use super::local::LocalProjectMeta;
@@ -39,13 +40,13 @@ impl ProjectManager {
         let paths_to_remove: HashSet<_> = event
             .removed
             .iter()
-            .filter_map(|folder| folder.uri.to_file_path().ok())
+            .filter_map(|folder| LocalFs::uri_to_path(&folder.uri).ok())
             .collect();
 
         let local_to_add = event
             .added
             .iter()
-            .filter_map(|folder| folder.uri.to_file_path().ok())
+            .filter_map(|folder| LocalFs::uri_to_path(&folder.uri).ok())
             .map(LocalProjectMeta::new);
 
         self.local = self

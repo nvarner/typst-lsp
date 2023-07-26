@@ -9,6 +9,7 @@ use typst::file::FileId;
 use typst::util::StrExt as TypstStrExt;
 
 use crate::config::PositionEncoding;
+use crate::workspace::fs::local::LocalFs;
 
 pub trait InitializeParamsExt {
     fn position_encodings(&self) -> &[PositionEncodingKind];
@@ -58,10 +59,10 @@ impl InitializeParamsExt for InitializeParams {
             Some(roots) => roots
                 .iter()
                 .map(|root| &root.uri)
-                .filter_map(|uri| uri.to_file_path().ok())
+                .filter_map(|uri| LocalFs::uri_to_path(uri).ok())
                 .collect_vec(),
             None => {
-                let root_uri = || self.root_uri.as_ref()?.to_file_path().ok();
+                let root_uri = || LocalFs::uri_to_path(self.root_uri.as_ref()?).ok();
                 let root_path = || self.root_path.as_ref()?.try_into().ok();
 
                 root_uri().or_else(root_path).into_iter().collect()

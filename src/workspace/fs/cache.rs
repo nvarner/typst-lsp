@@ -9,6 +9,7 @@ use typst::util::Bytes;
 use crate::ext::PathExt;
 use crate::workspace::project::manager::ProjectManager;
 
+use super::local::LocalFs;
 use super::{FsResult, KnownUriProvider, ReadProvider};
 
 #[derive(Default)]
@@ -32,7 +33,7 @@ impl<Fs: ReadProvider> KnownUriProvider for Cache<Fs> {
         self.entries
             .keys_cloned()
             .into_iter()
-            .filter(|key| key.to_file_path().is_ok_and(|path| path.is_typst()))
+            .filter(|key| LocalFs::uri_to_path(key).is_ok_and(|path| path.is_typst()))
             .collect()
     }
 }
