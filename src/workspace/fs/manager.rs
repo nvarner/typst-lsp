@@ -5,31 +5,31 @@ use typst::syntax::Source;
 use typst::util::Bytes;
 
 use crate::config::PositionEncoding;
-use crate::workspace::project::manager::ProjectManager;
+use crate::workspace::package::manager::PackageManager;
 
 use super::cache::Cache;
 use super::local::LocalFs;
 use super::lsp::LspFs;
 use super::{FsResult, KnownUriProvider, ReadProvider, WriteProvider};
 
-/// Composes [`FsProvider`]s into a single provider for a workspace
-#[derive(Default)]
+/// Composes [`ReadProvider`]s and [`WriteProvider`]s into a single provider for a workspace
+#[derive(Debug, Default)]
 pub struct FsManager {
     lsp: LspFs,
     local: Cache<LocalFs>,
 }
 
 impl ReadProvider for FsManager {
-    fn read_bytes(&self, uri: &Url) -> FsResult<Bytes> {
+    fn read_bytes(&self, uri: &Url, package_manager: &PackageManager) -> FsResult<Bytes> {
         self.lsp
-            .read_bytes(uri)
-            .or_else(|_| self.local.read_bytes(uri))
+            .read_bytes(uri, package_manager)
+            .or_else(|_| self.local.read_bytes(uri, package_manager))
     }
 
-    fn read_source(&self, uri: &Url, project_manager: &ProjectManager) -> FsResult<Source> {
+    fn read_source(&self, uri: &Url, package_manager: &PackageManager) -> FsResult<Source> {
         self.lsp
-            .read_source(uri, project_manager)
-            .or_else(|_| self.local.read_source(uri, project_manager))
+            .read_source(uri, package_manager)
+            .or_else(|_| self.local.read_source(uri, package_manager))
     }
 }
 
@@ -48,13 +48,18 @@ impl KnownUriProvider for FsManager {
 }
 
 impl FsManager {
+    #[tracing::instrument]
+    pub fn register_files(&mut self, root: &Url) -> FsResult<()> {
+        self.local.register_files(root)
+    }
+
     pub fn open_lsp(
         &mut self,
         uri: Url,
         text: String,
-        project_manager: &ProjectManager,
+        package_manager: &PackageManager,
     ) -> FsResult<()> {
-        self.lsp.open(uri, text, project_manager)
+        self.lsp.open(uri, text, package_manager)
     }
 
     pub fn close_lsp(&mut self, uri: &Url) {
@@ -70,11 +75,11 @@ impl FsManager {
         self.lsp.edit(uri, changes, position_encoding)
     }
 
-    pub fn new_local(&mut self, uri: &Url) {
+    pub fn new_local(&mut self, uri: Url) {
         self.local.cache_new(uri)
     }
 
-    pub fn invalidate_local(&mut self, uri: &Url) {
+    pub fn invalidate_local(&mut self, uri: Url) {
         self.local.invalidate(uri)
     }
 

@@ -31,8 +31,8 @@ impl TypstServer {
         let uri = event.uri;
 
         match event.typ {
-            FileChangeType::CREATED => workspace.new_local(&uri),
-            FileChangeType::CHANGED => workspace.invalidate_local(&uri),
+            FileChangeType::CREATED => workspace.new_local(uri),
+            FileChangeType::CHANGED => workspace.invalidate_local(uri),
             FileChangeType::DELETED => workspace.delete_local(&uri),
             _ => (),
         }

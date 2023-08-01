@@ -68,11 +68,14 @@ impl TypstServer {
             .expect("workspace should be initialized")
     }
 
-    pub async fn world_with_main(&self, uri: &Url) -> FsResult<ProjectWorld> {
+    pub async fn world_with_main(&self, main_uri: &Url) -> FsResult<ProjectWorld> {
         let workspace = Arc::clone(self.workspace()).read_owned().await;
-        let (meta, id) = workspace.uri_to_project_and_id(uri)?;
-        let project = Project::new(workspace, meta);
-        let world = ProjectWorld::new(project, id);
+
+        let main_id = workspace.package_manager().full_file_id(main_uri)?;
+        let main_package = main_id.package();
+        let main_project = Project::new(main_package, workspace);
+        let world = ProjectWorld::new(main_project, main_uri.clone());
+
         Ok(world)
     }
 

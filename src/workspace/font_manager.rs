@@ -1,5 +1,6 @@
 //! Derived from https://github.com/typst/typst/blob/main/cli/src/main.rs
 
+use core::fmt;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
@@ -47,9 +48,19 @@ impl FontManager {
     }
 }
 
+impl fmt::Debug for FontManager {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("FontManager")
+            .field("book", &"...")
+            .field("fonts", &self.fonts)
+            .finish()
+    }
+}
+
 // TODO: special handling for fonts that are in a project?
 
 /// Holds details about the location of a font and lazily the font itself.
+#[derive(Debug)]
 struct FontSlot {
     /// If `None`, the font is embedded
     path: Option<PathBuf>,

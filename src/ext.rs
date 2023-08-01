@@ -1,7 +1,8 @@
 use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
-use itertools::Itertools;
+use itertools::{EitherOrBoth, Itertools};
+use tower_lsp::lsp_types::Url;
 use tower_lsp::lsp_types::{
     InitializeParams, Position, PositionEncodingKind, SemanticTokensClientCapabilities,
 };
@@ -10,13 +11,14 @@ use typst::util::StrExt as TypstStrExt;
 
 use crate::config::PositionEncoding;
 use crate::workspace::fs::local::LocalFs;
+use crate::workspace::package::{FullFileId, PackageId};
 
 pub trait InitializeParamsExt {
     fn position_encodings(&self) -> &[PositionEncodingKind];
     fn supports_config_change_registration(&self) -> bool;
     fn semantic_tokens_capabilities(&self) -> Option<&SemanticTokensClientCapabilities>;
     fn supports_semantic_tokens_dynamic_registration(&self) -> bool;
-    fn root_paths(&self) -> Vec<PathBuf>;
+    fn root_uris(&self) -> Vec<Url>;
 }
 
 static DEFAULT_ENCODING: [PositionEncodingKind; 1] = [PositionEncodingKind::UTF16];
@@ -54,16 +56,12 @@ impl InitializeParamsExt for InitializeParams {
     }
 
     #[allow(deprecated)] // `self.root_path` is marked as deprecated
-    fn root_paths(&self) -> Vec<PathBuf> {
+    fn root_uris(&self) -> Vec<Url> {
         match self.workspace_folders.as_ref() {
-            Some(roots) => roots
-                .iter()
-                .map(|root| &root.uri)
-                .filter_map(|uri| LocalFs::uri_to_path(uri).ok())
-                .collect_vec(),
+            Some(roots) => roots.iter().map(|root| &root.uri).cloned().collect(),
             None => {
-                let root_uri = || LocalFs::uri_to_path(self.root_uri.as_ref()?).ok();
-                let root_path = || self.root_path.as_ref()?.try_into().ok();
+                let root_uri = || self.root_uri.as_ref().cloned();
+                let root_path = || LocalFs::path_to_uri(self.root_path.as_ref()?).ok();
 
                 root_uri().or_else(root_path).into_iter().collect()
             }
@@ -108,12 +106,22 @@ impl PathExt for Path {
 
 pub trait FileIdExt {
     fn with_extension(self, extension: impl AsRef<OsStr>) -> Self;
+    fn fill(self, current: PackageId) -> FullFileId;
 }
 
 impl FileIdExt for FileId {
     fn with_extension(self, extension: impl AsRef<OsStr>) -> Self {
         let path = self.path().with_extension(extension);
         Self::new(self.package().cloned(), &path)
+    }
+
+    fn fill(self, current: PackageId) -> FullFileId {
+        let package = self
+            .package()
+            .cloned()
+            .map(PackageId::new_external)
+            .unwrap_or(current);
+        FullFileId::new(package, self.path().to_owned())
     }
 }
 
@@ -144,4 +152,71 @@ impl PositionExt for Position {
 pub struct PositionDelta {
     pub delta_line: u32,
     pub delta_start: u32,
+}
+
+pub trait UrlExt {
+    /// Joins the path to the URI, treating the URI as if it was the root directory. Returns `Err`
+    /// if the path leads out of the root or the URI cannot be used as a base.
+    fn join_rooted(self, path: &Path) -> UriResult<Url>;
+
+    /// Gets the relative path to the sub URI, treating this URI as if it was the root. Returns
+    /// `None` if the path leads out of the root.
+    fn make_relative_rooted(&self, sub_uri: &Url) -> UriResult<PathBuf>;
+}
+
+impl UrlExt for Url {
+    fn join_rooted(mut self, path: &Path) -> Result<Url, UriError> {
+        let mut added_len: usize = 0;
+        let mut segments = self
+            .path_segments_mut()
+            .map_err(|()| UriError::UriCannotBeABase)?;
+
+        for component in path.components() {
+            match component {
+                Component::Normal(segment) => {
+                    added_len += 1;
+                    segments.push(segment.to_str().expect("all package paths should be UTF-8"));
+                }
+                Component::ParentDir => {
+                    added_len.checked_sub(1).ok_or(UriError::PathEscapesRoot)?;
+                    segments.pop();
+                }
+                Component::CurDir => (),
+                // should occur only at the start, when the URI is already root, so nothing to do
+                Component::Prefix(_) | Component::RootDir => (),
+            }
+        }
+
+        // must drop before return to ensure its `Drop` doesn't use borrowed `self` after move
+        drop(segments);
+
+        Ok(self)
+    }
+
+    fn make_relative_rooted(&self, sub_uri: &Url) -> UriResult<PathBuf> {
+        if self.scheme() != sub_uri.scheme() || self.authority() != sub_uri.authority() {
+            return Err(UriError::PathEscapesRoot);
+        }
+
+        let root = self.path_segments().ok_or(UriError::UriCannotBeABase)?;
+        let sub = sub_uri.path_segments().ok_or(UriError::UriCannotBeABase)?;
+
+        let relative_path: PathBuf = root
+            .zip_longest(sub)
+            .skip_while(EitherOrBoth::is_both)
+            .map(|x| x.right().ok_or(UriError::PathEscapesRoot))
+            .try_collect()?;
+
+        Ok(relative_path.push_front(Path::root()))
+    }
+}
+
+pub type UriResult<T> = Result<T, UriError>;
+
+#[derive(thiserror::Error, Debug)]
+pub enum UriError {
+    #[error("URI cannot be a base")]
+    UriCannotBeABase,
+    #[error("path escapes root")]
+    PathEscapesRoot,
 }
