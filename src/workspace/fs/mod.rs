@@ -9,10 +9,12 @@ use typst::file::FileId;
 use typst::syntax::Source;
 use typst::util::Bytes;
 
-use self::local::UriToPathError;
+use crate::ext::UriError;
+use crate::lsp_typst_boundary::world::IdToUriError;
 
-use super::project::manager::ProjectManager;
-use super::project::IdToUriError;
+use self::local::UriToFsPathError;
+
+use super::package::manager::{PackageError, PackageManager};
 
 pub mod cache;
 pub mod local;
@@ -21,13 +23,17 @@ pub mod manager;
 
 /// Read access to the Typst filesystem for a single workspace
 pub trait ReadProvider {
-    fn read_bytes(&self, uri: &Url) -> FsResult<Bytes>;
-    fn read_source(&self, uri: &Url, project_manager: &ProjectManager) -> FsResult<Source>;
+    fn read_bytes(&self, uri: &Url, package_manager: &PackageManager) -> FsResult<Bytes>;
+    fn read_source(&self, uri: &Url, package_manager: &PackageManager) -> FsResult<Source>;
 }
 
 /// Write access to the Typst filesystem for a single workspace
 pub trait WriteProvider {
     fn write_raw(&self, uri: &Url, data: &[u8]) -> FsResult<()>;
+}
+
+pub trait SourceSearcher {
+    fn search_sources(&self, root: &Url) -> FsResult<Vec<Url>>;
 }
 
 /// Remembers URIs if available sources
@@ -44,9 +50,13 @@ pub enum FsError {
     #[error("could not find `{0}` on the local filesystem")]
     NotFoundLocal(PathBuf),
     #[error(transparent)]
+    Package(#[from] PackageError),
+    #[error(transparent)]
     OtherIo(io::Error),
     #[error("the provider does not provide the requested URI")]
     NotProvided(#[source] anyhow::Error),
+    #[error("could not join path to URI")]
+    UriJoin(#[from] UriError),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -64,25 +74,24 @@ impl FsError {
         match self {
             Self::NotSource => FileError::NotSource,
             Self::NotFoundLocal(path) => FileError::NotFound(path),
+            Self::Package(err) => err.convert(id),
             Self::OtherIo(err) => FileError::from_io(err, id.path()),
-            Self::NotProvided(_) | Self::Other(_) => FileError::Other,
+            Self::NotProvided(_) | Self::UriJoin(_) | Self::Other(_) => FileError::Other,
         }
     }
 }
 
-impl From<UriToPathError> for FsError {
-    fn from(err: UriToPathError) -> Self {
+impl From<UriToFsPathError> for FsError {
+    fn from(err: UriToFsPathError) -> Self {
         match err {
-            UriToPathError::SchemeIsNotFile => Self::NotProvided(err.into()),
-            UriToPathError::Conversion => Self::Other(err.into()),
+            UriToFsPathError::SchemeIsNotFile => Self::NotProvided(err.into()),
+            UriToFsPathError::Conversion => Self::Other(err.into()),
         }
     }
 }
 
 impl From<IdToUriError> for FsError {
     fn from(err: IdToUriError) -> Self {
-        match err {
-            IdToUriError::Other(err) => Self::Other(err),
-        }
+        Self::Other(err.into())
     }
 }

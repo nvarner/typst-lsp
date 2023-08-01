@@ -1,15 +1,45 @@
 //! Holds types relating to the LSP concept of a "workspace". That is, the directories a user has
 //! open in their editor, the files in them, the files they're currently editing, and so on.
+//!
+//! # Terminology
+//! - Package: anything that can be described by described by an `Option<PackageSpec>`, i.e. both
+//!     external packages and current packages
+//!     - External package: anything that can be described by a `PackageSpec`. A versioned package,
+//!         likely downloaded, used as a dependency.
+//!         - e.g. [`@preview/example:0.1.0`](https://github.com/typst/packages/tree/main/packages/preview/example-0.1.0)
+//!     - Current package: something described by `None` as a value in `Option<PackageSpec>`. The
+//!         set of files the user is actively working with, which should include a `main` source
+//!         file.
+//!         - e.g. a main resume source, template source, and some images
+//!         - e.g. several chapter sources and a main source combining them
+//!         - e.g. several main sources, each corresponding to one homework assignment for a course
+//! - Project: a single current package together with a set of external packages
+//!     - e.g. a current package with course notes and external packages for tables and commutative
+//!         diagrams
+//! - ProjectWorld: a project and a single main source picked from the current project
+//!     - e.g. the latest homework assignment as main from several homework assignment sources
+//!
+//! # [`FileId`] interpretation
+//! To interpret a `FileId`, we need to get a package from [`FileId::package`], then, within that
+//! package, take the file at the path given by [`FileId::path`].
+//!
+//! To interpret `FileId::package` in general, we need a unique current package and a set of
+//! external packages, which is a project. To interpret `FileId::path`, all we need is a package.
+//! So, packages must be able to interpret paths, and projects must be able to interpret `FileId`s.
+//!
+//! We can represent an interpreted `FileId` by a URI, since a URI fully specifies a file. We can
+//! also go backwards, representing a URI specifying a valid file as a `FileId` together with the
+//! context needed to interpret it, which is a project.
 
 use std::collections::HashSet;
 
 use comemo::Prehashed;
+use itertools::Itertools;
 use tower_lsp::lsp_types::{
     InitializeParams, TextDocumentContentChangeEvent, Url, WorkspaceFoldersChangeEvent,
 };
 use tracing::trace;
 use typst::eval::Library;
-use typst::file::FileId;
 use typst::syntax::Source;
 use typst::util::Bytes;
 
@@ -19,17 +49,20 @@ use crate::ext::InitializeParamsExt;
 use self::font_manager::FontManager;
 use self::fs::manager::FsManager;
 use self::fs::{FsResult, KnownUriProvider, ReadProvider, WriteProvider};
-use self::project::manager::ProjectManager;
-use self::project::ProjectMeta;
+use self::package::external::manager::ExternalPackageManager;
+use self::package::manager::PackageManager;
+use self::package::Package;
 
 pub mod font_manager;
 pub mod fs;
+pub mod package;
 pub mod project;
 
+#[derive(Debug)]
 pub struct Workspace {
     fs: FsManager,
     fonts: FontManager,
-    projects: ProjectManager,
+    packages: PackageManager,
 
     // Needed so that `Workspace` can implement Typst's `World` trait
     pub typst_stdlib: Prehashed<Library>,
@@ -37,23 +70,23 @@ pub struct Workspace {
 
 impl Workspace {
     pub fn new(params: &InitializeParams) -> Self {
-        let root_paths = params.root_paths();
+        let root_paths = params.root_uris();
 
         Self {
             fs: FsManager::default(),
             fonts: FontManager::builder().with_system().with_embedded().build(),
-            projects: ProjectManager::new(root_paths),
+            packages: PackageManager::new(root_paths, ExternalPackageManager::new().unwrap()),
             typst_stdlib: Prehashed::new(typst_library::build()),
         }
     }
 
-    pub fn register_files(&mut self) {
-        let uris = self.projects.find_source_uris();
-
-        for uri in uris {
-            trace!(%uri, "registering file");
-            self.new_local(&uri);
-        }
+    pub fn register_files(&mut self) -> FsResult<()> {
+        self.packages
+            .current()
+            .inspect(|package| trace!(?package, "registering files in package"))
+            .map(Package::root)
+            .map(|root| self.fs.register_files(root))
+            .try_collect()
     }
 
     pub fn font_manager(&self) -> &FontManager {
@@ -61,11 +94,11 @@ impl Workspace {
     }
 
     pub fn read_bytes(&self, uri: &Url) -> FsResult<Bytes> {
-        self.fs.read_bytes(uri)
+        self.fs.read_bytes(uri, &self.packages)
     }
 
     pub fn read_source(&self, uri: &Url) -> FsResult<Source> {
-        self.fs.read_source(uri, &self.projects)
+        self.fs.read_source(uri, &self.packages)
     }
 
     /// Write raw data to a file.
@@ -86,12 +119,12 @@ impl Workspace {
         self.fs.known_uris()
     }
 
-    pub fn uri_to_project_and_id(&self, uri: &Url) -> FsResult<(Box<dyn ProjectMeta>, FileId)> {
-        self.projects.uri_to_project_and_id(uri)
+    pub fn package_manager(&self) -> &PackageManager {
+        &self.packages
     }
 
     pub fn open_lsp(&mut self, uri: Url, text: String) -> FsResult<()> {
-        self.fs.open_lsp(uri, text, &self.projects)
+        self.fs.open_lsp(uri, text, &self.packages)
     }
 
     pub fn close_lsp(&mut self, uri: &Url) {
@@ -107,11 +140,11 @@ impl Workspace {
         self.fs.edit_lsp(uri, changes, position_encoding)
     }
 
-    pub fn new_local(&mut self, uri: &Url) {
+    pub fn new_local(&mut self, uri: Url) {
         self.fs.new_local(uri)
     }
 
-    pub fn invalidate_local(&mut self, uri: &Url) {
+    pub fn invalidate_local(&mut self, uri: Url) {
         self.fs.invalidate_local(uri)
     }
 
@@ -120,7 +153,7 @@ impl Workspace {
     }
 
     pub fn handle_workspace_folders_change_event(&mut self, event: &WorkspaceFoldersChangeEvent) {
-        self.projects.handle_change_event(event);
+        self.packages.handle_change_event(event);
 
         // The canonical project/id of URIs might have changed, so we need to invalidate the cache
         self.clear();

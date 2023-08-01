@@ -7,23 +7,23 @@ use typst::util::Bytes;
 
 use crate::config::PositionEncoding;
 use crate::lsp_typst_boundary::LspRange;
-use crate::workspace::project::manager::ProjectManager;
+use crate::workspace::package::manager::PackageManager;
 
 use super::{FsError, FsResult, KnownUriProvider, ReadProvider};
 
 /// Implements the Typst filesystem on source files provided by an LSP client
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct LspFs {
     files: HashMap<Url, Source>,
 }
 
 impl ReadProvider for LspFs {
-    fn read_bytes(&self, uri: &Url) -> FsResult<Bytes> {
+    fn read_bytes(&self, uri: &Url, _: &PackageManager) -> FsResult<Bytes> {
         self.read_source_ref(uri)
             .map(|source| source.text().as_bytes().into())
     }
 
-    fn read_source(&self, uri: &Url, _project_manager: &ProjectManager) -> FsResult<Source> {
+    fn read_source(&self, uri: &Url, _package_manager: &PackageManager) -> FsResult<Source> {
         self.read_source_ref(uri).cloned()
     }
 }
@@ -39,10 +39,10 @@ impl LspFs {
         &mut self,
         uri: Url,
         text: String,
-        project_manager: &ProjectManager,
+        package_manager: &PackageManager,
     ) -> FsResult<()> {
-        let id = project_manager.uri_to_id(&uri)?;
-        let source = Source::new(id, text);
+        let full_id = package_manager.full_file_id(&uri)?;
+        let source = Source::new(full_id.into(), text);
         self.files.insert(uri, source);
         Ok(())
     }

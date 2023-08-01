@@ -1,16 +1,18 @@
 use std::collections::HashSet;
+use std::fmt;
 
 use elsa::sync::FrozenMap;
 use once_cell::sync::OnceCell;
 use tower_lsp::lsp_types::Url;
+use tracing::trace;
 use typst::syntax::Source;
 use typst::util::Bytes;
 
 use crate::ext::PathExt;
-use crate::workspace::project::manager::ProjectManager;
+use crate::workspace::package::manager::PackageManager;
 
 use super::local::LocalFs;
-use super::{FsResult, KnownUriProvider, ReadProvider};
+use super::{FsResult, KnownUriProvider, ReadProvider, SourceSearcher};
 
 #[derive(Default)]
 pub struct Cache<Fs: ReadProvider> {
@@ -19,12 +21,12 @@ pub struct Cache<Fs: ReadProvider> {
 }
 
 impl<Fs: ReadProvider> ReadProvider for Cache<Fs> {
-    fn read_bytes(&self, uri: &Url) -> FsResult<Bytes> {
-        self.read_bytes_ref(uri).cloned()
+    fn read_bytes(&self, uri: &Url, package_manager: &PackageManager) -> FsResult<Bytes> {
+        self.read_bytes_ref(uri, package_manager).cloned()
     }
 
-    fn read_source(&self, uri: &Url, project_manager: &ProjectManager) -> FsResult<Source> {
-        self.read_source_ref(uri, project_manager).cloned()
+    fn read_source(&self, uri: &Url, package_manager: &PackageManager) -> FsResult<Source> {
+        self.read_source_ref(uri, package_manager).cloned()
     }
 }
 
@@ -46,25 +48,26 @@ impl<Fs: ReadProvider> Cache<Fs> {
         &self.fs
     }
 
-    pub fn read_bytes_ref(&self, uri: &Url) -> FsResult<&Bytes> {
-        self.entry(uri.clone()).read_bytes(uri, &self.fs)
+    pub fn read_bytes_ref(&self, uri: &Url, package_manager: &PackageManager) -> FsResult<&Bytes> {
+        self.entry(uri.clone())
+            .read_bytes(uri, &self.fs, package_manager)
     }
 
     pub fn read_source_ref(
         &self,
         uri: &Url,
-        project_manager: &ProjectManager,
+        package_manager: &PackageManager,
     ) -> FsResult<&Source> {
         self.entry(uri.clone())
-            .read_source(uri, &self.fs, project_manager)
+            .read_source(uri, &self.fs, package_manager)
     }
 
-    pub fn cache_new(&mut self, uri: &Url) {
-        self.entry_mut(uri.clone());
+    pub fn cache_new(&mut self, uri: Url) {
+        self.entry_mut(uri);
     }
 
-    pub fn invalidate(&mut self, uri: &Url) {
-        self.entry_mut(uri.clone()).invalidate()
+    pub fn invalidate(&mut self, uri: Url) {
+        self.entry_mut(uri).invalidate()
     }
 
     pub fn delete(&mut self, uri: &Url) {
@@ -86,25 +89,52 @@ impl<Fs: ReadProvider> Cache<Fs> {
     }
 }
 
-#[derive(Default)]
+impl<Fs: ReadProvider + SourceSearcher> Cache<Fs> {
+    #[tracing::instrument(skip(self))]
+    pub fn register_files(&mut self, root: &Url) -> FsResult<()> {
+        self.fs
+            .search_sources(root)?
+            .into_iter()
+            .inspect(|source| trace!(%source, "registering file"))
+            .for_each(|source| self.cache_new(source));
+        Ok(())
+    }
+}
+
+impl<Fs: ReadProvider + fmt::Debug> fmt::Debug for Cache<Fs> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Cache")
+            .field("entry_keys", &self.entries.keys_cloned())
+            .field("fs", &self.fs)
+            .finish()
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct CacheEntry {
     source: OnceCell<Source>,
     bytes: OnceCell<Bytes>,
 }
 
 impl CacheEntry {
-    pub fn read_bytes<Fs: ReadProvider>(&self, uri: &Url, fs: &Fs) -> FsResult<&Bytes> {
-        self.bytes.get_or_try_init(|| fs.read_bytes(uri))
+    pub fn read_bytes<Fs: ReadProvider>(
+        &self,
+        uri: &Url,
+        fs: &Fs,
+        package_manager: &PackageManager,
+    ) -> FsResult<&Bytes> {
+        self.bytes
+            .get_or_try_init(|| fs.read_bytes(uri, package_manager))
     }
 
     pub fn read_source<Fs: ReadProvider>(
         &self,
         uri: &Url,
         fs: &Fs,
-        project_manager: &ProjectManager,
+        package_manager: &PackageManager,
     ) -> FsResult<&Source> {
         self.source
-            .get_or_try_init(|| fs.read_source(uri, project_manager))
+            .get_or_try_init(|| fs.read_source(uri, package_manager))
     }
 
     pub fn invalidate(&mut self) {

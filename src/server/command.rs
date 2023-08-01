@@ -60,7 +60,10 @@ impl TypstServer {
         })?;
         let source = world.main();
 
-        self.run_export(&world, &source);
+        self.run_export(&world, &source).await.map_err(|err| {
+            error!(%err, "could not export PDF");
+            jsonrpc::Error::internal_error()
+        });
 
         Ok(())
     }
