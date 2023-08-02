@@ -108,7 +108,7 @@ require'lspconfig'.typst_lsp.setup{
 ```
 3. You may also install [`typst.vim`](https://github.com/kaarmu/typst.vim) for more capabilities in nvim.
 
-#### Addtional steps for `coc.nvim` users
+#### Additional steps for `coc.nvim` users
 
 Run `CocConfig` to edit the settings so that `coc.nvim` could offer functions such as auto-completion:
 ```
