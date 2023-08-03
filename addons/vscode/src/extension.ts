@@ -8,7 +8,7 @@ import {
     WorkspaceConfiguration,
 } from "vscode";
 import * as path from "path";
-import * as fs from "fs";
+import * as child_process from "child_process";
 
 import {
     LanguageClient,
@@ -20,11 +20,22 @@ import {
 let client: LanguageClient | undefined = undefined;
 
 export function activate(context: ExtensionContext): Promise<void> {
+    return startClient(context).catch((e) => {
+        void window.showErrorMessage(`Failed to activate typst-lsp: ${e}`);
+        throw e;
+    });
+}
+
+async function startClient(context: ExtensionContext): Promise<void> {
     const config = workspace.getConfiguration("typst-lsp");
     const serverCommand = getServer(config);
+    const run = {
+        command: serverCommand,
+        options: { env: Object.assign({}, process.env, { RUST_BACKTRACE: "1" }) },
+    };
     const serverOptions: ServerOptions = {
-        run: { command: serverCommand, options: { env: { RUST_BACKTRACE: "1" } } },
-        debug: { command: serverCommand, options: { env: { RUST_BACKTRACE: "1" } } },
+        run,
+        debug: run,
     };
 
     const clientOptions: LanguageClientOptions = {
@@ -49,7 +60,12 @@ export function deactivate(): Promise<void> | undefined {
 
 function getServer(conf: WorkspaceConfiguration): string {
     const pathInConfig = conf.get<string | null>("serverPath");
-    if (pathInConfig !== undefined && pathInConfig !== null && fileExists(pathInConfig)) {
+    if (pathInConfig !== undefined && pathInConfig !== null) {
+        if (!isValidServer(pathInConfig)) {
+            throw new Error(
+                `\`typst-lsp.serverPath\` (${pathInConfig}) does not point to a valid typst-lsp binary`
+            );
+        }
         return pathInConfig;
     }
     const windows = process.platform === "win32";
@@ -58,20 +74,17 @@ function getServer(conf: WorkspaceConfiguration): string {
 
     const bundledPath = path.resolve(__dirname, binaryName);
 
-    if (fileExists(bundledPath)) {
+    if (isValidServer(bundledPath)) {
         return bundledPath;
+    } else if (isValidServer(binaryName)) {
+        return binaryName;
+    } else {
+        throw new Error("Could not find a valid typst-lsp binary bundled or in PATH");
     }
-
-    return binaryName;
 }
 
-function fileExists(path: string): boolean {
-    try {
-        fs.accessSync(path);
-        return true;
-    } catch (error) {
-        return false;
-    }
+function isValidServer(path: string): boolean {
+    return child_process.spawnSync(path).status === 0;
 }
 
 async function commandExportCurrentPdf(): Promise<void> {
