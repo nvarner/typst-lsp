@@ -1,33 +1,30 @@
 use anyhow::Context;
+use tower_lsp::lsp_types::Url;
 use tracing::info;
 use typst::doc::Document;
-use typst::syntax::Source;
-
-use crate::ext::FileIdExt;
-use crate::lsp_typst_boundary::world::ProjectWorld;
 
 use super::TypstServer;
 
 impl TypstServer {
     #[tracing::instrument(skip(self))]
-    pub async fn export_pdf(
-        &self,
-        world: &ProjectWorld,
-        source: &Source,
-        document: &Document,
-    ) -> anyhow::Result<()> {
-        let data = typst::export::pdf(document);
+    pub async fn export_pdf(&self, source_uri: &Url, document: Document) -> anyhow::Result<()> {
+        let data = self.thread(move |_| typst::export::pdf(&document)).await;
 
-        let id = source.id().with_extension("pdf");
-        let full_id = world.fill_id(id);
-        let uri = world.full_id_to_uri(full_id).await?;
+        let (project, full_id) = self.project_and_full_id(source_uri).await?;
+        let pdf_full_id = full_id.with_extension("pdf");
+        let pdf_uri = project.full_id_to_uri(pdf_full_id).await?;
 
-        world
-            .workspace()
-            .write_raw(&uri, &data)
-            .context("failed to export PDF")?;
+        let thread_uri = pdf_uri.clone();
+        self.thread_with_world((pdf_full_id, &pdf_uri))
+            .await?
+            .run(move |world| {
+                world
+                    .write_raw(&thread_uri, &data)
+                    .context("failed to export PDF")
+            })
+            .await?;
 
-        info!(%id, "exported PDF");
+        info!(id = ?pdf_full_id, "exported PDF");
 
         Ok(())
     }

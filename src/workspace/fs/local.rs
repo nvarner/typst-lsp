@@ -35,7 +35,7 @@ impl ReadProvider for LocalFs {
         }
 
         let text = Self::read_path_string(&path)?;
-        let full_id = package_manager.full_file_id(uri)?;
+        let full_id = package_manager.full_id(uri)?;
         Ok(Source::new(full_id.into(), text))
     }
 }
@@ -51,7 +51,7 @@ impl SourceSearcher for LocalFs {
     fn search_sources(&self, root: &Url) -> FsResult<Vec<Url>> {
         let path = Self::uri_to_path(root)?;
 
-        let sources = WalkDir::new(&path)
+        let sources = WalkDir::new(path)
             .into_iter()
             .filter_map(Result::ok)
             .filter(|entry| entry.file_type().is_file())

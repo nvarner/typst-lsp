@@ -1,23 +1,17 @@
-use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use std::collections::HashMap;
 
 use anyhow::anyhow;
 use itertools::Itertools;
 use tower_lsp::lsp_types::{Url, WorkspaceFoldersChangeEvent};
 use tracing::error;
 use typst::diag::{FileError, PackageError as TypstPackageError};
-use typst::file::{FileId, PackageSpec};
-use typst::syntax::Source;
+use typst::file::FileId;
 
 use crate::ext::UriError;
-use crate::workspace::fs::local::LocalFs;
-use crate::workspace::fs::manager::FsManager;
 use crate::workspace::fs::{FsError, FsResult};
 use crate::workspace::package::external::manager::ExternalPackageManager;
-use crate::workspace::package::PackageTraitOld;
 
 use super::external::repo::RepoError;
-use super::local::LocalPackage;
 use super::{FullFileId, Package, PackageId, PackageIdInner};
 
 /// Determines canonical [`Package`]s and [`FileId`]s for URIs based on the current set of
@@ -63,18 +57,18 @@ impl PackageManager {
         Ok(package)
     }
 
-    pub fn full_file_id(&self, uri: &Url) -> FsResult<FullFileId> {
+    pub fn full_id(&self, uri: &Url) -> FsResult<FullFileId> {
         self.external
-            .full_file_id(uri)
-            .or_else(|| self.current_full_file_id(uri))
+            .full_id(uri)
+            .or_else(|| self.current_full_id(uri))
             .ok_or_else(|| FsError::NotProvided(anyhow!("could not find provider for URI")))
     }
 
-    fn current_full_file_id(&self, uri: &Url) -> Option<FullFileId> {
+    fn current_full_id(&self, uri: &Url) -> Option<FullFileId> {
         let candidates = self
             .current
             .iter()
-            .filter_map(|(uri, package)| Some((uri, package.uri_to_path(uri).ok()?)));
+            .filter_map(|(root, package)| Some((root, package.uri_to_path(uri).ok()?)));
 
         // Our candidates are projects containing a URI, so we expect to get a set of
         // subdirectories. The "best" is the "most specific", that is, the project that is a

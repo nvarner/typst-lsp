@@ -92,11 +92,11 @@ impl<Fs: ReadProvider> Cache<Fs> {
 impl<Fs: ReadProvider + SourceSearcher> Cache<Fs> {
     #[tracing::instrument(skip(self))]
     pub fn register_files(&mut self, root: &Url) -> FsResult<()> {
-        self.fs
-            .search_sources(root)?
-            .into_iter()
-            .inspect(|source| trace!(%source, "registering file"))
-            .for_each(|source| self.cache_new(source));
+        for source in self.fs.search_sources(root)? {
+            trace!(%source, "registering file");
+            self.cache_new(source);
+        }
+
         Ok(())
     }
 }

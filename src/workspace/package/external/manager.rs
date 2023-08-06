@@ -22,7 +22,7 @@ impl ExternalPackageManager {
         user_path.push("typst/packages/");
         let user = LocalProvider::new(user_path);
 
-        let mut cache_path = dirs::config_dir()?;
+        let mut cache_path = dirs::cache_dir()?;
         cache_path.push("typst/packages/");
         let cache = LocalProvider::new(cache_path);
 
@@ -50,10 +50,8 @@ impl ExternalPackageManager {
         }
     }
 
-    pub fn full_file_id(&self, uri: &Url) -> Option<FullFileId> {
-        self.user
-            .full_file_id(uri)
-            .or_else(|| self.cache.full_file_id(uri))
+    pub fn full_id(&self, uri: &Url) -> Option<FullFileId> {
+        self.user.full_id(uri).or_else(|| self.cache.full_id(uri))
     }
 
     #[tracing::instrument]

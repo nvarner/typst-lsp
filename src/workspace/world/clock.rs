@@ -1,7 +1,7 @@
 use chrono::{Datelike, FixedOffset, Local, TimeZone, Timelike, Utc};
 use once_cell::sync::OnceCell;
 
-use super::TypstDatetime;
+use crate::lsp_typst_boundary::TypstDatetime;
 
 #[derive(Debug, Default)]
 pub struct Now {

@@ -51,12 +51,13 @@ use self::fs::manager::FsManager;
 use self::fs::{FsResult, KnownUriProvider, ReadProvider, WriteProvider};
 use self::package::external::manager::ExternalPackageManager;
 use self::package::manager::PackageManager;
-use self::package::Package;
+use self::package::{FullFileId, Package};
 
 pub mod font_manager;
 pub mod fs;
 pub mod package;
 pub mod project;
+pub mod world;
 
 #[derive(Debug)]
 pub struct Workspace {
@@ -80,6 +81,14 @@ impl Workspace {
         }
     }
 
+    pub fn font_manager(&self) -> &FontManager {
+        &self.fonts
+    }
+
+    pub fn package_manager(&self) -> &PackageManager {
+        &self.packages
+    }
+
     pub fn register_files(&mut self) -> FsResult<()> {
         self.packages
             .current()
@@ -89,8 +98,14 @@ impl Workspace {
             .try_collect()
     }
 
-    pub fn font_manager(&self) -> &FontManager {
-        &self.fonts
+    pub async fn uri(&self, full_id: FullFileId) -> FsResult<Url> {
+        let package = self.package_manager().package(full_id.package()).await?;
+        let uri = package.path_to_uri(full_id.path())?;
+        Ok(uri)
+    }
+
+    pub fn full_id(&self, uri: &Url) -> FsResult<FullFileId> {
+        self.packages.full_id(uri)
     }
 
     pub fn read_bytes(&self, uri: &Url) -> FsResult<Bytes> {
@@ -117,10 +132,6 @@ impl Workspace {
 
     pub fn known_uris(&self) -> HashSet<Url> {
         self.fs.known_uris()
-    }
-
-    pub fn package_manager(&self) -> &PackageManager {
-        &self.packages
     }
 
     pub fn open_lsp(&mut self, uri: Url, text: String) -> FsResult<()> {
@@ -152,16 +163,22 @@ impl Workspace {
         self.fs.delete_local(uri)
     }
 
-    pub fn handle_workspace_folders_change_event(&mut self, event: &WorkspaceFoldersChangeEvent) {
+    pub fn handle_workspace_folders_change_event(
+        &mut self,
+        event: &WorkspaceFoldersChangeEvent,
+    ) -> FsResult<()> {
         self.packages.handle_change_event(event);
 
         // The canonical project/id of URIs might have changed, so we need to invalidate the cache
-        self.clear();
+        self.clear()?;
+
+        Ok(())
     }
 
-    pub fn clear(&mut self) {
+    pub fn clear(&mut self) -> FsResult<()> {
         self.fonts.clear();
         self.fs.clear();
-        self.register_files();
+        self.register_files()?;
+        Ok(())
     }
 }

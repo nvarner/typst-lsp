@@ -3,9 +3,6 @@
 use tower_lsp::lsp_types;
 use typst::syntax::Source;
 
-pub mod clock;
-pub mod world;
-
 pub type LspUri = lsp_types::Url;
 
 pub type LspPosition = lsp_types::Position;
@@ -111,6 +108,7 @@ pub mod lsp_to_typst {
 }
 
 pub mod typst_to_lsp {
+    use futures::{future, stream, StreamExt, TryStreamExt};
     use itertools::Itertools;
     use lazy_static::lazy_static;
     use regex::{Captures, Regex};
@@ -120,12 +118,11 @@ pub mod typst_to_lsp {
     use tracing::error;
     use typst::diag::SourceError;
     use typst::syntax::Source;
-    use typst::World;
     use typst_library::prelude::EcoString;
 
     use crate::config::ConstConfig;
     use crate::server::diagnostics::DiagnosticsMap;
-    use crate::workspace::fs::local::LocalFs;
+    use crate::workspace::project::Project;
 
     use super::*;
 
@@ -218,17 +215,25 @@ pub mod typst_to_lsp {
         typst_completions.iter().map(completion).collect_vec()
     }
 
-    pub fn source_error_to_diagnostic(
+    pub async fn source_error_to_diagnostic(
+        project: &Project,
         typst_error: &SourceError,
-        world: &impl World,
         const_config: &ConstConfig,
     ) -> anyhow::Result<(LspUri, Diagnostic)> {
         let typst_span = typst_error.span;
-        let typst_source = world.source(typst_span.id())?;
 
-        let typst_range = typst_span.range(world);
-        let lsp_range = range(typst_range, &typst_source, const_config.position_encoding);
+        let id = typst_span.id();
+        let full_id = project.fill_id(id);
+        let uri = project.full_id_to_uri(full_id).await?;
 
+        let source = project.read_source_by_uri(&uri)?;
+
+        let typst_range = source
+            .find(typst_span)
+            .expect("span should be in source since we got it using the span")
+            .range();
+
+        let lsp_range = range(typst_range, &source, const_config.position_encoding);
         let lsp_message = typst_error.message.to_string();
 
         let diagnostic = Diagnostic {
@@ -238,25 +243,21 @@ pub mod typst_to_lsp {
             ..Default::default()
         };
 
-        let uri = LocalFs::path_to_uri(typst_source.id().path())?;
-
         Ok((uri, diagnostic))
     }
 
-    pub fn source_errors_to_diagnostics<'a>(
+    pub async fn source_errors_to_diagnostics<'a>(
+        project: &Project,
         errors: impl IntoIterator<Item = &'a SourceError>,
-        world: &impl World,
         const_config: &ConstConfig,
     ) -> DiagnosticsMap {
-        errors
+        stream::iter(errors)
+            .then(|error| source_error_to_diagnostic(project, error, const_config))
+            .inspect_err(|err| error!(%err, "could not convert Typst error to diagnostic"))
+            .filter_map(|result| future::ready(result.ok()))
+            .collect::<Vec<_>>()
+            .await
             .into_iter()
-            .map(|error| source_error_to_diagnostic(error, world, const_config))
-            .inspect(|result| {
-                if let Err(err) = result {
-                    error!(%err, "could not convert Typst error to diagnostic");
-                }
-            })
-            .filter_map(Result::ok)
             .into_group_map()
     }
 

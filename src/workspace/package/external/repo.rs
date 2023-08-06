@@ -1,9 +1,10 @@
 use std::io;
 use std::path::Path;
+use std::time::Duration;
 
 use async_compression::tokio::bufread::GzipDecoder;
 use futures::TryStreamExt;
-use reqwest::Url;
+use reqwest::{Client, Url};
 use tokio::io::{AsyncBufRead, AsyncRead};
 use tokio_tar::Archive;
 use tokio_util::io::StreamReader;
@@ -18,6 +19,7 @@ const PREVIEW_NAMESPACE: &str = "preview";
 #[derive(Debug)]
 pub struct RepoProvider {
     base_url: Url,
+    client: Client,
 }
 
 impl RepoProvider {
@@ -32,7 +34,8 @@ impl RepoProvider {
         let url = self.url(spec);
         let downloaded = self.download_raw(url).await?;
         let decompressed = self.decompress(downloaded);
-        self.unpack_to(decompressed, path).await
+        self.unpack_to(decompressed, path).await?;
+        Ok(())
     }
 
     fn url(&self, spec: &PackageSpec) -> Url {
@@ -41,7 +44,10 @@ impl RepoProvider {
     }
 
     async fn download_raw(&self, url: Url) -> RepoResult<impl AsyncBufRead + Unpin> {
-        let stream = reqwest::get(url)
+        let stream = self
+            .client
+            .get(url)
+            .send()
             .await
             .map_err(RepoError::Network)?
             .bytes_stream()
@@ -69,6 +75,11 @@ impl Default for RepoProvider {
     fn default() -> Self {
         Self {
             base_url: Url::parse(TYPST_REPO_BASE_URL).unwrap(),
+            client: Client::builder()
+                .timeout(Duration::from_secs(30))
+                .connect_timeout(Duration::from_secs(5))
+                .build()
+                .expect("couldn't read system configuration for HTTP client"),
         }
     }
 }
@@ -143,5 +154,41 @@ impl RepoError {
             Self::MalformedArchive(_) => TypstPackageError::MalformedArchive,
             Self::LocalFs(_) => TypstPackageError::Other,
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use futures::future::try_join_all;
+    use temp_dir::TempDir;
+    use tokio::fs;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn full_download() -> anyhow::Result<()> {
+        let temp_dir = TempDir::new().unwrap();
+        let target = temp_dir.path();
+
+        let spec = "@preview/example:0.1.0".parse().unwrap();
+
+        let provider = RepoProvider::default();
+        provider.download_to(&spec, target).await?;
+
+        let all_exist = try_join_all(vec![
+            fs::try_exists(target.join("typst.toml")),
+            fs::try_exists(target.join("lib.typ")),
+            fs::try_exists(target.join("LICENSE")),
+            fs::try_exists(target.join("README.md")),
+            fs::try_exists(target.join("util/")),
+            fs::try_exists(target.join("util/math.typ")),
+        ])
+        .await?
+        .into_iter()
+        .all(|x| x);
+
+        assert!(all_exist);
+
+        Ok(())
     }
 }

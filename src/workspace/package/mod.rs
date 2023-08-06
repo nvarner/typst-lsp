@@ -1,4 +1,4 @@
-use core::fmt;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use internment::Intern;
@@ -7,10 +7,7 @@ use typst::file::{FileId, PackageSpec};
 
 use crate::ext::{UriResult, UrlExt};
 
-use super::fs::local::UriToFsPathError;
-
 pub mod external;
-pub mod local;
 pub mod manager;
 
 /// Represents a package that is provided. In particular, the `FsManager` should be able to access
@@ -37,11 +34,6 @@ impl Package {
     pub fn uri_to_path(&self, uri: &Url) -> UriResult<PathBuf> {
         self.root.make_relative_rooted(uri)
     }
-}
-
-pub trait PackageTraitOld: Send + Sync + fmt::Debug {
-    fn uri_to_package_path(&self, uri: &Url) -> Result<PathBuf, UriToPackagePathError>;
-    fn package_path_to_uri(&self, path: &Path) -> Result<Url, PackagePathToUriError>;
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -76,18 +68,6 @@ impl PackageId {
             PackageIdInner::External(spec) => Some(spec),
         }
     }
-
-    // /// Converts a path in a package to a URI if the path stays in the package
-    // pub fn package_path_to_uri(self, package_path: &Path) -> Option<Url> {
-    //     self.root()
-    //         .clone()
-    //         .join_rooted(package_path)
-    //         .map_err(|err| match err {
-    //             UriJoinRootedError::PathEscapesRoot => (),
-    //             UriJoinRootedError::UriCannotBeABase => panic!("root URI should be a base"),
-    //         })
-    //         .ok()
-    // }
 }
 
 /// A `FullFileId` is a "more specific" [`FileId`](typst::file::FileId)
@@ -124,35 +104,17 @@ impl FullFileId {
     pub fn spec(self) -> Option<&'static PackageSpec> {
         self.package().spec()
     }
+
+    pub fn with_extension(self, extension: impl AsRef<OsStr>) -> Self {
+        Self(Intern::new(FullFileIdInner {
+            package: self.package(),
+            path: self.path().with_extension(extension),
+        }))
+    }
 }
 
 impl From<FullFileId> for FileId {
     fn from(full: FullFileId) -> Self {
         Self::new(full.spec().cloned(), full.path())
     }
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum UriToPackagePathError {
-    #[error("scheme of URI is not `file`")]
-    SchemeIsNotFile,
-    #[error("URI to path conversion error")]
-    Conversion,
-    #[error("URI is not in the project")]
-    NotInProject,
-}
-
-impl From<UriToFsPathError> for UriToPackagePathError {
-    fn from(err: UriToFsPathError) -> Self {
-        match err {
-            UriToFsPathError::SchemeIsNotFile => Self::SchemeIsNotFile,
-            UriToFsPathError::Conversion => Self::Conversion,
-        }
-    }
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum PackagePathToUriError {
-    #[error("path led outside the project")]
-    NotInProject,
 }

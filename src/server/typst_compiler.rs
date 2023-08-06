@@ -1,7 +1,7 @@
 use comemo::Track;
+use tower_lsp::lsp_types::Url;
 use typst::doc::Document;
 use typst::eval::{Module, Route, Tracer};
-use typst::syntax::Source;
 use typst::World;
 
 use crate::lsp_typst_boundary::typst_to_lsp;
@@ -10,50 +10,68 @@ use super::diagnostics::DiagnosticsMap;
 use super::TypstServer;
 
 impl TypstServer {
-    pub fn compile_source(&self, world: &impl World) -> (Option<Document>, DiagnosticsMap) {
-        let result = typst::compile(world);
+    #[tracing::instrument(skip(self, uri), fields(%uri))]
+    pub async fn compile_source(
+        &self,
+        uri: &Url,
+    ) -> anyhow::Result<(Option<Document>, DiagnosticsMap)> {
+        let result = self
+            .thread_with_world(uri)
+            .await?
+            .run(|world| {
+                comemo::evict(30);
+                typst::compile(&world)
+            })
+            .await;
 
         let (document, errors) = match result {
             Ok(document) => (Some(document), Default::default()),
             Err(errors) => (Default::default(), errors),
         };
 
-        let diagnostics =
-            typst_to_lsp::source_errors_to_diagnostics(errors.as_ref(), world, self.const_config());
+        let (project, _) = self.project_and_full_id(uri).await?;
+        let diagnostics = typst_to_lsp::source_errors_to_diagnostics(
+            &project,
+            errors.as_ref(),
+            self.const_config(),
+        )
+        .await;
 
-        // Garbage collect incremental cache. This evicts all memoized results that haven't been
-        // used in the last 30 compilations.
-        comemo::evict(30);
-
-        (document, diagnostics)
+        Ok((document, diagnostics))
     }
 
-    pub fn eval_source(
-        &self,
-        world: &impl World,
-        source: &Source,
-    ) -> (Option<Module>, DiagnosticsMap) {
-        let route = Route::default();
-        let mut tracer = Tracer::default();
-        let result = typst::eval::eval(
-            (world as &dyn World).track(),
-            route.track(),
-            tracer.track_mut(),
-            source,
-        );
+    #[tracing::instrument(skip(self, uri), fields(%uri))]
+    pub async fn eval_source(&self, uri: &Url) -> anyhow::Result<(Option<Module>, DiagnosticsMap)> {
+        let result = self
+            .thread_with_world(uri)
+            .await?
+            .run(|world| {
+                comemo::evict(30);
+
+                let route = Route::default();
+                let mut tracer = Tracer::default();
+                typst::eval::eval(
+                    (&world as &dyn World).track(),
+                    route.track(),
+                    tracer.track_mut(),
+                    &world.main(),
+                )
+            })
+            .await;
 
         let (module, errors) = match result {
             Ok(module) => (Some(module), Default::default()),
             Err(errors) => (Default::default(), errors),
         };
 
-        let diagnostics =
-            typst_to_lsp::source_errors_to_diagnostics(errors.as_ref(), world, self.const_config());
+        let (project, _) = self.project_and_full_id(uri).await?;
+        let diagnostics = typst_to_lsp::source_errors_to_diagnostics(
+            &project,
+            errors.as_ref(),
+            self.const_config(),
+        )
+        .await;
 
-        // Garbage collect incremental cache. This evicts all memoized results that haven't been
-        // used in the last 30 compilations.
-        comemo::evict(30);
-
-        (module, diagnostics)
+        Ok((module, diagnostics))
     }
 }

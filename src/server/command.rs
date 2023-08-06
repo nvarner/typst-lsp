@@ -5,7 +5,6 @@ use tower_lsp::{
     lsp_types::Url,
 };
 use tracing::error;
-use typst::World;
 
 use super::TypstServer;
 
@@ -54,16 +53,10 @@ impl TypstServer {
         let file_uri = Url::parse(file_uri)
             .map_err(|_| Error::invalid_params("Parameter is not a valid URI"))?;
 
-        let world = self.world_with_main(&file_uri).await.map_err(|err| {
-            error!(%err, %file_uri, "could not get world");
-            jsonrpc::Error::internal_error()
-        })?;
-        let source = world.main();
-
-        self.run_export(&world, &source).await.map_err(|err| {
+        self.run_export(&file_uri).await.map_err(|err| {
             error!(%err, "could not export PDF");
             jsonrpc::Error::internal_error()
-        });
+        })?;
 
         Ok(())
     }
@@ -71,11 +64,12 @@ impl TypstServer {
     /// Clear all cached resources.
     #[tracing::instrument(skip_all)]
     pub async fn command_clear_cache(&self, _arguments: Vec<Value>) -> Result<()> {
-        self.workspace().write().await.clear();
+        self.workspace().write().await.clear().map_err(|err| {
+            error!(%err, "could not clear cache");
+            jsonrpc::Error::internal_error()
+        })?;
 
-        // this will only clear the comemo cache for the current thread
-        // TODO: is it possible to clear the comemo cache across all threads?
-        comemo::evict(0);
+        self.thread(|_| comemo::evict(0)).await;
 
         Ok(())
     }
