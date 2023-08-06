@@ -1,11 +1,10 @@
 use itertools::Itertools;
 use tower_lsp::lsp_types::{
     Documentation, MarkupContent, MarkupKind, ParameterInformation, ParameterLabel, SignatureHelp,
-    SignatureInformation,
+    SignatureInformation, Url,
 };
 use typst::eval::{CastInfo, FuncInfo, Scope, Value};
 use typst::syntax::{ast, LinkedNode, Source, SyntaxKind};
-use typst::World;
 
 use crate::ext::StrExt;
 use crate::lsp_typst_boundary::{lsp_to_typst, LspCharacterOffset, LspPosition, TypstOffset};
@@ -13,26 +12,32 @@ use crate::lsp_typst_boundary::{lsp_to_typst, LspCharacterOffset, LspPosition, T
 use super::TypstServer;
 
 impl TypstServer {
-    pub fn get_signature_at_position(
+    pub async fn get_signature_at_position(
         &self,
-        world: &impl World,
-        source: &Source,
+        uri: &Url,
         position: LspPosition,
-    ) -> Option<SignatureHelp> {
-        let global = world.library().global.scope();
+    ) -> anyhow::Result<Option<SignatureHelp>> {
+        let typst_scope = match self.eval_source(uri).await?.0 {
+            Some(scope) => scope.scope().clone(),
+            None => self.typst_global_scope().await,
+        };
 
-        let typst_offset = lsp_to_typst::position_to_offset(
-            position,
-            self.const_config().position_encoding,
-            source,
-        );
+        let signature = self.scope_with_source(uri).await?.run(|source, _| {
+            let typst_offset = lsp_to_typst::position_to_offset(
+                position,
+                self.const_config().position_encoding,
+                source,
+            );
 
-        self.get_signature_info_at_offset(source, typst_offset, global)
-            .map(|signature| SignatureHelp {
-                signatures: vec![signature],
-                active_signature: Some(0),
-                active_parameter: None,
-            })
+            self.get_signature_info_at_offset(source, typst_offset, &typst_scope)
+                .map(|signature| SignatureHelp {
+                    signatures: vec![signature],
+                    active_signature: Some(0),
+                    active_parameter: None,
+                })
+        });
+
+        Ok(signature)
     }
 
     fn get_signature_info_at_offset(

@@ -8,7 +8,6 @@ use tokio::sync::RwLock;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, LanguageServer};
 use tracing::{error, info, trace, warn};
-use typst::ide::autocomplete;
 use typst::World;
 
 use crate::config::{
@@ -50,7 +49,10 @@ impl LanguageServer for TypstServer {
                 .map_err(jsonrpc::Error::invalid_params)?;
         }
 
-        self.register_workspace_files().await;
+        if let Err(err) = self.register_workspace_files().await {
+            error!(%err, "could not register workspace files on init");
+            return Err(jsonrpc::Error::internal_error());
+        }
 
         let config = self.config.read().await;
         let semantic_tokens_provider = match config.semantic_tokens {
@@ -201,18 +203,9 @@ impl LanguageServer for TypstServer {
 
         drop(workspace);
 
-        let config = self.config.read().await;
-
-        let world = match self.world_with_main(&uri).await {
-            Ok(world) => world,
-            Err(err) => {
-                error!(%err, %uri, "could not get world");
-                return;
-            }
+        if let Err(err) = self.on_source_changed(&uri).await {
+            error!(%err, %uri, "could not handle source change");
         };
-        let source = world.main();
-
-        self.on_source_changed(&world, &config, &source).await;
     }
 
     #[tracing::instrument(skip_all, fields(uri = %params.text_document.uri))]
@@ -236,18 +229,9 @@ impl LanguageServer for TypstServer {
 
         drop(workspace);
 
-        let config = self.config.read().await;
-        let world = self.world_with_main(&uri).await;
-        let world = match world {
-            Ok(world) => world,
-            Err(err) => {
-                error!(%err, %uri, "could not get world");
-                return;
-            }
+        if let Err(err) = self.on_source_changed(&uri).await {
+            error!(%err, %uri, "could not handle source change");
         };
-        let source = world.main();
-
-        self.on_source_changed(&world, &config, &source).await;
     }
 
     #[tracing::instrument(skip_all, fields(uri = %params.text_document.uri))]
@@ -257,17 +241,9 @@ impl LanguageServer for TypstServer {
         let config = self.config.read().await;
 
         if config.export_pdf == ExportPdfMode::OnSave {
-            let world = self.world_with_main(&uri).await;
-            let world = match world {
-                Ok(world) => world,
-                Err(err) => {
-                    error!(%err, %uri, "could not get world");
-                    return;
-                }
+            if let Err(err) = self.run_diagnostics_and_export(&uri).await {
+                error!(%err, %uri, "could not handle source save");
             };
-            let source = world.main();
-
-            self.run_diagnostics_and_export(&world, &source).await;
         }
     }
 
@@ -288,7 +264,9 @@ impl LanguageServer for TypstServer {
 
         let mut workspace = self.workspace().write().await;
 
-        workspace.handle_workspace_folders_change_event(&event);
+        if let Err(err) = workspace.handle_workspace_folders_change_event(&event) {
+            error!(%err, "error when changing workspace folders");
+        }
     }
 
     #[tracing::instrument(
@@ -330,13 +308,10 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
 
-        let world = self.world_with_main(&uri).await.map_err(|err| {
-            error!(%err, %uri, "could not get world");
+        self.get_hover(&uri, position).await.map_err(|err| {
+            error!(%err, %uri, "error getting hover");
             jsonrpc::Error::internal_error()
-        })?;
-        let source = world.main();
-
-        Ok(self.get_hover(&world, &source, position))
+        })
     }
 
     #[tracing::instrument(
@@ -356,20 +331,23 @@ impl LanguageServer for TypstServer {
             .context
             .map(|context| context.trigger_kind == CompletionTriggerKind::INVOKED)
             .unwrap_or(false);
+        let position_encoding = self.const_config().position_encoding;
 
-        let world = self.world_with_main(&uri).await.map_err(|err| {
-            error!(%err, %uri, "could not get world");
-            jsonrpc::Error::internal_error()
-        })?;
-        let source = world.main();
+        let completions = self
+            .thread_with_world(&uri)
+            .await
+            .map_err(|err| {
+                error!(%err, %uri, "error getting completion");
+                jsonrpc::Error::internal_error()
+            })?
+            .run(move |world| {
+                let source = world.main();
 
-        let typst_offset = lsp_to_typst::position_to_offset(
-            position,
-            self.const_config().position_encoding,
-            &source,
-        );
-
-        let completions = autocomplete(&world, &[], &source, typst_offset, explicit)
+                let typst_offset =
+                    lsp_to_typst::position_to_offset(position, position_encoding, &source);
+                typst::ide::autocomplete(&world, &[], &source, typst_offset, explicit)
+            })
+            .await
             .map(|(_, completions)| typst_to_lsp::completions(&completions).into());
         Ok(completions)
     }
@@ -388,13 +366,12 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
 
-        let world = self.world_with_main(&uri).await.map_err(|err| {
-            error!(%err, %uri, "could not get world");
-            jsonrpc::Error::internal_error()
-        })?;
-        let source = world.main();
-
-        Ok(self.get_signature_at_position(&world, &source, position))
+        self.get_signature_at_position(&uri, position)
+            .await
+            .map_err(|err| {
+                error!(%err, %uri, "error getting signature");
+                jsonrpc::Error::internal_error()
+            })
     }
 
     #[tracing::instrument(skip_all, fields(uri = %params.text_document.uri))]
@@ -404,16 +381,14 @@ impl LanguageServer for TypstServer {
     ) -> jsonrpc::Result<Option<DocumentSymbolResponse>> {
         let uri = params.text_document.uri;
 
-        let workspace = self.workspace().read().await;
-
-        let source = workspace.read_source(&uri).map_err(|err| {
-            error!(%err, %uri, "could not open file while getting document symbols");
-            jsonrpc::Error::internal_error()
-        })?;
-
         let symbols: Vec<_> = self
-            .document_symbols(&source, &uri, None)
-            .try_collect()
+            .scope_with_source(&uri)
+            .await
+            .map_err(|err| {
+                error!(%err, %uri, "error getting document symbols");
+                jsonrpc::Error::internal_error()
+            })?
+            .run(|source, _| self.document_symbols(source, &uri, None).try_collect())
             .map_err(|err| {
                 error!(%err, %uri, "failed to get document symbols");
                 jsonrpc::Error::internal_error()
@@ -435,7 +410,7 @@ impl LanguageServer for TypstServer {
 
         let query = (!params.query.is_empty()).then_some(params.query.as_str());
 
-        let workspace = self.workspace().read().await;
+        let workspace = self.read_workspace().await;
 
         let uris = workspace.known_uris();
 
@@ -468,14 +443,14 @@ impl LanguageServer for TypstServer {
     ) -> jsonrpc::Result<Option<SemanticTokensResult>> {
         let uri = params.text_document.uri;
 
-        let workspace = self.workspace().read().await;
-
-        let source = workspace.read_source(&uri).map_err(|err| {
-            error!(%err, %uri, "could not open file while getting full semantic tokens");
-            jsonrpc::Error::internal_error()
-        })?;
-
-        let (tokens, result_id) = self.get_semantic_tokens_full(&source);
+        let (tokens, result_id) = self
+            .scope_with_source(&uri)
+            .await
+            .map_err(|err| {
+                error!(%err, %uri, "error getting full semantic tokens");
+                jsonrpc::Error::internal_error()
+            })?
+            .run(|source, _| self.get_semantic_tokens_full(source));
 
         Ok(Some(
             SemanticTokens {
@@ -494,31 +469,30 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document.uri;
         let previous_result_id = params.previous_result_id;
 
-        let workspace = self.workspace().read().await;
-
-        let source = workspace.read_source(&uri).map_err(|err| {
-            error!(%err, %uri, "could not open file while getting full semantic tokens delta");
+        let scope = self.scope_with_source(&uri).await.map_err(|err| {
+            error!(%err, %uri, "error getting semantic token delta");
             jsonrpc::Error::internal_error()
         })?;
-
-        let (tokens, result_id) =
-            self.try_semantic_tokens_delta_from_result_id(&source, &previous_result_id);
-        match tokens {
-            Ok(edits) => Ok(Some(
-                SemanticTokensDelta {
-                    result_id: Some(result_id),
-                    edits,
-                }
-                .into(),
-            )),
-            Err(tokens) => Ok(Some(
-                SemanticTokens {
-                    result_id: Some(result_id),
-                    data: tokens,
-                }
-                .into(),
-            )),
-        }
+        scope.run(|source, _| {
+            let (tokens, result_id) =
+                self.try_semantic_tokens_delta_from_result_id(source, &previous_result_id);
+            match tokens {
+                Ok(edits) => Ok(Some(
+                    SemanticTokensDelta {
+                        result_id: Some(result_id),
+                        edits,
+                    }
+                    .into(),
+                )),
+                Err(tokens) => Ok(Some(
+                    SemanticTokens {
+                        result_id: Some(result_id),
+                        data: tokens,
+                    }
+                    .into(),
+                )),
+            }
+        })
     }
 
     #[tracing::instrument(skip(self))]
@@ -551,12 +525,15 @@ impl LanguageServer for TypstServer {
         let uri = params.text_document.uri;
         let positions = params.positions;
 
-        let world = self.world_with_main(&uri).await.map_err(|err| {
-            error!(%err, %uri, "could not get world");
-            jsonrpc::Error::internal_error()
-        })?;
-        let source = world.main();
+        let selection_range = self
+            .scope_with_source(&uri)
+            .await
+            .map_err(|err| {
+                error!(%err, %uri, "error getting selection range");
+                jsonrpc::Error::internal_error()
+            })?
+            .run(|source, _| self.get_selection_range(source, &positions));
 
-        Ok(self.get_selection_range(&source, &positions))
+        Ok(selection_range)
     }
 }

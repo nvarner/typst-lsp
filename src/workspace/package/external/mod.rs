@@ -13,5 +13,5 @@ pub trait ExternalPackageProvider {
     fn package(&self, spec: &PackageSpec) -> Option<Package>;
 
     /// The full ID of a file, if the file is provided by this provider
-    fn full_file_id(&self, uri: &Url) -> Option<FullFileId>;
+    fn full_id(&self, uri: &Url) -> Option<FullFileId>;
 }

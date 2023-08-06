@@ -41,7 +41,7 @@ impl LspFs {
         text: String,
         package_manager: &PackageManager,
     ) -> FsResult<()> {
-        let full_id = package_manager.full_file_id(&uri)?;
+        let full_id = package_manager.full_id(&uri)?;
         let source = Source::new(full_id.into(), text);
         self.files.insert(uri, source);
         Ok(())

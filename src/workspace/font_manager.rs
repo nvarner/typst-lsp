@@ -52,7 +52,7 @@ impl fmt::Debug for FontManager {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("FontManager")
             .field("book", &"...")
-            .field("fonts", &self.fonts)
+            .field("fonts", &"...")
             .finish()
     }
 }

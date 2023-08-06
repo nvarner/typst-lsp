@@ -10,7 +10,6 @@ use typst::syntax::Source;
 use typst::util::Bytes;
 
 use crate::ext::UriError;
-use crate::lsp_typst_boundary::world::IdToUriError;
 
 use self::local::UriToFsPathError;
 
@@ -87,11 +86,5 @@ impl From<UriToFsPathError> for FsError {
             UriToFsPathError::SchemeIsNotFile => Self::NotProvided(err.into()),
             UriToFsPathError::Conversion => Self::Other(err.into()),
         }
-    }
-}
-
-impl From<IdToUriError> for FsError {
-    fn from(err: IdToUriError) -> Self {
-        Self::Other(err.into())
     }
 }

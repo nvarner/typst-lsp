@@ -1,46 +1,37 @@
 use anyhow::bail;
-use typst::syntax::Source;
+use tower_lsp::lsp_types::Url;
 
-use crate::config::{Config, ExportPdfMode};
-use crate::lsp_typst_boundary::world::ProjectWorld;
+use crate::config::ExportPdfMode;
 
 use super::TypstServer;
 
 impl TypstServer {
-    pub async fn on_source_changed(
-        &self,
-        world: &ProjectWorld,
-        config: &Config,
-        source: &Source,
-    ) -> anyhow::Result<()> {
+    pub async fn on_source_changed(&self, uri: &Url) -> anyhow::Result<()> {
+        let config = self.config.read().await;
         match config.export_pdf {
-            ExportPdfMode::OnType => self.run_diagnostics_and_export(world, source).await?,
-            _ => self.run_diagnostics(world, source).await,
+            ExportPdfMode::OnType => self.run_diagnostics_and_export(uri).await?,
+            _ => self.run_diagnostics(uri).await?,
         }
 
         Ok(())
     }
 
-    pub async fn run_export(&self, world: &ProjectWorld, source: &Source) -> anyhow::Result<()> {
-        let (Some(document), _) = self.compile_source(world) else {
+    pub async fn run_export(&self, uri: &Url) -> anyhow::Result<()> {
+        let (Some(document), _) = self.compile_source(uri).await? else {
             bail!("failed to generate document after compilation")
         };
 
-        self.export_pdf(world, source, &document).await?;
+        self.export_pdf(uri, document).await?;
 
         Ok(())
     }
 
-    pub async fn run_diagnostics_and_export(
-        &self,
-        world: &ProjectWorld,
-        source: &Source,
-    ) -> anyhow::Result<()> {
-        let (document, diagnostics) = self.compile_source(world);
+    pub async fn run_diagnostics_and_export(&self, uri: &Url) -> anyhow::Result<()> {
+        let (document, diagnostics) = self.compile_source(uri).await?;
 
         self.update_all_diagnostics(diagnostics).await;
         if let Some(document) = document {
-            self.export_pdf(world, source, &document).await?;
+            self.export_pdf(uri, document).await?;
         } else {
             bail!("failed to generate document after compilation")
         }
@@ -48,9 +39,11 @@ impl TypstServer {
         Ok(())
     }
 
-    pub async fn run_diagnostics(&self, world: &ProjectWorld, source: &Source) {
-        let (_, diagnostics) = self.eval_source(world, source);
+    pub async fn run_diagnostics(&self, uri: &Url) -> anyhow::Result<()> {
+        let (_, diagnostics) = self.eval_source(uri).await?;
 
         self.update_all_diagnostics(diagnostics).await;
+
+        Ok(())
     }
 }
