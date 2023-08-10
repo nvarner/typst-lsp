@@ -10,6 +10,7 @@ jaeger = ["opentelemetry", "opentelemetry-jaeger", "tracing-opentelemetry"]
 [dependencies]
 anyhow = "1.0.71"
 async-compression = { version = "0.4.1", features = ["tokio", "gzip"] }
+bpaf = { version = "0.9.4", features = ["bright-color"] }
 chrono = { version = "0.4.24", default-features = false, features = [
     "std",
     "clock",
@@ -55,6 +56,7 @@ tracing-subscriber = { version = "0.3.17", default-features = false, features = 
     "registry",
     "fmt",
 ] }
+# Keep typst version in sync with string in `main.rs`
 typst = { git = "https://github.com/typst/typst.git", tag = "v0.6.0" }
 typst-library = { git = "https://github.com/typst/typst.git", tag = "v0.6.0" }
 walkdir = "2.3"
