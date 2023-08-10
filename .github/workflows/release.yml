@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    uses: ./.github/full_build.yml
+    uses: ./.github/workflows/full_build.yml
 
   release:
     runs-on: ubuntu-latest
