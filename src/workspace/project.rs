@@ -14,7 +14,7 @@ use crate::ext::FileIdExt;
 use super::fs::local::UriToFsPathError;
 use super::fs::FsResult;
 use super::package::{FullFileId, PackageId};
-use super::Workspace;
+use super::{Workspace, TYPST_STDLIB};
 
 pub struct Project {
     current: PackageId,
@@ -31,7 +31,7 @@ impl Project {
     }
 
     pub fn typst_stdlib(&self) -> &Prehashed<Library> {
-        &self.workspace().typst_stdlib
+        &TYPST_STDLIB
     }
 
     pub fn font_book(&self) -> &Prehashed<FontBook> {

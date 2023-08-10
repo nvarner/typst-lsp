@@ -1,10 +1,10 @@
 use std::sync::mpsc;
-use std::{panic, thread};
+use std::thread;
 
 use tokio::runtime;
 use tokio::sync::oneshot;
 use tower_lsp::lsp_types::Url;
-use tracing::trace;
+use tracing::{trace, warn};
 
 use crate::workspace::project::Project;
 
@@ -59,7 +59,11 @@ impl TypstThread {
         let (sender, receiver) = oneshot::channel();
         let f_prime = move |handle| {
             let t = f(handle);
-            let Ok(_) = sender.send(t) else { panic!("could not send back return value") };
+            if sender.send(t).is_err() {
+                // Receiver was dropped. The main thread may have exited, or the request may have
+                // been cancelled.
+                warn!("could not send back return value from Typst thread");
+            }
         };
 
         self.send_request(Request::new(f_prime));

@@ -108,7 +108,7 @@ pub mod lsp_to_typst {
 }
 
 pub mod typst_to_lsp {
-    use futures::{future, stream, StreamExt, TryStreamExt};
+    use futures::{future, stream, StreamExt, TryFutureExt, TryStreamExt};
     use itertools::Itertools;
     use lazy_static::lazy_static;
     use regex::{Captures, Regex};
@@ -252,8 +252,11 @@ pub mod typst_to_lsp {
         const_config: &ConstConfig,
     ) -> DiagnosticsMap {
         stream::iter(errors)
-            .then(|error| source_error_to_diagnostic(project, error, const_config))
-            .inspect_err(|err| error!(%err, "could not convert Typst error to diagnostic"))
+            .then(|error| {
+                source_error_to_diagnostic(project, error, const_config)
+                    .map_err(move |conversion_err| (conversion_err, error))
+            })
+            .inspect_err(|(conversion_err, typst_err)| error!(%conversion_err, ?typst_err, "could not convert Typst error to diagnostic"))
             .filter_map(|result| future::ready(result.ok()))
             .collect::<Vec<_>>()
             .await

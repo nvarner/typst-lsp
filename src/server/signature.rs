@@ -3,7 +3,8 @@ use tower_lsp::lsp_types::{
     Documentation, MarkupContent, MarkupKind, ParameterInformation, ParameterLabel, SignatureHelp,
     SignatureInformation, Url,
 };
-use typst::eval::{CastInfo, FuncInfo, Scope, Value};
+use tracing::trace;
+use typst::eval::{CastInfo, FuncInfo, Scopes, Value};
 use typst::syntax::{ast, LinkedNode, Source, SyntaxKind};
 
 use crate::ext::StrExt;
@@ -17,9 +18,11 @@ impl TypstServer {
         uri: &Url,
         position: LspPosition,
     ) -> anyhow::Result<Option<SignatureHelp>> {
-        let typst_scope = match self.eval_source(uri).await?.0 {
-            Some(scope) => scope.scope().clone(),
-            None => self.typst_global_scope().await,
+        // TODO: This isn't the complete stack of scopes, but there doesn't seem to be a way to get
+        // it from Typst. Needs investigation, possibly a PR to Typst.
+        let mut scopes = self.typst_global_scopes();
+        if let Some(module) = self.eval_source(uri).await?.0 {
+            scopes.top = module.scope().clone();
         };
 
         let signature = self.scope_with_source(uri).await?.run(|source, _| {
@@ -29,7 +32,7 @@ impl TypstServer {
                 source,
             );
 
-            self.get_signature_info_at_offset(source, typst_offset, &typst_scope)
+            self.get_signature_info_at_offset(source, typst_offset, &scopes)
                 .map(|signature| SignatureHelp {
                     signatures: vec![signature],
                     active_signature: Some(0),
@@ -40,19 +43,26 @@ impl TypstServer {
         Ok(signature)
     }
 
+    #[tracing::instrument(skip(self, source, scopes))]
     fn get_signature_info_at_offset(
         &self,
         source: &Source,
         typst_offset: TypstOffset,
-        scope: &Scope,
+        scopes: &Scopes,
     ) -> Option<SignatureInformation> {
         let leaf = self.get_leaf(source, typst_offset)?;
+        trace!("got leaf");
         let (func_ident, args) = self.get_surrounding_function(&leaf)?;
+        trace!(ident = func_ident.as_str(), "got surrounding function");
         let deciding = self.get_deciding(&leaf);
-        let func_info = self.get_function_info(scope, &func_ident)?;
+        trace!(?scopes, "scope");
+        let func_info = self.get_function_info(scopes, &func_ident)?;
+        trace!("got func info");
         let current_param_index = self.get_current_param_index(&deciding, func_info, args);
 
         let (label, params) = self.get_param_information(func_info);
+
+        trace!(?current_param_index, label, ?params, "got signature info");
 
         Some(SignatureInformation {
             label,
@@ -94,11 +104,11 @@ impl TypstServer {
 
     pub fn get_function_info<'a>(
         &self,
-        scope: &'a Scope,
+        scopes: &'a Scopes,
         ident: &ast::Ident,
     ) -> Option<&'a FuncInfo> {
-        match scope.get(ident) {
-            Some(Value::Func(function)) => function.info(),
+        match scopes.get(ident.as_str()) {
+            Ok(Value::Func(function)) => function.info(),
             _ => None,
         }
     }

@@ -15,7 +15,7 @@ use crate::workspace::package::FullFileId;
 use crate::workspace::project::Project;
 use crate::workspace::world::typst_thread::TypstThread;
 use crate::workspace::world::ProjectWorld;
-use crate::workspace::Workspace;
+use crate::workspace::{Workspace, TYPST_STDLIB};
 
 use self::diagnostics::DiagnosticsManager;
 use self::log::LspLayer;
@@ -74,13 +74,8 @@ impl TypstServer {
             .expect("workspace should be initialized")
     }
 
-    pub async fn typst_global_scope(&self) -> typst::eval::Scope {
-        self.read_workspace()
-            .await
-            .typst_stdlib
-            .global
-            .scope()
-            .clone()
+    pub fn typst_global_scopes(&self) -> typst::eval::Scopes {
+        typst::eval::Scopes::new(Some(&TYPST_STDLIB))
     }
 
     #[tracing::instrument(skip(self))]

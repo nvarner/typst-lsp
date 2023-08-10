@@ -1,3 +1,4 @@
+use core::fmt;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
@@ -12,7 +13,7 @@ pub mod manager;
 
 /// Represents a package that is provided. In particular, the `FsManager` should be able to access
 /// files in the package via the `root` URI.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Package {
     root: Url,
 }
@@ -36,8 +37,30 @@ impl Package {
     }
 }
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+impl fmt::Debug for Package {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Package")
+            .field("root", &self.root.as_str())
+            .finish()
+    }
+}
+
+#[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub struct PackageId(Intern<PackageIdInner>);
+
+impl fmt::Debug for PackageId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.0.as_ref() {
+            PackageIdInner::Current(uri) => f
+                .debug_tuple("PackageId::Current")
+                .field(&uri.as_str())
+                .finish(),
+            PackageIdInner::External(spec) => {
+                f.debug_tuple("PackageId::External").field(spec).finish()
+            }
+        }
+    }
+}
 
 #[derive(Debug, Hash, PartialEq, Eq)]
 enum PackageIdInner {
@@ -79,8 +102,17 @@ impl PackageId {
 /// needs to know which is the current package, while a `FullFileId` makes sense in the more general
 /// context of a [`PackageManager`](self::manager::PackageManager), since it specifies the current
 /// package as needed.
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub struct FullFileId(Intern<FullFileIdInner>);
+
+impl fmt::Debug for FullFileId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("FullFileId")
+            .field(&self.0.package)
+            .field(&self.0.path)
+            .finish()
+    }
+}
 
 #[derive(Debug, Hash, PartialEq, Eq)]
 struct FullFileIdInner {
