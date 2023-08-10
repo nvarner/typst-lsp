@@ -2,16 +2,27 @@ version: 2
 updates:
   - package-ecosystem: "cargo"
     directory: "/"
+    versioning-strategy: increase-if-necessary
     schedule:
       interval: "weekly"
+    groups:
+      rust-deps:
+        patterns:
+          - "*"
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-patch"]
 
   - package-ecosystem: "npm"
     directory: "/addons/vscode"
+    versioning-strategy: increase-if-necessary
     schedule:
       interval: "weekly"
+    groups:
+      vscode-deps:
+        patterns:
+          - "*"
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-patch"]
+      - dependency-name: "@types/vscode"
