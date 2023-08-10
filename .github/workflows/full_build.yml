@@ -49,7 +49,7 @@ jobs:
     name: ${{ matrix.rust-target }}
     runs-on: ${{ matrix.os }}
     env:
-      - BIN_EXT: ${{ fromJSON('["", ".exe"]')[matrix.os == 'windows-latest'] }}
+      BIN_EXT: ${{ fromJSON('["", ".exe"]')[matrix.os == 'windows-latest'] }}
 
     steps:
       - uses: actions/checkout@v3
