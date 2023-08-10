@@ -14,17 +14,16 @@ assignees: ''
 -->
 
 <!-- All the below information must be provided for others to understand and help with your issue. -->
-- **Component**: <!-- Indicate which is appropriate. Checked checkbox should look like this: [x] -->
-    - [ ] VSCode Extension
-    - [ ] VSCodium Extension
-    - [ ] LSP (used with other editor)
+- **Component**: <!-- Include the relevant component(s). Delete the rest. -->
+    - VSCode Extension
+    - LSP (used with other editor)
 - **Extension version**: <!-- Replace with version of the Typst LSP extension -->
 - **LSP version**: <!-- Replace with version of the typst-lsp binary -->
 - **OS version and name**: <!-- Replace with version + name, e.g. Ubuntu 22.04 or macOS 12.6 -->
 
-<!-- All the below steps should be completed before submitting your issue. Checked checkbox should look like this: [x] -->
-- [ ] I am on the [latest](https://github.com/nvarner/typst-lsp/tags) stable version of the extension/LSP.
-- [ ] I have searched the [issues](https://github.com/nvarner/typst-lsp/issues) of this repo and believe that this is not a duplicate.
+<!-- All the below steps should be completed before submitting your issue. -->
+- I am on the [latest](https://github.com/nvarner/typst-lsp/tags) stable version of the extension/LSP.
+- I have searched the [issues](https://github.com/nvarner/typst-lsp/issues) of this repo and believe that this is not a duplicate.
 
 ## Issue
 <!--
