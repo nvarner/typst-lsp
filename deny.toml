@@ -104,7 +104,6 @@ skip-tree = [
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
-allow-git = ["https://github.com/nvarner/elsa"]
 
 [sources.allow-org]
 github = ["typst"]
