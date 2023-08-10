@@ -16,7 +16,7 @@ chrono = { version = "0.4.24", default-features = false, features = [
 ] }
 comemo = "0.3"
 dirs = "5.0"
-elsa = { git = "https://github.com/nvarner/elsa.git" }
+elsa = "1.9.0"
 futures = "0.3"
 if_chain = "1.0"
 indexmap = "2.0.0"
