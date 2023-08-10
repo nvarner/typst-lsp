@@ -35,6 +35,7 @@ use std::collections::HashSet;
 
 use comemo::Prehashed;
 use itertools::Itertools;
+use lazy_static::lazy_static;
 use tower_lsp::lsp_types::{
     InitializeParams, TextDocumentContentChangeEvent, Url, WorkspaceFoldersChangeEvent,
 };
@@ -59,14 +60,15 @@ pub mod package;
 pub mod project;
 pub mod world;
 
+lazy_static! {
+    pub static ref TYPST_STDLIB: Prehashed<Library> = Prehashed::new(typst_library::build());
+}
+
 #[derive(Debug)]
 pub struct Workspace {
     fs: FsManager,
     fonts: FontManager,
     packages: PackageManager,
-
-    // Needed so that `Workspace` can implement Typst's `World` trait
-    pub typst_stdlib: Prehashed<Library>,
 }
 
 impl Workspace {
@@ -77,7 +79,6 @@ impl Workspace {
             fs: FsManager::default(),
             fonts: FontManager::builder().with_system().with_embedded().build(),
             packages: PackageManager::new(root_paths, ExternalPackageManager::new().unwrap()),
-            typst_stdlib: Prehashed::new(typst_library::build()),
         }
     }
 
