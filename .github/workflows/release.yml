@@ -1,95 +1,13 @@
 name: Release
+
 on:
   push:
     tags:
       - "*"
-  workflow_dispatch:
 
 jobs:
   build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            rust-target: x86_64-pc-windows-msvc
-            vs-code-target: win32-x64
-
-          - os: windows-latest
-            rust-target: i686-pc-windows-msvc
-            vs-code-target: win32-ia32
-
-          - os: windows-latest
-            rust-target: aarch64-pc-windows-msvc
-            vs-code-target: win32-arm64
-
-          - os: ubuntu-20.04
-            rust-target: x86_64-unknown-linux-gnu
-            vs-code-target: linux-x64
-
-          - os: ubuntu-20.04
-            rust-target: aarch64-unknown-linux-gnu
-            vs-code-target: linux-arm64
-          
-          - os: ubuntu-20.04
-            rust-target: x86_64-unknown-linux-musl
-            vs-code-target: alpine-x64
-
-          - os: ubuntu-20.04
-            rust-target: arm-unknown-linux-gnueabihf
-            vs-code-target: linux-armhf
-
-          - os: macos-11
-            rust-target: x86_64-apple-darwin
-            vs-code-target: darwin-x64
-
-          - os: macos-11
-            rust-target: aarch64-apple-darwin
-            vs-code-target: darwin-arm64
-    
-    name: ${{ matrix.rust-target }}
-    runs-on: ${{ matrix.os }}
-    env:
-      - BIN_EXT: ${{ fromJSON('["", ".exe"]')[matrix.os == 'windows-latest'] }}
-
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - uses: Swatinem/rust-cache@v2
-      - run: npm install
-        working-directory: ./addons/vscode
-
-      - name: Build Rust
-        uses: houseabsolute/actions-rust-cross@v0
-        with:
-          command: build
-          target: ${{ matrix.rust-target }}
-          args: "--release --locked"
-
-      - name: Move binaries
-        run: |
-          mkdir -p addons/vscode/out
-          cp "target/${{ matrix.rust-target }}/release/typst-lsp${{ env.BIN_EXT }}" addons/vscode/out/
-          cp "target/${{ matrix.rust-target }}/release/typst-lsp${{ env.BIN_EXT }}" .
-
-      - name: Package VS Code extension
-        shell: bash
-        run: npm run package -- --target ${{ matrix.vs-code-target }} -o typst-lsp-${{ matrix.vs-code-target }}.vsix
-        working-directory: ./addons/vscode
-
-      - name: Upload VS Code extension
-        uses: actions/upload-artifact@v2
-        with:
-          name: typst-lsp-${{ matrix.vs-code-target }}.vsix
-          path: addons/vscode/typst-lsp-${{ matrix.vs-code-target }}.vsix
-
-      - name: Upload binary
-        uses: actions/upload-artifact@v2
-        with:
-          name: typst-lsp-${{ matrix.vs-code-target }}
-          path: typst-lsp-${{ matrix.vs-code-target }}${{ env.BIN_EXT }}
+    uses: ./.github/full_build.yml
 
   release:
     runs-on: ubuntu-latest
