@@ -9,9 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     name: Rust
     steps:
+      - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - uses: actions/checkout@v3
       
       - name: Tests
         run: cargo test
