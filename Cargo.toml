@@ -25,8 +25,8 @@ itertools = "0.11.0"
 lazy_static = "1.4.0"
 memmap2 = "0.7"
 once_cell = "1.0"
-opentelemetry = { version = "0.19.0", optional = true }
-opentelemetry-jaeger = { version = "0.18.0", features = [
+opentelemetry = { version = "0.20.0", optional = true }
+opentelemetry-jaeger = { version = "0.19.0", features = [
     "rt-tokio",
     "isahc_collector_client",
     "collector_client",
@@ -49,7 +49,7 @@ tokio-tar = "0.3.1"
 tokio-util = { version = "0.7.8", features = ["io"] }
 tower-lsp = "0.19.0"
 tracing = { version = "0.1.37", features = ["release_max_level_info"] }
-tracing-opentelemetry = { version = "0.19.0", optional = true }
+tracing-opentelemetry = { version = "0.20.0", optional = true }
 tracing-subscriber = { version = "0.3.17", default-features = false, features = [
     "std",
     "registry",
@@ -58,6 +58,13 @@ tracing-subscriber = { version = "0.3.17", default-features = false, features = 
 typst = { git = "https://github.com/typst/typst.git", tag = "v0.6.0" }
 typst-library = { git = "https://github.com/typst/typst.git", tag = "v0.6.0" }
 walkdir = "2.3"
+
+# Typst 0.6.0 does not specify a tag or ref for svg2pdf, so provide one...
+# ...but Cargo doesn't want to make our lives too easy, and we can't replace the
+# dependency with another at the same URL. Use a workaroud inspired by
+# StackOverflow: https://stackoverflow.com/a/72261235
+[patch."https://github.com/typst/svg2pdf"]
+svg2pdf = { git = "https://github.com/typst/svg2pdf.git?", tag = "v0.5.0" }
 
 [dev-dependencies]
 temp-dir = "0.1.11"
