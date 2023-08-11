@@ -74,12 +74,19 @@ allow = [
     "MPL-2.0",
     "Zlib",
     "ISC",
+    "CC-PDDC",
 ]
 unlicensed = "deny"
 copyleft = "deny"
 allow-osi-fsf-free = "neither"
 default = "deny"
 confidence-threshold = 0.8
+exceptions = [{ name = "ring", allow = ["LicenseRef-Ring-Custom"] }]
+
+[[licenses.clarify]]
+name = "ring"
+expression = "LicenseRef-Ring-Custom"
+license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
 
 [bans]
 multiple-versions = "warn"
