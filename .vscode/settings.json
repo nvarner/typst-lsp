@@ -1,7 +1,7 @@
 {
     "eslint.format.enable": true,
     "eslint.workingDirectories": [
-        "addons/vscode"
+        "editors/vscode"
     ],
     "rust-analyzer.linkedProjects": [
         "./Cargo.toml"

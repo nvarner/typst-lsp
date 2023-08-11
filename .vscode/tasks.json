@@ -23,7 +23,7 @@
 			"label": "Compile VS Code Extension",
 			"type": "npm",
 			"script": "compile",
-			"path": "addons/vscode",
+			"path": "editors/vscode",
 			"group": "build",
 		},
 		{
@@ -52,21 +52,21 @@
 				"command": "cp",
 				"args": [
 					"${workspaceFolder}\\target\\debug\\typst-lsp.exe",
-					"${workspaceFolder}\\addons\\vscode\\out\\"
+					"${workspaceFolder}\\editors\\vscode\\out\\"
 				]
 			},
 			"linux": {
 				"command": "cp",
 				"args": [
 					"${workspaceFolder}/target/debug/typst-lsp",
-					"${workspaceFolder}/addons/vscode/out/"
+					"${workspaceFolder}/editors/vscode/out/"
 				]
 			},
 			"osx": {
 				"command": "cp",
 				"args": [
 					"${workspaceFolder}/target/debug/typst-lsp",
-					"${workspaceFolder}/addons/vscode/out/"
+					"${workspaceFolder}/editors/vscode/out/"
 				]
 			}
 		}

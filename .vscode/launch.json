@@ -7,10 +7,10 @@
             "request": "launch",
             "runtimeExecutable": "${execPath}",
             "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}/addons/vscode"
+                "--extensionDevelopmentPath=${workspaceFolder}/editors/vscode"
             ],
             "outFiles": [
-                "${workspaceFolder}/addons/vscode/out/**/*.js"
+                "${workspaceFolder}/editors/vscode/out/**/*.js"
             ],
             "preLaunchTask": "VS Code Extension Prelaunch"
         },
@@ -20,10 +20,10 @@
             "request": "launch",
             "runtimeExecutable": "${execPath}",
             "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}/addons/vscode"
+                "--extensionDevelopmentPath=${workspaceFolder}/editors/vscode"
             ],
             "outFiles": [
-                "${workspaceFolder}/addons/vscode/out/**/*.js"
+                "${workspaceFolder}/editors/vscode/out/**/*.js"
             ],
             "preLaunchTask": "VS Code Extension Prelaunch [Jaeger]"
         }

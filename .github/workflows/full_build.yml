@@ -58,7 +58,7 @@ jobs:
           node-version: 16
       - uses: Swatinem/rust-cache@v2
       - run: npm install
-        working-directory: ./addons/vscode
+        working-directory: ./editors/vscode
 
       - name: Musl tool install
         if: ${{ matrix.rust-target == 'x86_64-unknown-linux-musl' }}
@@ -75,20 +75,20 @@ jobs:
 
       - name: Move binaries
         run: |
-          mkdir -p addons/vscode/out
-          cp "target/${{ matrix.rust-target }}/release/typst-lsp${{ env.BIN_EXT }}" addons/vscode/out/
+          mkdir -p editors/vscode/out
+          cp "target/${{ matrix.rust-target }}/release/typst-lsp${{ env.BIN_EXT }}" editors/vscode/out/
           cp "target/${{ matrix.rust-target }}/release/typst-lsp${{ env.BIN_EXT }}" "typst-lsp-${{ matrix.rust-target }}${{ env.BIN_EXT }}"
 
       - name: Package VS Code extension
         shell: bash
         run: npm run package -- --target ${{ matrix.vs-code-target }} -o typst-lsp-${{ matrix.vs-code-target }}.vsix
-        working-directory: ./addons/vscode
+        working-directory: ./editors/vscode
 
       - name: Upload VS Code extension
         uses: actions/upload-artifact@v3
         with:
           name: typst-lsp-${{ matrix.vs-code-target }}.vsix
-          path: addons/vscode/typst-lsp-${{ matrix.vs-code-target }}.vsix
+          path: editors/vscode/typst-lsp-${{ matrix.vs-code-target }}.vsix
 
       - name: Upload binary
         uses: actions/upload-artifact@v3
