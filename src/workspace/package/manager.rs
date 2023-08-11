@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::anyhow;
 use itertools::Itertools;
 use tower_lsp::lsp_types::{Url, WorkspaceFoldersChangeEvent};
-use tracing::{error, warn};
+use tracing::{error, info, trace, warn};
 use typst::diag::{FileError, PackageError as TypstPackageError};
 use typst::syntax::{FileId, PackageSpec};
 
@@ -34,6 +34,7 @@ pub struct PackageManager {
 impl PackageManager {
     /// Construct a package manager. If no external package manager is provided, external packages
     /// will not be supported.
+    #[tracing::instrument]
     pub fn new(root_uris: Vec<Url>, external: Option<ExternalPackageManager>) -> Self {
         let current = root_uris
             .into_iter()
@@ -43,6 +44,8 @@ impl PackageManager {
         if external.is_none() {
             warn!("no external package manager was provided; external packages won't be supported");
         }
+
+        info!(?current, "initialized with current packages");
 
         Self { current, external }
     }
@@ -78,7 +81,8 @@ impl PackageManager {
         let candidates = self
             .current
             .iter()
-            .filter_map(|(root, package)| Some((root, package.uri_to_path(uri).ok()?)));
+            .filter_map(|(root, package)| Some((root, package.uri_to_path(uri).ok()?)))
+            .inspect(|(package_root, path)| trace!(%package_root, ?path, %uri, "considering candidate for full id"));
 
         // Our candidates are projects containing a URI, so we expect to get a set of
         // subdirectories. The "best" is the "most specific", that is, the project that is a
@@ -92,6 +96,7 @@ impl PackageManager {
         Some(full_file_id)
     }
 
+    #[tracing::instrument]
     pub fn handle_change_event(&mut self, event: &WorkspaceFoldersChangeEvent) {
         let removed = event.removed.iter().map(|folder| &folder.uri).collect_vec();
 
@@ -102,6 +107,8 @@ impl PackageManager {
 
         self.current.retain(|uri, _| !removed.contains(&uri));
         self.current.extend(added);
+
+        info!(current = ?self.current, "updated current packages");
     }
 
     pub fn current(&self) -> impl Iterator<Item = &Package> {

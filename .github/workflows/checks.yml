@@ -3,7 +3,6 @@ name: Checks
 on:
   workflow_dispatch:
   pull_request:
-  push:
 
 jobs:
   rust:
