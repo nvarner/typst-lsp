@@ -85,13 +85,13 @@ jobs:
         working-directory: ./addons/vscode
 
       - name: Upload VS Code extension
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: typst-lsp-${{ matrix.vs-code-target }}.vsix
           path: addons/vscode/typst-lsp-${{ matrix.vs-code-target }}.vsix
 
       - name: Upload binary
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: typst-lsp-${{ matrix.vs-code-target }}
           path: typst-lsp${{ env.BIN_EXT }}
