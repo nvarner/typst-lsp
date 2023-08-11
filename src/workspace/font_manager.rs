@@ -8,8 +8,8 @@ use comemo::Prehashed;
 use memmap2::Mmap;
 use once_cell::sync::OnceCell;
 use tracing::error;
+use typst::eval::Bytes;
 use typst::font::{Font, FontBook, FontInfo};
-use typst::util::Bytes;
 use walkdir::WalkDir;
 
 use super::fs::local::LocalFs;

@@ -3,11 +3,9 @@ use futures::Future;
 use tokio::runtime;
 use tower_lsp::lsp_types::Url;
 use typst::diag::{EcoString, FileResult};
-use typst::eval::{Datetime, Library};
-use typst::file::{FileId, PackageSpec};
+use typst::eval::{Bytes, Datetime, Library};
 use typst::font::{Font, FontBook};
-use typst::syntax::Source;
-use typst::util::Bytes;
+use typst::syntax::{FileId, PackageSpec, Source};
 use typst::World;
 
 use crate::workspace::fs::{FsError, FsResult};

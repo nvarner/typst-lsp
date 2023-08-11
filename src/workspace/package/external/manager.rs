@@ -1,5 +1,5 @@
 use tower_lsp::lsp_types::Url;
-use typst::file::PackageSpec;
+use typst::syntax::PackageSpec;
 
 use crate::workspace::package::manager::ExternalPackageResult;
 use crate::workspace::package::{FullFileId, Package};
@@ -30,13 +30,6 @@ impl ExternalPackageManager {
 
         Some(Self { user, cache, repo })
     }
-
-    // /// Gets the URI for the ID, downloading its package if needed
-    // pub async fn uri(&self, id: FullFileId, spec: &PackageSpec) -> ExternalPackageResult<Url> {
-    //     let package = self.package(spec).await?;
-    //     let uri = package.path_to_uri(id.path())?;
-    //     Ok(uri)
-    // }
 
     /// Gets the package for the spec, downloading it if needed
     pub async fn package(&self, spec: &PackageSpec) -> ExternalPackageResult<Package> {

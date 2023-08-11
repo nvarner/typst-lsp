@@ -10,7 +10,7 @@ use tokio_tar::Archive;
 use tokio_util::io::StreamReader;
 use tracing::error;
 use typst::diag::{EcoString, PackageError as TypstPackageError};
-use typst::file::PackageSpec;
+use typst::syntax::PackageSpec;
 
 const TYPST_REPO_BASE_URL: &str = "https://packages.typst.org/";
 const PREVIEW_NAMESPACE: &str = "preview";

@@ -2,8 +2,8 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::anyhow;
 use tower_lsp::lsp_types::{TextDocumentContentChangeEvent, Url};
+use typst::eval::Bytes;
 use typst::syntax::Source;
-use typst::util::Bytes;
 
 use crate::config::PositionEncoding;
 use crate::lsp_typst_boundary::LspRange;

@@ -5,8 +5,8 @@ use elsa::sync::FrozenMap;
 use once_cell::sync::OnceCell;
 use tower_lsp::lsp_types::Url;
 use tracing::trace;
+use typst::eval::Bytes;
 use typst::syntax::Source;
-use typst::util::Bytes;
 
 use crate::ext::PathExt;
 use crate::workspace::package::manager::PackageManager;
