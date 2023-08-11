@@ -40,9 +40,8 @@ use tower_lsp::lsp_types::{
     InitializeParams, TextDocumentContentChangeEvent, Url, WorkspaceFoldersChangeEvent,
 };
 use tracing::trace;
-use typst::eval::Library;
+use typst::eval::{Bytes, Library};
 use typst::syntax::Source;
-use typst::util::Bytes;
 
 use crate::config::PositionEncoding;
 use crate::ext::InitializeParamsExt;

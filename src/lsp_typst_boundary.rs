@@ -22,6 +22,12 @@ pub type LspHoverContents = lsp_types::HoverContents;
 
 pub type TypstDatetime = typst::eval::Datetime;
 
+pub type LspDiagnostic = lsp_types::Diagnostic;
+pub type TypstDiagnostic = typst::diag::SourceDiagnostic;
+
+pub type LspSeverity = lsp_types::DiagnosticSeverity;
+pub type TypstSeverity = typst::diag::Severity;
+
 /// An LSP range with its associated encoding.
 pub struct LspRange {
     pub raw_range: LspRawRange,
@@ -108,15 +114,14 @@ pub mod lsp_to_typst {
 }
 
 pub mod typst_to_lsp {
+    use std::iter;
+
     use futures::{future, stream, StreamExt, TryFutureExt, TryStreamExt};
-    use itertools::Itertools;
+    use itertools::{Format, Itertools};
     use lazy_static::lazy_static;
     use regex::{Captures, Regex};
-    use tower_lsp::lsp_types::{
-        Diagnostic, DiagnosticSeverity, InsertTextFormat, LanguageString, MarkedString,
-    };
+    use tower_lsp::lsp_types::{InsertTextFormat, LanguageString, MarkedString};
     use tracing::error;
-    use typst::diag::SourceError;
     use typst::syntax::Source;
     use typst_library::prelude::EcoString;
 
@@ -215,12 +220,12 @@ pub mod typst_to_lsp {
         typst_completions.iter().map(completion).collect_vec()
     }
 
-    pub async fn source_error_to_diagnostic(
+    async fn diagnostic(
         project: &Project,
-        typst_error: &SourceError,
+        typst_diagnostic: &TypstDiagnostic,
         const_config: &ConstConfig,
-    ) -> anyhow::Result<(LspUri, Diagnostic)> {
-        let typst_span = typst_error.span;
+    ) -> anyhow::Result<(LspUri, LspDiagnostic)> {
+        let typst_span = typst_diagnostic.span;
 
         let id = typst_span.id();
         let full_id = project.fill_id(id);
@@ -228,32 +233,51 @@ pub mod typst_to_lsp {
 
         let source = project.read_source_by_uri(&uri)?;
 
+        let lsp_severity = diagnostic_severity(typst_diagnostic.severity);
+
         let typst_range = source
             .find(typst_span)
             .expect("span should be in source since we got it using the span")
             .range();
-
         let lsp_range = range(typst_range, &source, const_config.position_encoding);
-        let lsp_message = typst_error.message.to_string();
 
-        let diagnostic = Diagnostic {
+        let typst_message = &typst_diagnostic.message;
+        let typst_hints = &typst_diagnostic.hints;
+        let lsp_message = format!("{typst_message}{}", diagnostic_hints(typst_hints));
+
+        let diagnostic = LspDiagnostic {
             range: lsp_range.raw_range,
-            severity: Some(DiagnosticSeverity::ERROR),
+            severity: Some(lsp_severity),
             message: lsp_message,
+            source: Some("typst".to_owned()),
             ..Default::default()
         };
 
         Ok((uri, diagnostic))
     }
 
-    pub async fn source_errors_to_diagnostics<'a>(
+    fn diagnostic_severity(typst_severity: TypstSeverity) -> LspSeverity {
+        match typst_severity {
+            TypstSeverity::Error => LspSeverity::ERROR,
+            TypstSeverity::Warning => LspSeverity::WARNING,
+        }
+    }
+
+    fn diagnostic_hints(typst_hints: &[EcoString]) -> Format<impl Iterator<Item = EcoString> + '_> {
+        iter::repeat(EcoString::from("\n\nHint: "))
+            .take(typst_hints.len())
+            .interleave(typst_hints.iter().cloned())
+            .format("")
+    }
+
+    pub async fn diagnostics<'a>(
         project: &Project,
-        errors: impl IntoIterator<Item = &'a SourceError>,
+        errors: impl IntoIterator<Item = &'a TypstDiagnostic>,
         const_config: &ConstConfig,
     ) -> DiagnosticsMap {
         stream::iter(errors)
             .then(|error| {
-                source_error_to_diagnostic(project, error, const_config)
+                diagnostic(project, error, const_config)
                     .map_err(move |conversion_err| (conversion_err, error))
             })
             .inspect_err(|(conversion_err, typst_err)| error!(%conversion_err, ?typst_err, "could not convert Typst error to diagnostic"))

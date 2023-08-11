@@ -6,8 +6,7 @@ use tower_lsp::lsp_types::Url;
 use tower_lsp::lsp_types::{
     InitializeParams, Position, PositionEncodingKind, SemanticTokensClientCapabilities,
 };
-use typst::file::FileId;
-use typst::util::StrExt as TypstStrExt;
+use typst::syntax::FileId;
 
 use crate::config::PositionEncoding;
 use crate::workspace::fs::local::LocalFs;
@@ -77,7 +76,7 @@ impl StrExt for str {
     fn encoded_len(&self, encoding: PositionEncoding) -> usize {
         match encoding {
             PositionEncoding::Utf8 => self.len(),
-            PositionEncoding::Utf16 => self.len_utf16(),
+            PositionEncoding::Utf16 => self.chars().map(char::len_utf16).sum(),
         }
     }
 }

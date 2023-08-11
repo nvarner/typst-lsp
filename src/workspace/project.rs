@@ -3,11 +3,9 @@ use core::fmt;
 use comemo::Prehashed;
 use tokio::sync::OwnedRwLockReadGuard;
 use tower_lsp::lsp_types::Url;
-use typst::eval::Library;
-use typst::file::FileId;
+use typst::eval::{Bytes, Library};
 use typst::font::{Font, FontBook};
-use typst::syntax::Source;
-use typst::util::Bytes;
+use typst::syntax::{FileId, Source};
 
 use crate::ext::FileIdExt;
 

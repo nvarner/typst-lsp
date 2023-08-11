@@ -15,27 +15,29 @@ impl TypstServer {
         &self,
         uri: &Url,
     ) -> anyhow::Result<(Option<Document>, DiagnosticsMap)> {
-        let result = self
+        let (document, diagnostics) = self
             .thread_with_world(uri)
             .await?
             .run(|world| {
                 comemo::evict(30);
-                typst::compile(&world)
+
+                let mut tracer = Tracer::new(None);
+                let result = typst::compile(&world, &mut tracer);
+
+                let mut diagnostics = tracer.warnings();
+                match result {
+                    Ok(document) => (Some(document), diagnostics),
+                    Err(errors) => {
+                        diagnostics.extend_from_slice(&errors);
+                        (None, diagnostics)
+                    }
+                }
             })
             .await;
 
-        let (document, errors) = match result {
-            Ok(document) => (Some(document), Default::default()),
-            Err(errors) => (Default::default(), errors),
-        };
-
         let (project, _) = self.project_and_full_id(uri).await?;
-        let diagnostics = typst_to_lsp::source_errors_to_diagnostics(
-            &project,
-            errors.as_ref(),
-            self.const_config(),
-        )
-        .await;
+        let diagnostics =
+            typst_to_lsp::diagnostics(&project, diagnostics.as_ref(), self.const_config()).await;
 
         Ok((document, diagnostics))
     }
@@ -65,12 +67,8 @@ impl TypstServer {
         };
 
         let (project, _) = self.project_and_full_id(uri).await?;
-        let diagnostics = typst_to_lsp::source_errors_to_diagnostics(
-            &project,
-            errors.as_ref(),
-            self.const_config(),
-        )
-        .await;
+        let diagnostics =
+            typst_to_lsp::diagnostics(&project, errors.as_ref(), self.const_config()).await;
 
         Ok((module, diagnostics))
     }

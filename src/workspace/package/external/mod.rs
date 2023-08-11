@@ -1,5 +1,5 @@
 use tower_lsp::lsp_types::Url;
-use typst::file::PackageSpec;
+use typst::syntax::PackageSpec;
 
 use super::{FullFileId, Package};
 

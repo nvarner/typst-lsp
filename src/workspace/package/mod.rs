@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use internment::Intern;
 use tower_lsp::lsp_types::Url;
-use typst::file::{FileId, PackageSpec};
+use typst::syntax::{FileId, PackageSpec};
 
 use crate::ext::{UriResult, UrlExt};
 

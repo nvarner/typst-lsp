@@ -2,7 +2,7 @@ use std::path::{Component, Path, PathBuf};
 use std::str::FromStr;
 
 use tower_lsp::lsp_types::Url;
-use typst::file::PackageSpec;
+use typst::syntax::PackageSpec;
 
 use crate::ext::PathExt;
 use crate::workspace::fs::local::LocalFs;

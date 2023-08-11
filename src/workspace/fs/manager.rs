@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
 use tower_lsp::lsp_types::{TextDocumentContentChangeEvent, Url};
+use typst::eval::Bytes;
 use typst::syntax::Source;
-use typst::util::Bytes;
 
 use crate::config::PositionEncoding;
 use crate::workspace::package::manager::PackageManager;
