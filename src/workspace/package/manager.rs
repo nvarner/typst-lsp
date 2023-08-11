@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use anyhow::anyhow;
 use itertools::Itertools;
 use tower_lsp::lsp_types::{Url, WorkspaceFoldersChangeEvent};
-use tracing::error;
+use tracing::{error, warn};
 use typst::diag::{FileError, PackageError as TypstPackageError};
-use typst::syntax::FileId;
+use typst::syntax::{FileId, PackageSpec};
 
 use crate::ext::UriError;
 use crate::workspace::fs::{FsError, FsResult};
@@ -28,15 +28,21 @@ use super::{FullFileId, Package, PackageId, PackageIdInner};
 #[derive(Debug)]
 pub struct PackageManager {
     current: HashMap<Url, Package>,
-    external: ExternalPackageManager,
+    external: Option<ExternalPackageManager>,
 }
 
 impl PackageManager {
-    pub fn new(root_uris: Vec<Url>, external: ExternalPackageManager) -> Self {
+    /// Construct a package manager. If no external package manager is provided, external packages
+    /// will not be supported.
+    pub fn new(root_uris: Vec<Url>, external: Option<ExternalPackageManager>) -> Self {
         let current = root_uris
             .into_iter()
             .map(|uri| (uri.clone(), Package::new(uri)))
             .collect();
+
+        if external.is_none() {
+            warn!("no external package manager was provided; external packages won't be supported");
+        }
 
         Self { current, external }
     }
@@ -48,18 +54,22 @@ impl PackageManager {
                 .get(uri)
                 .cloned()
                 .ok_or(CurrentPackageError::NotFound)?,
-            PackageIdInner::External(spec) => self
-                .external
-                .package(spec)
-                .await
-                .map_err(PackageError::from)?,
+            PackageIdInner::External(spec) => self.external_package(spec).await?,
         };
         Ok(package)
     }
 
+    async fn external_package(&self, spec: &PackageSpec) -> ExternalPackageResult<Package> {
+        match &self.external {
+            Some(external) => external.package(spec).await,
+            None => Err(ExternalPackageError::NoManager),
+        }
+    }
+
     pub fn full_id(&self, uri: &Url) -> FsResult<FullFileId> {
         self.external
-            .full_id(uri)
+            .as_ref()
+            .and_then(|external| external.full_id(uri))
             .or_else(|| self.current_full_id(uri))
             .ok_or_else(|| FsError::NotProvided(anyhow!("could not find provider for URI")))
     }
@@ -140,6 +150,8 @@ pub enum ExternalPackageError {
     Repo(#[from] RepoError),
     #[error("the path was invalid inside the package")]
     InvalidPath(#[from] UriError),
+    #[error("there is no external package manager")]
+    NoManager,
 }
 
 impl ExternalPackageError {
@@ -151,7 +163,7 @@ impl ExternalPackageError {
 
         match self {
             Self::Repo(err) => FileError::Package(err.convert(spec)),
-            Self::InvalidPath(_) => FileError::Other,
+            Self::InvalidPath(_) | Self::NoManager => FileError::Other,
         }
     }
 }

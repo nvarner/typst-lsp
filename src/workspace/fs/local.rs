@@ -81,6 +81,8 @@ impl LocalFs {
         }
     }
 
+    /// Convert a path to its corresponding `file://` URI. Returns `Err` if the path is not
+    /// absolute.
     pub fn path_to_uri(path: impl AsRef<Path>) -> Result<Url, FsPathToUriError> {
         Url::from_file_path(path).map_err(|()| FsPathToUriError::NotAbsolute)
     }
@@ -111,4 +113,122 @@ pub enum UriToFsPathError {
 pub enum FsPathToUriError {
     #[error("cannot convert to URI since path is not absolute")]
     NotAbsolute,
+}
+
+#[cfg(test)]
+mod test {
+    use temp_dir::TempDir;
+
+    use super::*;
+
+    #[test]
+    fn read() {
+        const BASIC_SOURCE: &str = "hello, world!";
+        const BASIC_SOURCE_PATH: &str = "basic.typ";
+
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(temp_dir.child(BASIC_SOURCE_PATH), BASIC_SOURCE).unwrap();
+
+        let local_fs = LocalFs::default();
+
+        let root_uri = LocalFs::path_to_uri(temp_dir.path()).unwrap();
+        let package_manager = PackageManager::new(vec![root_uri], None);
+
+        let basic_path = temp_dir.child(BASIC_SOURCE_PATH);
+        let basic_uri = LocalFs::path_to_uri(basic_path).unwrap();
+
+        let basic_source = local_fs
+            .read_source(&basic_uri, &package_manager)
+            .expect("error reading source");
+        let basic_bytes = local_fs
+            .read_bytes(&basic_uri, &package_manager)
+            .expect("error reading bytes");
+
+        assert_eq!(
+            BASIC_SOURCE,
+            basic_source.text(),
+            "file contents were unexpected when reading as source"
+        );
+        assert_eq!(
+            BASIC_SOURCE.as_bytes(),
+            basic_bytes.as_slice(),
+            "file contents were unexpected when reading as bytes"
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_conversions {
+    use std::ffi::OsString;
+
+    use super::*;
+
+    #[test]
+    fn path_uri_path() {
+        for path in valid_paths() {
+            let uri = LocalFs::path_to_uri(&path).unwrap();
+            let converted_path = LocalFs::uri_to_path(&uri).unwrap();
+
+            assert_eq!(path, converted_path, "path changed via conversion to URI");
+        }
+    }
+
+    /// UNIX filenames are essentially arbitrary byte strings which may contain anything other than
+    /// `\0` and `/`.
+    ///
+    /// ## See also
+    /// - https://stackoverflow.com/a/31976060
+    #[cfg(unix)]
+    fn valid_chars() -> impl Iterator<Item = OsString> {
+        use std::os::unix::ffi::OsStringExt;
+
+        (u8::MIN..=u8::MAX)
+            .filter(|c: &u8| *c != b'\0' && *c != b'/')
+            .map(|c| OsString::from_vec(vec![c]))
+    }
+
+    /// Windows filenames have more restrictions than UNIX. They seem to be treated as Unicode
+    /// strings. Unprintable characters are forbidden, and there is a list of printable forbidden
+    /// characters, such as `<`, `"`, and `*`.
+    ///
+    /// Certain filenames are also prohibited, but should not affect this test.
+    ///
+    /// ## See also
+    /// - https://stackoverflow.com/a/31976060
+    /// - https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+    #[cfg(windows)]
+    fn valid_chars() -> impl Iterator<Item = OsString> {
+        let forbidden_chars = ['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
+        let ascii = (32..=127)
+            .map(|c: u8| c as char)
+            .filter(move |c| !forbidden_chars.contains(c));
+
+        let utf8 = ['∀', '⨅', '我', 'あ', '한', '🎦'];
+
+        ascii.chain(utf8).map(|c| OsString::from(c.to_string()))
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    fn valid_chars() -> impl Iterator<Item = OsString> {
+        compile_error!("don't know valid filename chars on this OS!")
+    }
+
+    #[cfg(unix)]
+    fn path_prefix() -> &'static Path {
+        Path::new("/some/example/path/for/testing/")
+    }
+
+    #[cfg(windows)]
+    fn path_prefix() -> &'static Path {
+        Path::new("C:\\some\\example\\path\\for\\testing\\")
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    fn path_prefix() -> &'static Path {
+        compile_error!("don't know a path prefix on this OS!")
+    }
+
+    fn valid_paths() -> impl Iterator<Item = PathBuf> {
+        valid_chars().map(|c| path_prefix().join(c))
+    }
 }

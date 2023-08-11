@@ -77,7 +77,7 @@ impl Workspace {
         Self {
             fs: FsManager::default(),
             fonts: FontManager::builder().with_system().with_embedded().build(),
-            packages: PackageManager::new(root_paths, ExternalPackageManager::new().unwrap()),
+            packages: PackageManager::new(root_paths, ExternalPackageManager::new()),
         }
     }
 
