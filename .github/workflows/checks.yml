@@ -3,24 +3,31 @@ name: Checks
 on:
   workflow_dispatch:
   pull_request:
+  push:
 
 jobs:
   rust:
-    runs-on: ubuntu-latest
-    name: Rust
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    name: Rust ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       
       - name: Tests
-        run: cargo test
+        run: cargo test --no-fail-fast
       
       - name: Clippy
         run: cargo clippy --all-targets --all-features -- -Dwarnings
       
       - name: Formatting
-        run: cargo fmt --all -- --check
+        run: cargo fmt --all --check
   
   cargo-deny:
     runs-on: ubuntu-latest

@@ -22,27 +22,27 @@ jobs:
             rust-target: aarch64-pc-windows-msvc
             vs-code-target: win32-arm64
 
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             rust-target: x86_64-unknown-linux-gnu
             vs-code-target: linux-x64
 
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             rust-target: aarch64-unknown-linux-gnu
             vs-code-target: linux-arm64
           
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             rust-target: x86_64-unknown-linux-musl
             vs-code-target: alpine-x64
 
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             rust-target: arm-unknown-linux-gnueabihf
             vs-code-target: linux-armhf
 
-          - os: macos-11
+          - os: macos-latest
             rust-target: x86_64-apple-darwin
             vs-code-target: darwin-x64
 
-          - os: macos-11
+          - os: macos-latest
             rust-target: aarch64-apple-darwin
             vs-code-target: darwin-arm64
     
