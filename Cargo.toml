@@ -34,7 +34,6 @@ opentelemetry-jaeger = { version = "0.19.0", features = [
 ], optional = true }
 parking_lot = "0.12.1"
 regex = "1.8.1"
-reqwest = { version = "0.11.18", features = ["stream"] }
 same-file = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.94"
@@ -60,6 +59,31 @@ tracing-subscriber = { version = "0.3.17", default-features = false, features = 
 typst = { git = "https://github.com/typst/typst.git", tag = "v0.6.0" }
 typst-library = { git = "https://github.com/typst/typst.git", tag = "v0.6.0" }
 walkdir = "2.3"
+
+[target.'cfg(not(any(all(target_arch = "aarch64", target_os = "linux"), all(target_arch = "x86_64", target_os = "linux", target_env = "musl"), all(target_arch = "arm", target_os = "linux", target_end = "gnu"))))'.dependencies]
+reqwest = { version = "0.11.18", default-features = false, features = [
+    "stream",
+    "default-tls",
+] }
+
+[target.aarch64-unknown-linux-gnu.dependencies]
+reqwest = { version = "0.11.18", default-features = false, features = [
+    "stream",
+    "rustls-tls",
+] }
+
+[target.x86_64-unknown-linux-musl.dependencies]
+reqwest = { version = "0.11.18", default-features = false, features = [
+    "stream",
+    "rustls-tls",
+] }
+
+[target.arm-unknown-linux-gnueabihf.dependencies]
+reqwest = { version = "0.11.18", default-features = false, features = [
+    "stream",
+    "rustls-tls",
+] }
+
 
 # Typst 0.6.0 does not specify a tag or ref for svg2pdf, so provide one...
 # ...but Cargo doesn't want to make our lives too easy, and we can't replace the
