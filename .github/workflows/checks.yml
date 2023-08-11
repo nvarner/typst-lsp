@@ -39,28 +39,28 @@ jobs:
           node-version: 16
 
       - run: npm install
-        working-directory: ./addons/vscode
+        working-directory: ./editors/vscode
       
       - name: Compilation
         run: npm run compile
-        working-directory: ./addons/vscode
+        working-directory: ./editors/vscode
       
       - name: Type Checking
         run: npm run check
-        working-directory: ./addons/vscode
+        working-directory: ./editors/vscode
       
       - name: Tests
         run: npm run test
-        working-directory: ./addons/vscode
+        working-directory: ./editors/vscode
       
       - name: Linting and Formatting
         run: |
           npm run lint
           npm run format-check
-        working-directory: ./addons/vscode
+        working-directory: ./editors/vscode
 
       - name: Packaging
         # raises an error with packaging issues, eg. `@types/vscode` out of sync
         # with `engines.vscode`
         run: npx vsce ls
-        working-directory: ./addons/vscode
+        working-directory: ./editors/vscode

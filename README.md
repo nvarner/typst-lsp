@@ -11,7 +11,7 @@ A language server for [Typst](https://typst.app/).
 This repo consists of:
 
 - an LSP server, written in Rust
-- [a corresponding VS Code(ium) extension](https://github.com/nvarner/typst-lsp/tree/master/addons/vscode).
+- [a corresponding VS Code(ium) extension](https://github.com/nvarner/typst-lsp/tree/master/editors/vscode).
 The extension is available on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=nvarner.typst-lsp)
 and [OpenVSX](https://open-vsx.org/extension/nvarner/typst-lsp).
 
@@ -35,13 +35,13 @@ Install:
 
 1. Clone this repository locally
 2. Open it in VS Code; it's needed to run the extension
-3. In the `addons/vscode` subdirectory:
+3. In the `editors/vscode` subdirectory:
     1. Run `npm install` to install extension dependencies
     2. Run `npm run compile` to build the extension
 4. Run through the development cycle once to initialize and test everything
 5. (Optional: install the dev version of the extension): Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>,
 and choose `Developer: Install Extension from Location...` and choose
-the directory for the extension, `addons/vscode/`. There will not be any messages, but
+the directory for the extension, `editors/vscode/`. There will not be any messages, but
 the extension can be found in the Extensions `@installed` list.
 
 ### Development cycle
