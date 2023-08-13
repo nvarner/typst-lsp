@@ -20,6 +20,34 @@ and [OpenVSX](https://open-vsx.org/extension/nvarner/typst-lsp).
 - Improved preview (e.g. built-in PDF viewer, render to image for speed)
 - Support for more editors
 
+## Building from source
+
+### Prerequisites
+Install [Rust](https://www.rust-lang.org/), which comes with `cargo`. Among other things, `cargo` is the build tool used for Rust projects.
+
+### Building
+```sh
+cargo build --release
+```
+Cargo will download and compile Rust dependencies as needed. The `--release` flag produces and optimized binary. The resulting executable will be at `target/release/typst-lsp` (with `.exe` extension on Windows).
+
+### Cargo features
+Cargo features allow you to customize the build by enabling chunks of code at compile time.
+
+We need an HTTP client to download Typst packages. The client needs a TLS
+implementation; by default, [Rustls](https://github.com/rustls/rustls) is used. If you would like to disable or change this, the following Cargo features are available:
+
+- `remote-packages` (default): use an HTTP client to download Typst packages
+- `rustls-tls` (default): use Rustls for TLS
+- `native-tls`: use your platform's TLS implementation
+
+For example, the following command will build with `native-tls`:
+```sh
+cargo build --release --no-default-features --features remote-packages,native-tls
+```
+
+For Linux, `native-tls` means OpenSSL. You will need to install its headers to compile with `native-tls`.
+
 ## Development guide
 
 ### Prerequisites
