@@ -3287,6 +3287,7 @@ dependencies = [
  "opentelemetry",
  "opentelemetry-jaeger",
  "parking_lot",
+ "percent-encoding",
  "regex",
  "reqwest",
  "same-file",
