@@ -86,6 +86,7 @@ async-compression = { version = "0.4.1", features = [
     "tokio",
     "gzip",
 ], optional = true }
+async-trait = "0.1.73"
 
 [dev-dependencies]
 temp-dir = "0.1.11"
