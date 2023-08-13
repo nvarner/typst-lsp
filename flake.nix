@@ -16,8 +16,7 @@
 
   outputs = { self, fenix, nixpkgs, typst, flake-utils }:
     let
-      inherit (builtins) substring;
-      inherit (nixpkgs.lib) genAttrs importTOML optionals cleanSource;
+      inherit (nixpkgs.lib) importTOML optionals cleanSource;
     in
     flake-utils.lib.eachDefaultSystem (system:
       let
@@ -29,6 +28,7 @@
           cargo = toolchain;
           rustc = toolchain;
         };
+        PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
       in
       {
         devShells.default = pkgs.mkShell {
@@ -48,16 +48,20 @@
             pkgs.libiconv
           ];
 
+          inherit PKG_CONFIG_PATH;
           RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
 
           # Required by the jaeger feature
           nativeBuildInputs = [ pkgs.pkg-config ];
-          PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
         };
 
         packages.default = rustPlatform.buildRustPackage {
           pname = "typst-lsp";
+
+          inherit PKG_CONFIG_PATH;
           inherit ((importTOML ./Cargo.toml).package) version;
+
+          doCheck = false;
 
           src = cleanSource ./.;
 
@@ -72,6 +76,7 @@
 
           nativeBuildInputs = [
             pkgs.installShellFiles
+            pkgs.pkg-config
           ];
 
           buildInputs = optionals pkgs.stdenv.isDarwin [
