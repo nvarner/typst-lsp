@@ -33,6 +33,7 @@ opentelemetry-jaeger = { version = "0.19.0", features = [
     "collector_client",
 ], optional = true }
 parking_lot = "0.12.1"
+percent-encoding = "2.3.0"
 regex = "1.8.1"
 same-file = "1.0"
 serde = { version = "1.0", features = ["derive"] }

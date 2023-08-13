@@ -1,7 +1,10 @@
+use std::borrow::Cow;
 use std::ffi::OsStr;
 use std::path::{Component, Path, PathBuf};
+use std::str::Utf8Error;
 
 use itertools::{EitherOrBoth, Itertools};
+use percent_encoding::{percent_decode_str, PercentDecode};
 use tower_lsp::lsp_types::Url;
 use tower_lsp::lsp_types::{
     InitializeParams, Position, PositionEncodingKind, SemanticTokensClientCapabilities,
@@ -161,6 +164,10 @@ pub trait UrlExt {
     /// Gets the relative path to the sub URI, treating this URI as if it was the root. Returns
     /// `None` if the path leads out of the root.
     fn make_relative_rooted(&self, sub_uri: &Url) -> UriResult<PathBuf>;
+
+    /// Unless this URL is cannot-be-a-base, returns the path segments, percent decoded into UTF-8
+    /// strings, if possible.
+    fn path_segments_decoded(&self) -> UriResult<Vec<Cow<str>>>;
 }
 
 impl UrlExt for Url {
@@ -197,25 +204,125 @@ impl UrlExt for Url {
             return Err(UriError::PathEscapesRoot);
         }
 
-        let root = self.path_segments().ok_or(UriError::UriCannotBeABase)?;
-        let sub = sub_uri.path_segments().ok_or(UriError::UriCannotBeABase)?;
+        let root = self.path_segments_decoded()?;
+        let sub = sub_uri.path_segments_decoded()?;
 
-        let relative_path: PathBuf = root
-            .zip_longest(sub)
+        let root_iter = root.iter().map(Cow::as_ref);
+        let sub_iter = sub.iter().map(Cow::as_ref);
+
+        let relative_path: PathBuf = root_iter
+            .zip_longest(sub_iter)
             .skip_while(EitherOrBoth::is_both)
             .map(|x| x.right().ok_or(UriError::PathEscapesRoot))
             .try_collect()?;
 
         Ok(relative_path.push_front(Path::root()))
     }
+
+    fn path_segments_decoded(&self) -> UriResult<Vec<Cow<str>>> {
+        self.path_segments()
+            .ok_or(UriError::UriCannotBeABase)
+            .and_then(|segments| {
+                segments
+                    .map(percent_decode_str)
+                    .map(PercentDecode::decode_utf8)
+                    .try_collect()
+                    .map_err(UriError::from)
+            })
+    }
 }
 
 pub type UriResult<T> = Result<T, UriError>;
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum UriError {
     #[error("URI cannot be a base")]
     UriCannotBeABase,
     #[error("path escapes root")]
     PathEscapesRoot,
+    #[error("could not decode")]
+    Encoding(#[from] Utf8Error),
+}
+
+#[cfg(test)]
+mod uri_test {
+    use super::*;
+
+    #[test]
+    fn join_rooted() {
+        let url = Url::parse("file:///path/to").unwrap();
+        let path = Path::new("/file.typ");
+
+        let joined = url.join_rooted(path).unwrap();
+
+        let expected = Url::parse("file:///path/to/file.typ").unwrap();
+        assert_eq!(expected, joined);
+    }
+
+    #[test]
+    fn join_rooted_utf8() {
+        let url = Url::parse("file:///path/%E6%B1%89%E5%AD%97/to").unwrap();
+        let path = Path::new("/汉字.typ");
+
+        let joined = url.join_rooted(path).unwrap();
+
+        let expected =
+            Url::parse("file:///path/%E6%B1%89%E5%AD%97/to/%E6%B1%89%E5%AD%97.typ").unwrap();
+        assert_eq!(expected, joined);
+    }
+
+    #[test]
+    fn join_rooted_escape() {
+        let url = Url::parse("file:///path/to").unwrap();
+        let escapee = Path::new("/../../etc/passwd");
+
+        let error = url.join_rooted(escapee).unwrap_err();
+
+        assert_eq!(UriError::PathEscapesRoot, error);
+    }
+
+    #[test]
+    fn make_relative_rooted() {
+        let base_url = Url::parse("file:///path").unwrap();
+        let sub_url = Url::parse("file:///path/to/file.typ").unwrap();
+
+        let relative = base_url.make_relative_rooted(&sub_url).unwrap();
+
+        assert_eq!(Path::new("/to/file.typ"), &relative);
+    }
+
+    #[test]
+    fn make_relative_rooted_utf8() {
+        let base_url = Url::parse("file:///path/%E6%B1%89%E5%AD%97/dir").unwrap();
+        let sub_url =
+            Url::parse("file:///path/%E6%B1%89%E5%AD%97/dir/to/%E6%B1%89%E5%AD%97.typ").unwrap();
+
+        let relative = base_url.make_relative_rooted(&sub_url).unwrap();
+
+        assert_eq!(Path::new("/to/汉字.typ"), &relative);
+    }
+
+    #[test]
+    fn path_segments_decode() {
+        let url = Url::parse("file:///path/to/file.typ").unwrap();
+
+        let segments = url.path_segments_decoded().unwrap();
+
+        assert_eq!(
+            vec!["path", "to", "file.typ"],
+            segments.iter().map(Cow::as_ref).collect_vec()
+        )
+    }
+
+    #[test]
+    fn path_segments_decode_utf8() {
+        let url = Url::parse("file:///path/to/file/%E6%B1%89%E5%AD%97.typ").unwrap();
+
+        let segments = url.path_segments_decoded().unwrap();
+
+        assert_eq!(
+            vec!["path", "to", "file", "汉字.typ"],
+            segments.iter().map(Cow::as_ref).collect_vec()
+        )
+    }
 }
