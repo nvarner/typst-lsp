@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Context;
+use async_trait::async_trait;
 use futures::FutureExt;
 use itertools::Itertools;
 use serde_json::Value as JsonValue;
@@ -24,7 +25,7 @@ use super::semantic_tokens::{
 };
 use super::TypstServer;
 
-#[tower_lsp::async_trait]
+#[async_trait]
 impl LanguageServer for TypstServer {
     #[tracing::instrument(skip(self))]
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {

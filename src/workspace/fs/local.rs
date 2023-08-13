@@ -119,6 +119,8 @@ pub enum FsPathToUriError {
 mod test {
     use temp_dir::TempDir;
 
+    use crate::workspace::package::external::manager::ExternalPackageManager;
+
     use super::*;
 
     #[test]
@@ -132,7 +134,7 @@ mod test {
         let local_fs = LocalFs::default();
 
         let root_uri = LocalFs::path_to_uri(temp_dir.path()).unwrap();
-        let package_manager = PackageManager::new(vec![root_uri], None);
+        let package_manager = PackageManager::new(vec![root_uri], ExternalPackageManager::new());
 
         let basic_path = temp_dir.child(BASIC_SOURCE_PATH);
         let basic_uri = LocalFs::path_to_uri(basic_path).unwrap();

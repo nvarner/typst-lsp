@@ -1,6 +1,10 @@
 use std::path::{Component, Path, PathBuf};
 use std::str::FromStr;
 
+use async_compression::tokio::bufread::GzipDecoder;
+use async_trait::async_trait;
+use tokio::io::{AsyncBufRead, AsyncRead};
+use tokio_tar::Archive;
 use tower_lsp::lsp_types::Url;
 use typst::syntax::PackageSpec;
 
@@ -8,11 +12,11 @@ use crate::ext::PathExt;
 use crate::workspace::fs::local::LocalFs;
 use crate::workspace::package::{FullFileId, Package, PackageId};
 
-use super::repo::{RepoProvider, RepoResult};
-use super::ExternalPackageProvider;
+use super::remote_repo::RemoteRepoProvider;
+use super::{ExternalPackageProvider, RepoError, RepoResult, RepoRetrievalDest};
 
 // TODO: cache packages so we don't need to do IO to check if a package is provided
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LocalProvider {
     root: PathBuf,
 }
@@ -48,7 +52,11 @@ impl LocalProvider {
     }
 
     #[tracing::instrument]
-    pub async fn download(&self, spec: &PackageSpec, repo: &RepoProvider) -> RepoResult<Package> {
+    pub async fn download(
+        &self,
+        spec: &PackageSpec,
+        repo: &RemoteRepoProvider,
+    ) -> RepoResult<Package> {
         let path = self.fs_path(spec);
         repo.download_to(spec, &path).await?;
         Ok(Package::new(
@@ -83,5 +91,38 @@ impl LocalProvider {
         let package_path = components.as_path().push_front(Path::root());
 
         Some((spec, package_path))
+    }
+}
+
+#[async_trait]
+impl RepoRetrievalDest for LocalProvider {
+    async fn store_tar_gz(
+        &self,
+        spec: &PackageSpec,
+        package_tar_gz: impl AsyncBufRead + Unpin + Send,
+    ) -> RepoResult<Package> {
+        let path = self.fs_path(spec);
+        let decompressed = self.decompress(package_tar_gz);
+        self.unpack_to(decompressed, &path).await?;
+        Ok(Package::new(
+            LocalFs::path_to_uri(path).expect("should be absolute"),
+        ))
+    }
+}
+
+impl LocalProvider {
+    fn decompress(&self, tar_gz: impl AsyncBufRead + Unpin) -> impl AsyncRead + Unpin {
+        GzipDecoder::new(tar_gz)
+    }
+
+    async fn unpack_to(
+        &self,
+        decompressed: impl AsyncRead + Unpin,
+        path: impl AsRef<Path>,
+    ) -> RepoResult<()> {
+        Archive::new(decompressed)
+            .unpack(path.as_ref())
+            .await
+            .map_err(RepoError::from_archive_error)
     }
 }
