@@ -168,6 +168,10 @@ pub trait UrlExt {
     /// Unless this URL is cannot-be-a-base, returns the path segments, percent decoded into UTF-8
     /// strings, if possible.
     fn path_segments_decoded(&self) -> UriResult<Vec<Cow<str>>>;
+
+    /// Get a new URI, replacing the existing file extension with the given extension, if there is a
+    /// file extension to replace.
+    fn with_extension(self, extension: &str) -> UriResult<Url>;
 }
 
 impl UrlExt for Url {
@@ -175,7 +179,7 @@ impl UrlExt for Url {
         let mut added_len: usize = 0;
         let mut segments = self
             .path_segments_mut()
-            .map_err(|()| UriError::UriCannotBeABase)?;
+            .map_err(|()| UriError::CannotBeABase)?;
 
         for component in path.components() {
             match component {
@@ -221,7 +225,7 @@ impl UrlExt for Url {
 
     fn path_segments_decoded(&self) -> UriResult<Vec<Cow<str>>> {
         self.path_segments()
-            .ok_or(UriError::UriCannotBeABase)
+            .ok_or(UriError::CannotBeABase)
             .and_then(|segments| {
                 segments
                     .map(percent_decode_str)
@@ -230,6 +234,27 @@ impl UrlExt for Url {
                     .map_err(UriError::from)
             })
     }
+
+    fn with_extension(mut self, extension: &str) -> UriResult<Url> {
+        let filename = self
+            .path_segments()
+            .ok_or(UriError::CannotBeABase)?
+            .last()
+            .unwrap_or("");
+        let filename_decoded = percent_decode_str(filename).decode_utf8()?;
+
+        let new_filename_path = Path::new(filename_decoded.as_ref()).with_extension(extension);
+        let new_filename = new_filename_path
+            .to_str()
+            .expect("the path should come from `filename` and `extension`; both are valid UTF-8");
+
+        self.path_segments_mut()
+            .map_err(|()| UriError::CannotBeABase)?
+            .pop()
+            .push(new_filename);
+
+        Ok(self)
+    }
 }
 
 pub type UriResult<T> = Result<T, UriError>;
@@ -237,7 +262,7 @@ pub type UriResult<T> = Result<T, UriError>;
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum UriError {
     #[error("URI cannot be a base")]
-    UriCannotBeABase,
+    CannotBeABase,
     #[error("path escapes root")]
     PathEscapesRoot,
     #[error("could not decode")]
@@ -324,5 +349,25 @@ mod uri_test {
             vec!["path", "to", "file", "汉字.typ"],
             segments.iter().map(Cow::as_ref).collect_vec()
         )
+    }
+
+    #[test]
+    fn with_extension() {
+        let url = Url::parse("file:///path/to/file.typ").unwrap();
+
+        let pdf_url = url.with_extension("pdf").unwrap();
+
+        let expected = Url::parse("file:///path/to/file.pdf").unwrap();
+        assert_eq!(expected, pdf_url);
+    }
+
+    #[test]
+    fn with_extension_utf8() {
+        let url = Url::parse("file:///path/to/file/%E6%B1%89%E5%AD%97.typ").unwrap();
+
+        let pdf_url = url.with_extension("pdf").unwrap();
+
+        let expected = Url::parse("file:///path/to/file/%E6%B1%89%E5%AD%97.pdf").unwrap();
+        assert_eq!(expected, pdf_url);
     }
 }
