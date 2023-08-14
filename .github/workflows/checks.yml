@@ -10,15 +10,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        features: ["-F default"]
-        include:
-          - os: ubuntu-latest
-            features: "--no-default-features"
 
-          - os: ubuntu-latest
-            features: "--no-default-features -F remote-packages,native-tls"
-
-    name: Rust ${{ matrix.os }} ${{ matrix.features }}
+    name: Rust ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -26,11 +19,23 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       
-      - name: Tests
-        run: cargo test --no-fail-fast ${{ matrix.features }}
+      - name: Tests (default features)
+        run: cargo test --no-fail-fast
       
-      - name: Clippy
-        run: cargo clippy --all-targets ${{ matrix.features }} -- -Dwarnings
+      - name: Clippy (default features)
+        run: cargo clippy --all-targets -- -Dwarnings
+
+      - name: Tests (no default features)
+        run: cargo test --no-fail-fast --no-default-features
+      
+      - name: Clippy (no default features)
+        run: cargo clippy --all-targets --no-default-features -- -Dwarnings
+      
+      - name: Tests (native-tls)
+        run: cargo test --no-fail-fast --no-default-features -F remote-packages,native-tls
+      
+      - name: Clippy (native-tls)
+        run: cargo clippy --all-targets --no-default-features -F remote-packages,native-tls -- -Dwarnings
       
       - name: Formatting
         run: cargo fmt --all --check
