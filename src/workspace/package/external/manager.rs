@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use tower_lsp::lsp_types::Url;
-use tracing::warn;
+use tracing::{info, warn};
 use typst::syntax::PackageSpec;
 
 use crate::workspace::package::manager::{ExternalPackageError, ExternalPackageResult};
@@ -36,6 +36,7 @@ pub struct ExternalPackageManager<
 impl ExternalPackageManager {
     // TODO: allow configuration of these directories
     // i.e. the paths `<config>/typst/` and `<cache>/typst/` should be customizable
+    #[tracing::instrument]
     pub fn new() -> Self {
         let user = dirs::config_dir()
             .map(|path| path.join("typst/packages/"))
@@ -43,7 +44,9 @@ impl ExternalPackageManager {
             .map(Box::new)
             .map(|provider| provider as Box<dyn ExternalPackageProvider>);
 
-        if user.is_none() {
+        if let Some(user) = &user {
+            info!(?user, "got user external package directory");
+        } else {
             warn!("could not get user external package directory");
         }
 
@@ -51,7 +54,9 @@ impl ExternalPackageManager {
             .map(|path| path.join("typst/packages/"))
             .map(LocalProvider::new);
 
-        if cache.is_none() {
+        if let Some(cache) = &cache {
+            info!(?cache, "got external package cache");
+        } else {
             warn!("could not get external package cache");
         }
 
