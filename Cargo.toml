@@ -12,7 +12,7 @@ jaeger = ["opentelemetry", "opentelemetry-jaeger", "tracing-opentelemetry"]
 # Enable support for web access to search and download remote packages from a
 # repository. At present, that means only `@preview` packages listed at
 # https://typst.app/docs/packages/.
-remote-packages = ["reqwest", "async-compression"]
+remote-packages = ["reqwest"]
 
 # Choose the TLS implementation. Using `native-tls` provides better integration
 # with the user's system. However, on Linux, this means linking to OpenSSL,
@@ -28,6 +28,8 @@ typst = { git = "https://github.com/typst/typst.git", tag = "v0.7.0" }
 typst-library = { git = "https://github.com/typst/typst.git", tag = "v0.7.0" }
 
 anyhow = "1.0.71"
+async-compression = { version = "0.4.1", features = ["tokio", "gzip"] }
+async-trait = "0.1.73"
 bpaf = { version = "0.9.4", features = ["bright-color"] }
 chrono = { version = "0.4.24", default-features = false, features = [
     "std",
@@ -82,11 +84,6 @@ tracing-opentelemetry = { version = "0.20.0", optional = true }
 reqwest = { version = "0.11.18", default-features = false, features = [
     "stream",
 ], optional = true }
-async-compression = { version = "0.4.1", features = [
-    "tokio",
-    "gzip",
-], optional = true }
-async-trait = "0.1.73"
 
 [dev-dependencies]
 temp-dir = "0.1.11"

@@ -1,19 +1,32 @@
 use anyhow::anyhow;
 use tower_lsp::lsp_types::Url;
-use tracing::{error, warn};
+use tracing::warn;
 use typst::syntax::PackageSpec;
 
 use crate::workspace::package::manager::{ExternalPackageError, ExternalPackageResult};
 use crate::workspace::package::{FullFileId, Package};
 
 use super::local::LocalProvider;
-use super::remote_repo::RemoteRepoProvider;
 use super::{ExternalPackageProvider, RepoProvider, RepoRetrievalDest};
+
+#[cfg(feature = "remote-packages")]
+type DefaultRepoProvider = Option<super::remote_repo::RemoteRepoProvider>;
+#[cfg(not(feature = "remote-packages"))]
+type DefaultRepoProvider = ();
+
+#[cfg(feature = "remote-packages")]
+fn get_default_repo_provider() -> DefaultRepoProvider {
+    super::remote_repo::RemoteRepoProvider::new()
+        .map_err(|err| warn!(%err, "could not get repo provider for Typst packages"))
+        .ok()
+}
+#[cfg(not(feature = "remote-packages"))]
+fn get_default_repo_provider() -> DefaultRepoProvider {}
 
 #[derive(Debug)]
 pub struct ExternalPackageManager<
     Dest: RepoRetrievalDest = LocalProvider,
-    Repo: RepoProvider = Option<RemoteRepoProvider>,
+    Repo: RepoProvider = DefaultRepoProvider,
 > {
     providers: Vec<Box<dyn ExternalPackageProvider>>,
     cache: Option<Dest>,
@@ -53,9 +66,7 @@ impl ExternalPackageManager {
         .flatten()
         .collect();
 
-        let repo = RemoteRepoProvider::new()
-            .map_err(|err| error!(%err, "could not get remote repo provider for Typst packages"))
-            .ok();
+        let repo = get_default_repo_provider();
 
         Self {
             providers,

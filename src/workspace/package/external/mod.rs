@@ -11,6 +11,7 @@ use super::{FullFileId, Package};
 
 pub mod local;
 pub mod manager;
+#[cfg(feature = "remote-packages")]
 pub mod remote_repo;
 
 /// Provides access to external packages
@@ -33,6 +34,18 @@ pub trait RepoProvider: fmt::Debug + Send + Sync {
 }
 
 #[async_trait]
+impl RepoProvider for () {
+    async fn retrieve_tar_gz(
+        &self,
+        spec: &PackageSpec,
+    ) -> RepoResult<Box<dyn AsyncBufRead + Send>> {
+        Err(RepoError::NotFound(anyhow!(
+            "no repo access to download {spec}"
+        )))
+    }
+}
+
+#[async_trait]
 impl<R: RepoProvider> RepoProvider for Option<R> {
     async fn retrieve_tar_gz(
         &self,
@@ -40,9 +53,7 @@ impl<R: RepoProvider> RepoProvider for Option<R> {
     ) -> RepoResult<Box<dyn AsyncBufRead + Send>> {
         match self {
             Some(repo) => repo.retrieve_tar_gz(spec).await,
-            None => Err(RepoError::NotFound(anyhow!(
-                "no repo access to download {spec}"
-            ))),
+            None => ().retrieve_tar_gz(spec).await,
         }
     }
 }
@@ -67,6 +78,11 @@ pub trait RepoRetrievalDest: fmt::Debug + Sync {
 
 pub type RepoResult<T> = Result<T, RepoError>;
 
+#[cfg(feature = "remote-packages")]
+type NetworkError = reqwest::Error;
+#[cfg(not(feature = "remote-packages"))]
+type NetworkError = std::convert::Infallible;
+
 #[derive(thiserror::Error, Debug)]
 pub enum RepoError {
     #[error("cannot download packages in namespace `{0}`, only namespace `preview`")]
@@ -74,7 +90,7 @@ pub enum RepoError {
     #[error("could not find package")]
     NotFound(#[source] anyhow::Error),
     #[error(transparent)]
-    Network(reqwest::Error),
+    Network(NetworkError),
     #[error("could not extract archive")]
     MalformedArchive(#[source] io::Error),
     #[error("error writing to local filesystem")]
@@ -89,24 +105,32 @@ impl From<RepoError> for io::Error {
 
 impl RepoError {
     pub fn from_archive_error(err: io::Error) -> Self {
-        let err = match Self::io_as::<reqwest::Error>(err) {
-            Ok(err) => {
-                if err.status().map_or(false, |status| status == 404) {
-                    // 404 is returned when requesting package that does not exist, but it shouldn't
-                    // be used for other errors
-                    return Self::NotFound(err.into());
+        match Self::io_as::<NetworkError>(err) {
+            Ok(err) => Self::handle_network_error(err),
+            Err(err) => {
+                if Self::guess_is_tar_error(&err) {
+                    Self::MalformedArchive(err)
                 } else {
-                    return Self::Network(err);
+                    Self::LocalFs(err)
                 }
             }
-            Err(err) => err,
-        };
-
-        if Self::guess_is_tar_error(&err) {
-            Self::MalformedArchive(err)
-        } else {
-            Self::LocalFs(err)
         }
+    }
+
+    #[cfg(feature = "remote-packages")]
+    fn handle_network_error(err: NetworkError) -> Self {
+        if err.status().map_or(false, |status| status == 404) {
+            // 404 is returned when requesting package that does not exist, but it shouldn't
+            // be used for other errors
+            Self::NotFound(err.into())
+        } else {
+            Self::Network(err)
+        }
+    }
+
+    #[cfg(not(feature = "remote-packages"))]
+    fn handle_network_error(err: std::convert::Infallible) -> Self {
+        unreachable!("{err} is infallible")
     }
 
     /// The `tar` crate and its descendants, including `tokio-tar`, hide their errors behind
@@ -121,7 +145,7 @@ impl RepoError {
     fn io_as<T: std::error::Error + 'static>(err: io::Error) -> Result<T, io::Error> {
         // Until `io::Error::downcast` is stabilized, we need to do it this way; `into_inner` takes
         // ownership of `err` and returns `None` if it's not the requested type, so we lose `err`.
-        if err.get_ref().is_some_and(|err| err.is::<reqwest::Error>()) {
+        if err.get_ref().is_some_and(|err| err.is::<T>()) {
             let req_err = err
                 .into_inner()
                 .and_then(|err| err.downcast().ok())

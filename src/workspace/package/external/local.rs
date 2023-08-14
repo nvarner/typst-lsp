@@ -12,7 +12,6 @@ use crate::ext::PathExt;
 use crate::workspace::fs::local::LocalFs;
 use crate::workspace::package::{FullFileId, Package, PackageId};
 
-use super::remote_repo::RemoteRepoProvider;
 use super::{ExternalPackageProvider, RepoError, RepoResult, RepoRetrievalDest};
 
 // TODO: cache packages so we don't need to do IO to check if a package is provided
@@ -49,19 +48,6 @@ impl ExternalPackageProvider for LocalProvider {
 impl LocalProvider {
     pub fn new(root_dir: PathBuf) -> Self {
         Self { root: root_dir }
-    }
-
-    #[tracing::instrument]
-    pub async fn download(
-        &self,
-        spec: &PackageSpec,
-        repo: &RemoteRepoProvider,
-    ) -> RepoResult<Package> {
-        let path = self.fs_path(spec);
-        repo.download_to(spec, &path).await?;
-        Ok(Package::new(
-            LocalFs::path_to_uri(path).expect("should be absolute"),
-        ))
     }
 
     fn fs_path(&self, spec: &PackageSpec) -> PathBuf {
