@@ -13,38 +13,48 @@ jobs:
           - os: windows-latest
             rust-target: x86_64-pc-windows-msvc
             vs-code-target: win32-x64
+            features:
 
           - os: windows-latest
             rust-target: i686-pc-windows-msvc
             vs-code-target: win32-ia32
+            features:
 
+          # Ring fails to compile on this target, so don't use rustls
           - os: windows-latest
             rust-target: aarch64-pc-windows-msvc
             vs-code-target: win32-arm64
+            features: --no-default-features -F remote-packages,native-tls
 
           - os: ubuntu-latest
             rust-target: x86_64-unknown-linux-gnu
             vs-code-target: linux-x64
+            features:
 
           - os: ubuntu-latest
             rust-target: aarch64-unknown-linux-gnu
             vs-code-target: linux-arm64
+            features:
           
           - os: ubuntu-latest
             rust-target: x86_64-unknown-linux-musl
             vs-code-target: alpine-x64
+            features:
 
           - os: ubuntu-latest
             rust-target: arm-unknown-linux-gnueabihf
             vs-code-target: linux-armhf
+            features:
 
           - os: macos-latest
             rust-target: x86_64-apple-darwin
             vs-code-target: darwin-x64
+            features:
 
           - os: macos-latest
             rust-target: aarch64-apple-darwin
             vs-code-target: darwin-arm64
+            features:
     
     name: ${{ matrix.rust-target }}
     runs-on: ${{ matrix.os }}
@@ -71,7 +81,7 @@ jobs:
         with:
           command: build
           target: ${{ matrix.rust-target }}
-          args: "--release --locked"
+          args: "--release --locked ${{ matrix.features }}"
 
       - name: Move binaries
         run: |
