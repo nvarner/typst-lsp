@@ -220,6 +220,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bstr"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6798148dccfbff0fae41c7574d2fa8f1ef3492fba0face179de5d8d447d67b05"
+dependencies = [
+ "memchr",
+ "serde",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -864,6 +874,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c80984affa11d98d1b88b66ac8853f143217b399d3c74116778ff8fdb4ed2e"
 
 [[package]]
+name = "globmatch"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0e82f77d5e36ce0c3941a39a6d8fff8ed9553ae13586b31640d6885f7376097"
+dependencies = [
+ "globset",
+ "log",
+ "walkdir",
+]
+
+[[package]]
+name = "globset"
+version = "0.4.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "759c97c1e17c55525b57192c06a267cda0ac5210b222d6b82189a2338fa1c13d"
+dependencies = [
+ "aho-corasick",
+ "bstr",
+ "fnv",
+ "log",
+ "regex",
+]
+
+[[package]]
 name = "h2"
 version = "0.3.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1307,6 +1341,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f80f221db1bc708b71128757b9396727c04de86968081e18e89b0575e03be071"
 dependencies = [
  "phf",
+]
+
+[[package]]
+name = "itertools"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+dependencies = [
+ "either",
 ]
 
 [[package]]
@@ -3216,7 +3259,7 @@ dependencies = [
  "tracing",
  "ttf-parser",
  "typst-macros",
- "typst-syntax",
+ "typst-syntax 0.7.0 (git+https://github.com/typst/typst.git?tag=v0.7.0)",
  "unicode-general-category",
  "unicode-ident",
  "unicode-math-class",
@@ -3281,7 +3324,7 @@ dependencies = [
  "if_chain",
  "indexmap 2.0.0",
  "internment",
- "itertools",
+ "itertools 0.11.0",
  "lazy_static",
  "memmap2 0.7.1",
  "once_cell",
@@ -3307,6 +3350,7 @@ dependencies = [
  "tracing-subscriber",
  "typst",
  "typst-library",
+ "typstfmt_lib",
  "walkdir",
 ]
 
@@ -3335,6 +3379,37 @@ dependencies = [
  "unicode-math-class",
  "unicode-segmentation",
  "unscanny",
+]
+
+[[package]]
+name = "typst-syntax"
+version = "0.7.0"
+source = "git+https://github.com/typst/typst.git#2f81089995c87efdbce6c94bb29647cd1f213cfd"
+dependencies = [
+ "comemo",
+ "ecow",
+ "once_cell",
+ "serde",
+ "tracing",
+ "unicode-ident",
+ "unicode-math-class",
+ "unicode-segmentation",
+ "unscanny",
+]
+
+[[package]]
+name = "typstfmt_lib"
+version = "0.1.0"
+source = "git+https://github.com/astrale-sharp/typstfmt#825d328a593451f0cae36aa4a3d23ee8ed95f6aa"
+dependencies = [
+ "globmatch",
+ "itertools 0.10.5",
+ "regex",
+ "serde",
+ "toml",
+ "tracing",
+ "typst-syntax 0.7.0 (git+https://github.com/typst/typst.git)",
+ "unicode-segmentation",
 ]
 
 [[package]]

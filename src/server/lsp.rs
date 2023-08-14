@@ -108,6 +108,7 @@ impl LanguageServer for TypstServer {
                     }),
                     ..Default::default()
                 }),
+                document_formatting_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
             ..Default::default()
@@ -536,5 +537,38 @@ impl LanguageServer for TypstServer {
             .run(|source, _| self.get_selection_range(source, &positions));
 
         Ok(selection_range)
+    }
+
+    async fn formatting(
+        &self,
+        params: DocumentFormattingParams,
+    ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
+        let Ok(original_text) = self
+            .scope_with_source(&params.text_document.uri)
+            .await
+            else { return Ok(None) };
+        let original_text = original_text.source.text();
+        let res = typstfmt_lib::format(original_text, typstfmt_lib::Config::default());
+
+        Ok(Some(vec![TextEdit {
+            new_text: res,
+            range: Range::new(
+                Position {
+                    line: 0,
+                    character: 0,
+                },
+                Position {
+                    line: original_text.lines().count() as _,
+                    character: params
+                        .text_document
+                        .uri
+                        .as_str()
+                        .lines()
+                        .last()
+                        .map(|l| l.chars().count() as _)
+                        .unwrap_or(0),
+                },
+            ),
+        }]))
     }
 }
