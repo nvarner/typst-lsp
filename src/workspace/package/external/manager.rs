@@ -38,7 +38,7 @@ impl ExternalPackageManager {
     // i.e. the paths `<config>/typst/` and `<cache>/typst/` should be customizable
     #[tracing::instrument]
     pub fn new() -> Self {
-        let user = dirs::config_dir()
+        let user = dirs::data_dir()
             .map(|path| path.join("typst/packages/"))
             .map(LocalProvider::new)
             .map(Box::new)
@@ -106,6 +106,92 @@ impl<Dest: RepoRetrievalDest, Repo: RepoProvider> ExternalPackageManager<Dest, R
             Err(ExternalPackageError::Other(anyhow!(
                 "nowhere to download package {spec}"
             )))
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::path::PathBuf;
+    use std::str::FromStr;
+
+    use tokio::fs;
+
+    use crate::workspace::fs::local::LocalFs;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn local_package() {
+        let example_local_package = ExampleLocalPackage::set_up().await;
+        let spec = example_local_package.spec();
+        let external_package_manager = ExternalPackageManager::new();
+
+        let package = external_package_manager.package(&spec).await.unwrap();
+
+        assert_eq!(example_local_package.package(), package);
+    }
+
+    pub struct ExampleLocalPackage {
+        root: PathBuf,
+    }
+
+    impl ExampleLocalPackage {
+        pub async fn set_up() -> Self {
+            // The testing package is based on @preview/example:0.1.0
+            // https://github.com/typst/packages/tree/main/packages/preview/example/0.1.0
+
+            let package_root_path = Self::root();
+            fs::create_dir_all(&package_root_path).await.unwrap();
+
+            // Modified name vs original
+            let manifest = r#"[package]
+name = "typst-lsp-testing-this-may-be-deleted"
+version = "0.1.0"
+entrypoint = "lib.typ"
+authors = ["The Typst Project Developers"]
+license = "Unlicense"
+description = "An example package."
+"#;
+            fs::write(package_root_path.join("typst.toml"), manifest)
+                .await
+                .unwrap();
+
+            // Modified from the original to remove import for minimal test setup
+            let lib_typ = r#"// A package can contain includable markup just like other files.
+This is an *example!*
+
+// Paths are package local and absolute paths refer to the package root.
+"#;
+            fs::write(package_root_path.join("lib.typ"), lib_typ)
+                .await
+                .unwrap();
+
+            Self {
+                root: package_root_path,
+            }
+        }
+
+        pub fn spec(&self) -> PackageSpec {
+            PackageSpec::from_str("@local/typst-lsp-testing-this-may-be-deleted:0.1.0").unwrap()
+        }
+
+        pub fn package(&self) -> Package {
+            let package_root = Self::root();
+            Package::new(LocalFs::path_to_uri(package_root).unwrap())
+        }
+
+        fn root() -> PathBuf {
+            let local_packages_root = dirs::data_dir().unwrap();
+            local_packages_root
+                .join("typst/packages/local/typst-lsp-testing-this-may-be-deleted/0.1.0")
+        }
+    }
+
+    impl Drop for ExampleLocalPackage {
+        fn drop(&mut self) {
+            // No async drop, so delete with sync operations
+            std::fs::remove_dir_all(&self.root).unwrap();
         }
     }
 }
