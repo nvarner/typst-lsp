@@ -3267,7 +3267,7 @@ dependencies = [
 
 [[package]]
 name = "typst-lsp"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "anyhow",
  "async-compression",
