@@ -66,12 +66,10 @@ impl ExternalPackageManager {
         .flatten()
         .collect();
 
-        let repo = get_default_repo_provider();
-
         Self {
             providers,
             cache,
-            repo,
+            repo: get_default_repo_provider(),
         }
     }
 }
