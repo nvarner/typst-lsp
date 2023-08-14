@@ -84,17 +84,20 @@ function getServer(conf: WorkspaceConfiguration): string {
         return binaryName;
     }
 
-    throw new Error(`Could not find a valid typst-lsp binary.\nBundled: ${bundledValidation.message}\nIn PATH: ${binaryValidation.message}`);
+    throw new Error(
+        `Could not find a valid typst-lsp binary.\nBundled: ${bundledValidation.message}\nIn PATH: ${binaryValidation.message}`
+    );
 }
 
-function validateServer(path: string): { valid: true } | { valid: false, message: string } {
+function validateServer(path: string): { valid: true } | { valid: false; message: string } {
     const result = child_process.spawnSync(path);
     if (result.status === 0) {
         return { valid: true };
     } else {
         const statusMessage = result.status !== null ? [`return status: ${result.status}`] : [];
-        const errorMessage = result.error?.message !== undefined ? [`error: ${result.error.message}`] : [];
-        const messages = [statusMessage, errorMessage];;
+        const errorMessage =
+            result.error?.message !== undefined ? [`error: ${result.error.message}`] : [];
+        const messages = [statusMessage, errorMessage];
         const messageSuffix = messages.length !== 0 ? `:\n\t${messages.flat().join("\n\t")}` : "";
         const message = `Failed to launch '${path}'${messageSuffix}`;
         return { valid: false, message };
