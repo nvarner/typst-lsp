@@ -12,7 +12,6 @@ import * as child_process from "child_process";
 
 import {
     LanguageClient,
-    // DidChangeConfigurationNotification,
     type LanguageClientOptions,
     type ServerOptions,
 } from "vscode-languageclient/node";
@@ -61,9 +60,10 @@ export function deactivate(): Promise<void> | undefined {
 function getServer(conf: WorkspaceConfiguration): string {
     const pathInConfig = conf.get<string | null>("serverPath");
     if (pathInConfig !== undefined && pathInConfig !== null) {
-        if (!isValidServer(pathInConfig)) {
+        const validation = validateServer(pathInConfig);
+        if (!validation.valid) {
             throw new Error(
-                `\`typst-lsp.serverPath\` (${pathInConfig}) does not point to a valid typst-lsp binary`
+                `\`typst-lsp.serverPath\` (${pathInConfig}) does not point to a valid typst-lsp binary:\n${validation.message}`
             );
         }
         return pathInConfig;
@@ -74,17 +74,31 @@ function getServer(conf: WorkspaceConfiguration): string {
 
     const bundledPath = path.resolve(__dirname, binaryName);
 
-    if (isValidServer(bundledPath)) {
+    const bundledValidation = validateServer(bundledPath);
+    if (bundledValidation.valid) {
         return bundledPath;
-    } else if (isValidServer(binaryName)) {
-        return binaryName;
-    } else {
-        throw new Error("Could not find a valid typst-lsp binary bundled or in PATH");
     }
+
+    const binaryValidation = validateServer(binaryName);
+    if (binaryValidation.valid) {
+        return binaryName;
+    }
+
+    throw new Error(`Could not find a valid typst-lsp binary.\nBundled: ${bundledValidation.message}\nIn PATH: ${binaryValidation.message}`);
 }
 
-function isValidServer(path: string): boolean {
-    return child_process.spawnSync(path).status === 0;
+function validateServer(path: string): { valid: true } | { valid: false, message: string } {
+    const result = child_process.spawnSync(path);
+    if (result.status === 0) {
+        return { valid: true };
+    } else {
+        const statusMessage = result.status !== null ? [`return status: ${result.status}`] : [];
+        const errorMessage = result.error?.message !== undefined ? [`error: ${result.error.message}`] : [];
+        const messages = [statusMessage, errorMessage];;
+        const messageSuffix = messages.length !== 0 ? `:\n\t${messages.flat().join("\n\t")}` : "";
+        const message = `Failed to launch '${path}'${messageSuffix}`;
+        return { valid: false, message };
+    }
 }
 
 async function commandExportCurrentPdf(): Promise<void> {
@@ -104,7 +118,6 @@ async function commandExportCurrentPdf(): Promise<void> {
 /**
  * Implements the functionality for the 'Show PDF' button shown in the editor title
  * if a `.typ` file is opened.
- *
  */
 async function commandShowPdf(): Promise<void> {
     const activeEditor = window.activeTextEditor;
