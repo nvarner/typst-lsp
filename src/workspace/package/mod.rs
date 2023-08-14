@@ -13,7 +13,7 @@ pub mod manager;
 
 /// Represents a package that is provided. In particular, the `FsManager` should be able to access
 /// files in the package via the `root` URI.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Package {
     root: Url,
 }
