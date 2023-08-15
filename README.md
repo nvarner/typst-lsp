@@ -7,6 +7,7 @@ A language server for [Typst](https://typst.app/).
 - Syntax highlighting, error reporting, code completion, and function signature
     help
 - Compiles to PDF on save (configurable to as-you-type, or can be disabled)
+- Experimental formatting using [typstfmt](https://github.com/astrale-sharp/typstfmt)
 
 This repo consists of:
 
