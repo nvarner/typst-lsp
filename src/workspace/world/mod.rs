@@ -23,14 +23,14 @@ pub mod typst_thread;
 #[derive(Debug)]
 pub struct ProjectWorld {
     project: Project,
-    main: Url,
+    main: Source,
     /// Current time. Will be cached lazily for consistency throughout a compilation.
     now: Now,
     handle: runtime::Handle,
 }
 
 impl ProjectWorld {
-    fn new(project: Project, main: Url, handle: runtime::Handle) -> Self {
+    fn new(project: Project, main: Source, handle: runtime::Handle) -> Self {
         Self {
             project,
             main,
@@ -75,9 +75,7 @@ impl World for ProjectWorld {
 
     #[tracing::instrument]
     fn main(&self) -> Source {
-        self.project
-            .read_source_by_uri(&self.main)
-            .expect("main should be chosen to exist when world is constructed")
+        self.main.clone()
     }
 
     #[tracing::instrument]

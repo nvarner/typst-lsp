@@ -69,7 +69,7 @@ impl TypstServer {
             jsonrpc::Error::internal_error()
         })?;
 
-        self.thread(|_| comemo::evict(0)).await;
+        self.typst(|_| comemo::evict(0)).await;
 
         Ok(())
     }
