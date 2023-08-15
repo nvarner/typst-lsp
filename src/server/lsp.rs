@@ -564,15 +564,8 @@ impl LanguageServer for TypstServer {
                     character: 0,
                 },
                 Position {
-                    line: original_text.lines().count() as _,
-                    character: params
-                        .text_document
-                        .uri
-                        .as_str()
-                        .lines()
-                        .last()
-                        .map(|l| l.chars().count() as _)
-                        .unwrap_or(0),
+                    line: u32::MAX,
+                    character: u32::MAX,
                 },
             ),
         }]))
