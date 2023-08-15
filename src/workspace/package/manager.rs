@@ -83,6 +83,8 @@ impl PackageManager {
         let package_id = PackageId::new_current(best_package_root.clone());
         let full_file_id = FullFileId::new(package_id, best_path);
 
+        trace!(?full_file_id, "chose full id!");
+
         Some(full_file_id)
     }
 

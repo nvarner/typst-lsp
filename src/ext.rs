@@ -216,8 +216,8 @@ impl UrlExt for Url {
 
         let relative_path: PathBuf = root_iter
             .zip_longest(sub_iter)
-            .skip_while(EitherOrBoth::is_both)
-            .map(|x| x.right().ok_or(UriError::PathEscapesRoot))
+            .skip_while(|x| matches!(x, EitherOrBoth::Both(left, right) if left == right))
+            .map(|x| x.just_right().ok_or(UriError::PathEscapesRoot))
             .try_collect()?;
 
         Ok(relative_path.push_front(Path::root()))
@@ -325,6 +325,16 @@ mod uri_test {
         let relative = base_url.make_relative_rooted(&sub_url).unwrap();
 
         assert_eq!(Path::new("/to/汉字.typ"), &relative);
+    }
+
+    #[test]
+    fn make_relative_rooted_not_relative() {
+        let base_url = Url::parse("file:///path/to").unwrap();
+        let sub_url = Url::parse("file:///path/not/to/file.typ").unwrap();
+
+        let err = base_url.make_relative_rooted(&sub_url).unwrap_err();
+
+        assert_eq!(UriError::PathEscapesRoot, err)
     }
 
     #[test]
