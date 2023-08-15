@@ -99,7 +99,7 @@ impl World for ProjectWorld {
 
     #[tracing::instrument]
     fn today(&self, offset: Option<i64>) -> Option<Datetime> {
-        self.now.with_typst_offset(offset)
+        self.now.date_with_typst_offset(offset)
     }
 
     #[tracing::instrument]
