@@ -12,7 +12,8 @@ use tracing::{error, info, trace, warn};
 use typst::World;
 
 use crate::config::{
-    get_config_registration, Config, ConstConfig, ExportPdfMode, SemanticTokensMode,
+    get_config_registration, Config, ConstConfig, ExperimentalFormatterMode, ExportPdfMode,
+    SemanticTokensMode,
 };
 use crate::ext::InitializeParamsExt;
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
@@ -543,6 +544,11 @@ impl LanguageServer for TypstServer {
         &self,
         params: DocumentFormattingParams,
     ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
+        if let ExperimentalFormatterMode::Off = self.config.read().await.formatter {
+            error!("Formatting capabilities are disabled by default due to the experimental nature of the formatter.");
+            return Err(jsonrpc::Error::internal_error());
+        }
+
         let Ok(original_text) = self
             .scope_with_source(&params.text_document.uri)
             .await

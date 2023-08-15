@@ -78,6 +78,20 @@
                     ],
                     "default": "off",
                     "description": "Traces the communication between VS Code and the language server."
+                },
+                "typst-lsp.experimentalFormatterMode" : {
+                    "title": "Enable Experimental Formatter",
+                    "description": "The extension can format Typst files using typstfmt (experimental).",
+                    "type": "string",
+                    "default": "off",
+                    "enum": [
+                        "off",
+                        "on"
+                    ],
+                    "enumDescriptions": [
+                        "Formatter is not activated.",
+                        "Experimental formatter is activated."
+                    ]
                 }
             }
         },

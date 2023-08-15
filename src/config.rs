@@ -23,6 +23,14 @@ pub fn get_config_registration() -> Registration {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub enum ExperimentalFormatterMode {
+    #[default]
+    Off,
+    On,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ExportPdfMode {
     Never,
     #[default]
@@ -40,13 +48,19 @@ pub enum SemanticTokensMode {
 
 pub type Listener<T> = Box<dyn FnMut(&T) -> BoxFuture<anyhow::Result<()>> + Send + Sync>;
 
-const CONFIG_ITEMS: &[&str] = &["exportPdf", "rootPath", "semanticTokens"];
+const CONFIG_ITEMS: &[&str] = &[
+    "exportPdf",
+    "rootPath",
+    "semanticTokens",
+    "experimentalFormatterMode",
+];
 
 #[derive(Default)]
 pub struct Config {
     pub export_pdf: ExportPdfMode,
     pub root_path: Option<PathBuf>,
     pub semantic_tokens: SemanticTokensMode,
+    pub formatter: ExperimentalFormatterMode,
     semantic_tokens_listeners: Vec<Listener<SemanticTokensMode>>,
 }
 
@@ -109,6 +123,14 @@ impl Config {
             self.semantic_tokens = semantic_tokens;
         }
 
+        let formater = update
+            .get("experimentalFormatterMode")
+            .map(ExperimentalFormatterMode::deserialize)
+            .and_then(Result::ok);
+        if let Some(formater) = formater {
+            self.formatter = formater;
+        }
+
         Ok(())
     }
 }
@@ -117,6 +139,7 @@ impl fmt::Debug for Config {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Config")
             .field("export_pdf", &self.export_pdf)
+            .field("formatter", &self.formatter)
             .field("semantic_tokens", &self.semantic_tokens)
             .field(
                 "semantic_tokens_listeners",
