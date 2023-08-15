@@ -109,16 +109,17 @@ impl TypstServer {
         &self,
         builder: impl Into<WorldBuilder<'_>>,
     ) -> FsResult<WorldThread> {
-        let (main_project, main_uri) = builder.into().project_uri(self.workspace()).await?;
+        let (main, project) = builder.into().main_project(self.workspace()).await?;
 
         Ok(WorldThread {
-            main_project,
-            main_uri,
+            main,
+            main_project: project,
             typst_thread: &self.typst_thread,
         })
     }
 
-    pub async fn thread<T: Send + 'static>(
+    /// Run the given function on the Typst thread, passing back its return value.
+    pub async fn typst<T: Send + 'static>(
         &self,
         f: impl FnOnce(runtime::Handle) -> T + Send + 'static,
     ) -> T {
@@ -127,19 +128,23 @@ impl TypstServer {
 }
 
 pub struct SourceScope {
-    project: Project,
     source: Source,
+    project: Project,
 }
 
 impl SourceScope {
     pub fn run<T>(self, f: impl FnOnce(&Source, &Project) -> T) -> T {
         f(&self.source, &self.project)
     }
+
+    pub fn run2<T>(self, f: impl FnOnce(Source, Project) -> T) -> T {
+        f(self.source, self.project)
+    }
 }
 
 pub struct WorldThread<'a> {
+    main: Source,
     main_project: Project,
-    main_uri: Url,
     typst_thread: &'a TypstThread,
 }
 
@@ -149,43 +154,28 @@ impl<'a> WorldThread<'a> {
         f: impl FnOnce(ProjectWorld) -> T + Send + 'static,
     ) -> T {
         self.typst_thread
-            .run_with_world(self.main_project, self.main_uri, f)
+            .run_with_world(self.main_project, self.main, f)
             .await
     }
 }
 
 pub enum WorldBuilder<'a> {
-    MainFullId(FullFileId),
     MainUri(&'a Url),
-    MainFullIdAndUri(FullFileId, &'a Url),
-    ProjectAndMainUri(Project, &'a Url),
+    MainAndProject(Source, Project),
 }
 
 impl<'a> WorldBuilder<'a> {
-    async fn project_uri(self, workspace: &Arc<RwLock<Workspace>>) -> FsResult<(Project, Url)> {
+    async fn main_project(self, workspace: &Arc<RwLock<Workspace>>) -> FsResult<(Source, Project)> {
         match self {
-            Self::MainFullId(full_id) => {
-                let workspace = Arc::clone(workspace).read_owned().await;
-                let uri = workspace.uri(full_id).await?;
-                Ok((Project::new(full_id.package(), workspace), uri))
-            }
             Self::MainUri(uri) => {
                 let workspace = Arc::clone(workspace).read_owned().await;
                 let full_id = workspace.full_id(uri)?;
-                Ok((Project::new(full_id.package(), workspace), uri.clone()))
+                let source = workspace.read_source(uri)?;
+                let project = Project::new(full_id.package(), workspace);
+                Ok((source, project))
             }
-            Self::MainFullIdAndUri(full_id, uri) => {
-                let workspace = Arc::clone(workspace).read_owned().await;
-                Ok((Project::new(full_id.package(), workspace), uri.clone()))
-            }
-            Self::ProjectAndMainUri(project, uri) => Ok((project, uri.clone())),
+            Self::MainAndProject(main, project) => Ok((main, project)),
         }
-    }
-}
-
-impl<'a> From<FullFileId> for WorldBuilder<'a> {
-    fn from(full_id: FullFileId) -> Self {
-        Self::MainFullId(full_id)
     }
 }
 
@@ -195,14 +185,8 @@ impl<'a> From<&'a Url> for WorldBuilder<'a> {
     }
 }
 
-impl<'a> From<(FullFileId, &'a Url)> for WorldBuilder<'a> {
-    fn from((full_id, uri): (FullFileId, &'a Url)) -> Self {
-        Self::MainFullIdAndUri(full_id, uri)
-    }
-}
-
-impl<'a> From<(Project, &'a Url)> for WorldBuilder<'a> {
-    fn from((project, uri): (Project, &'a Url)) -> Self {
-        Self::ProjectAndMainUri(project, uri)
+impl From<(Source, Project)> for WorldBuilder<'static> {
+    fn from((main, project): (Source, Project)) -> Self {
+        Self::MainAndProject(main, project)
     }
 }
