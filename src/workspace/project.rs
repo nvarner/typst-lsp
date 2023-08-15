@@ -1,4 +1,5 @@
 use core::fmt;
+use std::sync::Arc;
 
 use comemo::Prehashed;
 use tokio::sync::OwnedRwLockReadGuard;
@@ -14,14 +15,18 @@ use super::fs::FsResult;
 use super::package::{FullFileId, PackageId};
 use super::{Workspace, TYPST_STDLIB};
 
+#[derive(Clone)]
 pub struct Project {
     current: PackageId,
-    workspace: OwnedRwLockReadGuard<Workspace>,
+    workspace: Arc<OwnedRwLockReadGuard<Workspace>>,
 }
 
 impl Project {
     pub fn new(current: PackageId, workspace: OwnedRwLockReadGuard<Workspace>) -> Self {
-        Self { current, workspace }
+        Self {
+            current,
+            workspace: Arc::new(workspace),
+        }
     }
 
     fn workspace(&self) -> &Workspace {

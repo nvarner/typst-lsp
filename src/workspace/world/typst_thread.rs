@@ -3,8 +3,8 @@ use std::thread;
 
 use tokio::runtime;
 use tokio::sync::oneshot;
-use tower_lsp::lsp_types::Url;
 use tracing::{trace, warn};
+use typst::syntax::Source;
 
 use crate::workspace::project::Project;
 
@@ -36,11 +36,11 @@ impl Default for TypstThread {
 }
 
 impl TypstThread {
-    #[tracing::instrument(skip(self, world_main, f), fields(%world_main))]
+    #[tracing::instrument(skip(self, f))]
     pub async fn run_with_world<Ret: Send + 'static>(
         &self,
         world_project: Project,
-        world_main: Url,
+        world_main: Source,
         f: impl FnOnce(ProjectWorld) -> Ret + Send + 'static,
     ) -> Ret {
         let f_prime = move |handle| {

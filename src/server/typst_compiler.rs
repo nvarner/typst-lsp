@@ -15,31 +15,36 @@ impl TypstServer {
         &self,
         uri: &Url,
     ) -> anyhow::Result<(Option<Document>, DiagnosticsMap)> {
-        let (document, diagnostics) = self
-            .thread_with_world(uri)
+        self.scope_with_source(uri)
             .await?
-            .run(|world| {
-                comemo::evict(30);
+            .run2(|source, project| async move {
+                let (document, diagnostics) = self
+                    .thread_with_world((source, project.clone()))
+                    .await?
+                    .run(|world| {
+                        comemo::evict(30);
 
-                let mut tracer = Tracer::new(None);
-                let result = typst::compile(&world, &mut tracer);
+                        let mut tracer = Tracer::new(None);
+                        let result = typst::compile(&world, &mut tracer);
 
-                let mut diagnostics = tracer.warnings();
-                match result {
-                    Ok(document) => (Some(document), diagnostics),
-                    Err(errors) => {
-                        diagnostics.extend_from_slice(&errors);
-                        (None, diagnostics)
-                    }
-                }
+                        let mut diagnostics = tracer.warnings();
+                        match result {
+                            Ok(document) => (Some(document), diagnostics),
+                            Err(errors) => {
+                                diagnostics.extend_from_slice(&errors);
+                                (None, diagnostics)
+                            }
+                        }
+                    })
+                    .await;
+
+                let diagnostics =
+                    typst_to_lsp::diagnostics(&project, diagnostics.as_ref(), self.const_config())
+                        .await;
+
+                Ok((document, diagnostics))
             })
-            .await;
-
-        let (project, _) = self.project_and_full_id(uri).await?;
-        let diagnostics =
-            typst_to_lsp::diagnostics(&project, diagnostics.as_ref(), self.const_config()).await;
-
-        Ok((document, diagnostics))
+            .await
     }
 
     #[tracing::instrument(skip(self, uri), fields(%uri))]
