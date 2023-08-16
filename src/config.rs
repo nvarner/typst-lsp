@@ -62,6 +62,7 @@ pub struct Config {
     pub semantic_tokens: SemanticTokensMode,
     pub formatter: ExperimentalFormatterMode,
     semantic_tokens_listeners: Vec<Listener<SemanticTokensMode>>,
+    formatter_listeners: Vec<Listener<ExperimentalFormatterMode>>,
 }
 
 impl Config {
@@ -77,6 +78,10 @@ impl Config {
 
     pub fn listen_semantic_tokens(&mut self, listener: Listener<SemanticTokensMode>) {
         self.semantic_tokens_listeners.push(listener);
+    }
+
+    pub fn listen_formatting(&mut self, listener: Listener<ExperimentalFormatterMode>) {
+        self.formatter_listeners.push(listener);
     }
 
     pub async fn update(&mut self, update: &Value) -> anyhow::Result<()> {
@@ -123,12 +128,15 @@ impl Config {
             self.semantic_tokens = semantic_tokens;
         }
 
-        let formater = update
+        let formatter = update
             .get("experimentalFormatterMode")
             .map(ExperimentalFormatterMode::deserialize)
             .and_then(Result::ok);
-        if let Some(formater) = formater {
-            self.formatter = formater;
+        if let Some(formatter) = formatter {
+            for listener in &mut self.formatter_listeners {
+                listener(&formatter).await?;
+            }
+            self.formatter = formatter;
         }
 
         Ok(())
@@ -144,6 +152,10 @@ impl fmt::Debug for Config {
             .field(
                 "semantic_tokens_listeners",
                 &format_args!("Vec[len = {}]", self.semantic_tokens_listeners.len()),
+            )
+            .field(
+                "formatter_listeners",
+                &format_args!("Vec[len = {}]", self.formatter_listeners.len()),
             )
             .finish()
     }
@@ -180,6 +192,7 @@ impl From<PositionEncoding> for lsp_types::PositionEncodingKind {
 pub struct ConstConfig {
     pub position_encoding: PositionEncoding,
     pub supports_semantic_tokens_dynamic_registration: bool,
+    pub supports_document_formatting_dynamic_registration: bool,
     pub supports_config_change_registration: bool,
 }
 
@@ -200,6 +213,8 @@ impl From<&InitializeParams> for ConstConfig {
             position_encoding: Self::choose_encoding(params),
             supports_semantic_tokens_dynamic_registration: params
                 .supports_semantic_tokens_dynamic_registration(),
+            supports_document_formatting_dynamic_registration: params
+                .supports_document_formatting_dynamic_registration(),
             supports_config_change_registration: params.supports_config_change_registration(),
         }
     }

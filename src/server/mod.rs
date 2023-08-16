@@ -24,6 +24,7 @@ pub mod command;
 pub mod diagnostics;
 pub mod document;
 pub mod export;
+pub mod formatting;
 pub mod hover;
 pub mod log;
 pub mod lsp;

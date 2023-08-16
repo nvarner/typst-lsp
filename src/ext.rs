@@ -5,7 +5,7 @@ use std::str::Utf8Error;
 
 use itertools::{EitherOrBoth, Itertools};
 use percent_encoding::{percent_decode_str, PercentDecode};
-use tower_lsp::lsp_types::Url;
+use tower_lsp::lsp_types::{DocumentFormattingClientCapabilities, Url};
 use tower_lsp::lsp_types::{
     InitializeParams, Position, PositionEncodingKind, SemanticTokensClientCapabilities,
 };
@@ -19,7 +19,9 @@ pub trait InitializeParamsExt {
     fn position_encodings(&self) -> &[PositionEncodingKind];
     fn supports_config_change_registration(&self) -> bool;
     fn semantic_tokens_capabilities(&self) -> Option<&SemanticTokensClientCapabilities>;
+    fn document_formatting_capabilities(&self) -> Option<&DocumentFormattingClientCapabilities>;
     fn supports_semantic_tokens_dynamic_registration(&self) -> bool;
+    fn supports_document_formatting_dynamic_registration(&self) -> bool;
     fn root_uris(&self) -> Vec<Url>;
 }
 
@@ -51,9 +53,23 @@ impl InitializeParamsExt for InitializeParams {
             .as_ref()
     }
 
+    fn document_formatting_capabilities(&self) -> Option<&DocumentFormattingClientCapabilities> {
+        self.capabilities
+            .text_document
+            .as_ref()?
+            .formatting
+            .as_ref()
+    }
+
     fn supports_semantic_tokens_dynamic_registration(&self) -> bool {
         self.semantic_tokens_capabilities()
             .and_then(|semantic_tokens| semantic_tokens.dynamic_registration)
+            .unwrap_or(false)
+    }
+
+    fn supports_document_formatting_dynamic_registration(&self) -> bool {
+        self.document_formatting_capabilities()
+            .and_then(|document_format| document_format.dynamic_registration)
             .unwrap_or(false)
     }
 
