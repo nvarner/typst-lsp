@@ -13,7 +13,7 @@ impl TypstServer {
         let pdf_uri = source_uri.clone().with_extension("pdf")?;
         info!(%pdf_uri, "exporting PDF");
 
-        self.thread_with_world(&pdf_uri)
+        self.thread_with_world(source_uri)
             .await?
             .run(move |world| {
                 let data = typst::export::pdf(&document);
