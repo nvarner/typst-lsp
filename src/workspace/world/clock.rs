@@ -1,4 +1,4 @@
-use chrono::{Datelike, FixedOffset, Local, TimeZone, Timelike, Utc};
+use chrono::{Datelike, FixedOffset, Local, TimeZone, Utc};
 use once_cell::sync::OnceCell;
 
 use crate::lsp_typst_boundary::TypstDatetime;
@@ -13,11 +13,11 @@ impl Now {
         Self::default()
     }
 
-    pub fn with_typst_offset(&self, offset: Option<i64>) -> Option<TypstDatetime> {
+    pub fn date_with_typst_offset(&self, offset: Option<i64>) -> Option<TypstDatetime> {
         let tz = TypstTz::from_typst_offset(offset)?;
         let now = self.chrono_now();
         let datetime = now.with_timezone(&tz).naive_local();
-        chrono_to_typst_datetime(datetime)
+        chrono_to_typst_datetime_only_date(datetime)
     }
 
     fn chrono_now(&self) -> &chrono::DateTime<Utc> {
@@ -25,14 +25,13 @@ impl Now {
     }
 }
 
-fn chrono_to_typst_datetime(chrono_datetime: chrono::NaiveDateTime) -> Option<TypstDatetime> {
-    TypstDatetime::from_ymd_hms(
+fn chrono_to_typst_datetime_only_date(
+    chrono_datetime: chrono::NaiveDateTime,
+) -> Option<TypstDatetime> {
+    TypstDatetime::from_ymd(
         chrono_datetime.year(),
         chrono_datetime.month() as u8,
         chrono_datetime.day() as u8,
-        chrono_datetime.hour() as u8,
-        chrono_datetime.minute() as u8,
-        chrono_datetime.second() as u8,
     )
 }
 
