@@ -16,77 +16,186 @@
     },
     "main": "./out/extension.js",
     "contributes": {
-        "configuration": {
-            "type": "object",
-            "title": "Typst LSP",
-            "properties": {
-                "typst-lsp.exportPdf": {
-                    "title": "Export PDF",
-                    "description": "The extension can export PDFs of your Typst files. This setting controls whether this feature is enabled and how often it runs.",
-                    "type": "string",
-                    "default": "onSave",
-                    "enum": [
-                        "never",
-                        "onSave",
-                        "onType"
-                    ],
-                    "enumDescriptions": [
-                        "Never export PDFs, you will manually run typst.",
-                        "Export PDFs when you save a file.",
-                        "Export PDFs as you type in a file."
-                    ]
-                },
-                "typst-lsp.rootPath": {
-                    "title": "Root path",
-                    "description": "Configure the root for absolute paths in typst",
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "default": null
-                },
-                "typst-lsp.semanticTokens": {
-                    "title": "Semantic tokens mode",
-                    "description": "Enable or disable semantic tokens (LSP syntax highlighting)",
-                    "type": "string",
-                    "default": "enable",
-                    "enum": [
-                        "enable",
-                        "disable"
-                    ],
-                    "enumDescriptions": [
-                        "Use semantic tokens for syntax highlighting",
-                        "Do not use semantic tokens for syntax highlighting"
-                    ]
-                },
-                "typst-lsp.serverPath": {
-                    "title": "Path to server executable",
-                    "description": "The extension can use a local typst-lsp executable instead of the one bundled with the extension. This setting controls the path to the executable.",
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "default": null
-                },
-                "typst-lsp.trace.server": {
-                    "scope": "window",
-                    "type": "string",
-                    "enum": [
-                        "off",
-                        "messages",
-                        "verbose"
-                    ],
-                    "default": "off",
-                    "description": "Traces the communication between VS Code and the language server."
+        "configuration": [
+            {
+                "type": "object",
+                "title": "Typst LSP",
+                "properties": {
+                    "typst-lsp.exportPdf": {
+                        "title": "Export PDF",
+                        "description": "The extension can export PDFs of your Typst files. This setting controls whether this feature is enabled and how often it runs.",
+                        "type": "string",
+                        "default": "onSave",
+                        "enum": [
+                            "never",
+                            "onSave",
+                            "onType"
+                        ],
+                        "enumDescriptions": [
+                            "Never export PDFs, you will manually run typst.",
+                            "Export PDFs when you save a file.",
+                            "Export PDFs as you type in a file."
+                        ]
+                    },
+                    "typst-lsp.rootPath": {
+                        "title": "Root path",
+                        "description": "Configure the root for absolute paths in typst",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "default": null
+                    },
+                    "typst-lsp.semanticTokens": {
+                        "title": "Semantic tokens mode",
+                        "description": "Enable or disable semantic tokens (LSP syntax highlighting)",
+                        "type": "string",
+                        "default": "enable",
+                        "enum": [
+                            "enable",
+                            "disable"
+                        ],
+                        "enumDescriptions": [
+                            "Use semantic tokens for syntax highlighting",
+                            "Do not use semantic tokens for syntax highlighting"
+                        ]
+                    },
+                    "typst-lsp.serverPath": {
+                        "title": "Path to server executable",
+                        "description": "The extension can use a local typst-lsp executable instead of the one bundled with the extension. This setting controls the path to the executable.",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "default": null
+                    },
+                    "typst-lsp.trace.server": {
+                        "scope": "window",
+                        "type": "string",
+                        "enum": [
+                            "off",
+                            "messages",
+                            "verbose"
+                        ],
+                        "default": "off",
+                        "description": "Traces the communication between VS Code and the language server."
+                    }
+                }
+            },
+            {
+                "type": "object",
+                "title": "Typst Markdown",
+                "properties": {
+                    "typst.markdown.extension.orderedList.autoRenumber": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "%config.orderedList.autoRenumber.description%"
+                    },
+                    "typst.markdown.extension.orderedList.marker": {
+                        "type": "string",
+                        "default": "ordered",
+                        "description": "%config.orderedList.marker.description%",
+                        "enum": [
+                            "one",
+                            "ordered"
+                        ],
+                        "markdownEnumDescriptions": [
+                            "%config.orderedList.marker.enumDescriptions.one%",
+                            "%config.orderedList.marker.enumDescriptions.ordered%"
+                        ]
+                    },
+                    "typst.markdown.extension.list.indentationSize": {
+                        "type": "string",
+                        "enum": [
+                            "adaptive",
+                            "inherit"
+                        ],
+                        "markdownEnumDescriptions": [
+                            "%config.list.indentationSize.enumDescriptions.adaptive%",
+                            "%config.list.indentationSize.enumDescriptions.inherit%"
+                        ],
+                        "default": "adaptive",
+                        "markdownDescription": "%config.list.indentationSize.description%",
+                        "scope": "resource"
+                    }
                 }
             }
-        },
+        ],
         "configurationDefaults": {
             "[typst]": {
                 "editor.wordWrap": "on",
                 "editor.semanticHighlighting.enabled": true
             }
         },
+        "keybindings": [
+            {
+                "command": "typst.markdown.extension.onEnterKey",
+                "key": "enter",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == typst && !suggestWidgetVisible && !editorHasMultipleSelections && vim.mode != 'Normal' && vim.mode != 'Visual' && vim.mode != 'VisualBlock' && vim.mode != 'VisualLine' && vim.mode != 'SearchInProgressMode' && vim.mode != 'CommandlineInProgress' && vim.mode != 'Replace' && vim.mode != 'EasyMotionMode' && vim.mode != 'EasyMotionInputMode' && vim.mode != 'SurroundInputMode'"
+            },
+            {
+                "command": "typst.markdown.extension.onCtrlEnterKey",
+                "key": "ctrl+enter",
+                "mac": "cmd+enter",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == typst && !suggestWidgetVisible && !editorHasMultipleSelections"
+            },
+            {
+                "command": "typst.markdown.extension.onShiftEnterKey",
+                "key": "shift+enter",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == typst && !suggestWidgetVisible && !editorHasMultipleSelections"
+            },
+            {
+                "command": "typst.markdown.extension.onTabKey",
+                "key": "tab",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == typst && !suggestWidgetVisible && !inlineSuggestionVisible && !editorHasMultipleSelections && !editorTabMovesFocus && !inSnippetMode && !hasSnippetCompletions && !hasOtherSuggestions && typst.markdown.extension.editor.cursor.inList"
+            },
+            {
+                "command": "typst.markdown.extension.onShiftTabKey",
+                "key": "shift+tab",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == typst && !suggestWidgetVisible && !editorHasMultipleSelections && !editorTabMovesFocus && !inSnippetMode && !hasSnippetCompletions && !hasOtherSuggestions && typst.markdown.extension.editor.cursor.inList"
+            },
+            {
+                "command": "typst.markdown.extension.onBackspaceKey",
+                "key": "backspace",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == typst && !suggestWidgetVisible && !editorHasMultipleSelections && vim.mode != 'Normal' && vim.mode != 'Visual' && vim.mode != 'VisualBlock' && vim.mode != 'VisualLine' && vim.mode != 'SearchInProgressMode' && vim.mode != 'CommandlineInProgress' && vim.mode != 'Replace' && vim.mode != 'EasyMotionMode' && vim.mode != 'EasyMotionInputMode' && vim.mode != 'SurroundInputMode'"
+            },
+            {
+                "command": "typst.markdown.extension.onMoveLineUp",
+                "key": "alt+up",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == typst && !suggestWidgetVisible"
+            },
+            {
+                "command": "typst.markdown.extension.onMoveLineDown",
+                "key": "alt+down",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == typst && !suggestWidgetVisible"
+            },
+            {
+                "command": "typst.markdown.extension.onCopyLineUp",
+                "win": "shift+alt+up",
+                "mac": "shift+alt+up",
+                "linux": "ctrl+shift+alt+up",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == typst && !suggestWidgetVisible"
+            },
+            {
+                "command": "typst.markdown.extension.onCopyLineDown",
+                "win": "shift+alt+down",
+                "mac": "shift+alt+down",
+                "linux": "ctrl+shift+alt+down",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == typst && !suggestWidgetVisible"
+            },
+            {
+                "command": "typst.markdown.extension.onIndentLines",
+                "key": "ctrl+]",
+                "mac": "cmd+]",
+                "when": "editorTextFocus && editorLangId == typst && !suggestWidgetVisible"
+            },
+            {
+                "command": "typst.markdown.extension.onOutdentLines",
+                "key": "ctrl+[",
+                "mac": "cmd+[",
+                "when": "editorTextFocus && editorLangId == typst && !suggestWidgetVisible"
+            }
+        ],
         "languages": [
             {
                 "id": "typst",
@@ -269,18 +378,18 @@
             "commandPalette": [
                 {
                     "command": "typst-lsp.exportCurrentPdf",
-                    "when": "editorLangId == typst"
+                    "when": "editorLangId === typst"
                 },
                 {
                     "command": "typst-lsp.clearCache",
-                    "when": "editorLangId == typst"
+                    "when": "editorLangId === typst"
                 }
             ],
             "editor/title": [
                 {
                     "command": "typst-lsp.showPdf",
                     "group": "navigation",
-                    "when": "editorLangId == typst"
+                    "when": "editorLangId === typst"
                 }
             ]
         }
@@ -304,21 +413,23 @@
         "test": ""
     },
     "dependencies": {
-        "vscode-languageclient": "^8.1.0"
+        "vscode-languageclient": "^8.1.0",
+        "markdown-it": "^12.3.2"
     },
     "devDependencies": {
+        "@types/markdown-it": "^13.0.0",
         "@types/node": "^20.4.9",
         "@types/vscode": "~1.71.0",
         "@typescript-eslint/eslint-plugin": "^6.3.0",
         "@typescript-eslint/parser": "^6.3.0",
         "@vscode/vsce": "^2.20.1",
-        "ovsx": "^0.8.3",
         "esbuild": "^0.19.0",
         "eslint": "^8.46.0",
         "eslint-config-prettier": "^9.0.0",
         "eslint-plugin-import": "^2.28.0",
         "eslint-plugin-n": "^16.0.1",
         "eslint-plugin-promise": "^6.1.1",
+        "ovsx": "^0.8.3",
         "prettier": "^3.0.1",
         "typescript": "^5.1.6"
     }

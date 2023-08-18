@@ -7,8 +7,10 @@ import {
     Uri,
     WorkspaceConfiguration,
 } from "vscode";
+import { contextServiceManager } from "./editor-context-service/manager"
 import * as path from "path";
 import * as child_process from "child_process";
+import * as listEditing from './listEditing';
 
 import {
     LanguageClient,
@@ -19,6 +21,16 @@ import {
 let client: LanguageClient | undefined = undefined;
 
 export function activate(context: ExtensionContext): Promise<void> {
+    context.subscriptions.push(
+        contextServiceManager
+    );
+
+    // Context services
+    contextServiceManager.activate(context);
+    
+    // Override `Enter`, `Tab` and `Backspace` keys
+    listEditing.activate(context);
+    
     return startClient(context).catch((e) => {
         void window.showErrorMessage(`Failed to activate typst-lsp: ${e}`);
         throw e;
