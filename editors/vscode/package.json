@@ -89,19 +89,19 @@
                     "typst.markdown.extension.orderedList.autoRenumber": {
                         "type": "boolean",
                         "default": true,
-                        "description": "%config.orderedList.autoRenumber.description%"
+                        "description": "Auto fix ordered list markers."
                     },
                     "typst.markdown.extension.orderedList.marker": {
                         "type": "string",
                         "default": "ordered",
-                        "description": "%config.orderedList.marker.description%",
+                        "description": "Ordered list marker.",
                         "enum": [
                             "one",
                             "ordered"
                         ],
                         "markdownEnumDescriptions": [
-                            "%config.orderedList.marker.enumDescriptions.one%",
-                            "%config.orderedList.marker.enumDescriptions.ordered%"
+                            "Always use 1. as ordered list marker.",
+                            "Use increasing numbers as ordered list marker."
                         ]
                     },
                     "typst.markdown.extension.list.indentationSize": {
@@ -111,11 +111,11 @@
                             "inherit"
                         ],
                         "markdownEnumDescriptions": [
-                            "%config.list.indentationSize.enumDescriptions.adaptive%",
-                            "%config.list.indentationSize.enumDescriptions.inherit%"
+                            "Adaptive indentation size according to the context, trying to left align the sublist with its parent's content.",
+                            "Use the configured tab size of the current document (see the status bar)."
                         ],
                         "default": "adaptive",
-                        "markdownDescription": "%config.list.indentationSize.description%",
+                        "markdownDescription": "Whether to use different indentation sizes on different list contexts or stick to VS Code's tab size.",
                         "scope": "resource"
                     }
                 }
@@ -413,8 +413,7 @@
         "test": ""
     },
     "dependencies": {
-        "vscode-languageclient": "^8.1.0",
-        "markdown-it": "^12.3.2"
+        "vscode-languageclient": "^8.1.0"    
     },
     "devDependencies": {
         "@types/markdown-it": "^13.0.0",
