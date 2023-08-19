@@ -7,7 +7,7 @@ use tracing::{error, info, trace, warn};
 use typst::diag::{FileError, PackageError as TypstPackageError};
 use typst::syntax::{FileId, PackageSpec};
 
-use crate::ext::UriError;
+use crate::ext::{UriError, UrlExt};
 use crate::workspace::fs::{FsError, FsResult};
 use crate::workspace::package::external::manager::ExternalPackageManager;
 
@@ -50,6 +50,14 @@ impl PackageManager {
                 .current
                 .get(uri)
                 .cloned()
+                .or_else(|| {
+                    trace!(
+                        ?uri,
+                        "Take a single file's parent directory as the package root!"
+                    );
+
+                    Some(Package::new(uri.clone()))
+                })
                 .ok_or(CurrentPackageError::NotFound)?,
             PackageIdInner::External(spec) => self.external_package(spec).await?,
         };
@@ -64,6 +72,7 @@ impl PackageManager {
         self.external
             .full_id(uri)
             .or_else(|| self.current_full_id(uri))
+            .or_else(|| self.current_single_file_full_id(uri))
             .ok_or_else(|| FsError::NotProvided(anyhow!("could not find provider for URI")))
     }
 
@@ -84,6 +93,24 @@ impl PackageManager {
         let full_file_id = FullFileId::new(package_id, best_path);
 
         trace!(?full_file_id, "chose full id!");
+
+        Some(full_file_id)
+    }
+
+    fn current_single_file_full_id(&self, uri: &Url) -> Option<FullFileId> {
+        // Take uri's parent directory as the package root…
+        let mut root = uri.clone();
+        root.path_segments_mut().ok()?.pop();
+
+        // … and its filename as the path
+        let path = root.make_relative_rooted(uri).ok()?;
+        // This is equivalent to `Package::new(root.clone()).uri_to_path(uri).ok()?`,
+        // but doesn't clone `root`.
+
+        let package_id = PackageId::new_current(root);
+        let full_file_id = FullFileId::new(package_id, path);
+
+        trace!(?full_file_id, "chose a single file full id!");
 
         Some(full_file_id)
     }
