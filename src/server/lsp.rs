@@ -12,10 +12,12 @@ use tracing::{error, info, trace, warn};
 use typst::World;
 
 use crate::config::{
-    get_config_registration, Config, ConstConfig, ExportPdfMode, SemanticTokensMode,
+    get_config_registration, Config, ConstConfig, ExperimentalFormatterMode, ExportPdfMode,
+    SemanticTokensMode,
 };
 use crate::ext::InitializeParamsExt;
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
+use crate::server::formatting::{get_formatting_registration, get_formatting_unregistration};
 use crate::workspace::Workspace;
 
 use super::command::LspCommand;
@@ -56,11 +58,21 @@ impl LanguageServer for TypstServer {
         }
 
         let config = self.config.read().await;
+
         let semantic_tokens_provider = match config.semantic_tokens {
             SemanticTokensMode::Enable
                 if !params.supports_semantic_tokens_dynamic_registration() =>
             {
                 Some(get_semantic_tokens_options().into())
+            }
+            _ => None,
+        };
+
+        let document_formatting_provider = match config.formatter {
+            ExperimentalFormatterMode::On
+                if !params.supports_document_formatting_dynamic_registration() =>
+            {
+                Some(OneOf::Left(true))
             }
             _ => None,
         };
@@ -108,6 +120,7 @@ impl LanguageServer for TypstServer {
                     }),
                     ..Default::default()
                 }),
+                document_formatting_provider,
                 ..Default::default()
             },
             ..Default::default()
@@ -156,6 +169,45 @@ impl LanguageServer for TypstServer {
             config.listen_semantic_tokens(Box::new(move |mode| match mode {
                 SemanticTokensMode::Enable => register().boxed(),
                 SemanticTokensMode::Disable => unregister().boxed(),
+            }));
+        }
+
+        if const_config.supports_document_formatting_dynamic_registration {
+            trace!("setting up to dynamically register document formatting support");
+
+            let client = self.client.clone();
+            let register = move || {
+                trace!("dynamically registering document formatting");
+                let client = client.clone();
+                async move {
+                    client
+                        .register_capability(vec![get_formatting_registration()])
+                        .await
+                        .context("could not register document formatting")
+                }
+            };
+
+            let client = self.client.clone();
+            let unregister = move || {
+                trace!("unregistering document formatting");
+                let client = client.clone();
+                async move {
+                    client
+                        .unregister_capability(vec![get_formatting_unregistration()])
+                        .await
+                        .context("could not unregister document formatting")
+                }
+            };
+
+            if config.formatter == ExperimentalFormatterMode::On {
+                if let Some(err) = register().await.err() {
+                    error!(%err, "could not dynamically register document formatting");
+                }
+            }
+
+            config.listen_formatting(Box::new(move |formatter| match formatter {
+                ExperimentalFormatterMode::On => register().boxed(),
+                ExperimentalFormatterMode::Off => unregister().boxed(),
             }));
         }
 
@@ -536,5 +588,27 @@ impl LanguageServer for TypstServer {
             .run(|source, _| self.get_selection_range(source, &positions));
 
         Ok(selection_range)
+    }
+
+    async fn formatting(
+        &self,
+        params: DocumentFormattingParams,
+    ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
+        let uri = params.text_document.uri;
+
+        let edits = self
+            .scope_with_source(&uri)
+            .await
+            .map_err(|err| {
+                error!(%err, %uri, "error getting document to format");
+                jsonrpc::Error::internal_error()
+            })?
+            .run(|source, _| self.format_document(source))
+            .map_err(|err| {
+                error!(%err, %uri, "error formatting document");
+                jsonrpc::Error::internal_error()
+            })?;
+
+        Ok(Some(edits))
     }
 }

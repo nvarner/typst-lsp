@@ -70,6 +70,7 @@ tracing-subscriber = { version = "0.3.17", default-features = false, features = 
     "fmt",
 ] }
 walkdir = "2.3"
+typstfmt_lib = { git = "https://github.com/astrale-sharp/typstfmt", rev = "8404a15" }
 
 # jaeger
 opentelemetry = { version = "0.20.0", optional = true }
