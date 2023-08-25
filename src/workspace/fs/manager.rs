@@ -42,7 +42,7 @@ impl WriteProvider for FsManager {
 impl KnownUriProvider for FsManager {
     fn known_uris(&self) -> HashSet<Url> {
         let mut uris = self.local.known_uris();
-        uris.extend(self.lsp.known_uris().into_iter());
+        uris.extend(self.lsp.known_uris());
         uris
     }
 }
