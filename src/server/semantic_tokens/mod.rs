@@ -198,7 +198,9 @@ fn token_from_node(node: &LinkedNode) -> Option<TokenType> {
 
 // TODO: differentiate also using tokens in scope, not just context
 fn is_function_ident(ident: &LinkedNode) -> bool {
-    let Some(next) = ident.next_leaf() else { return false; };
+    let Some(next) = ident.next_leaf() else {
+        return false;
+    };
     let function_call = matches!(next.kind(), SyntaxKind::LeftParen)
         && matches!(
             next.parent_kind(),

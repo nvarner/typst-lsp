@@ -46,9 +46,7 @@ impl TypstServer {
             return Err(Error::invalid_params("Missing file URI argument"));
         }
         let Some(file_uri) = arguments.first().and_then(|v| v.as_str()) else {
-            return Err(Error::invalid_params(
-                "Missing file URI as first argument",
-            ));
+            return Err(Error::invalid_params("Missing file URI as first argument"));
         };
         let file_uri = Url::parse(file_uri)
             .map_err(|_| Error::invalid_params("Parameter is not a valid URI"))?;

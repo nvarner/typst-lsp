@@ -57,7 +57,9 @@ impl LspFs {
         changes: impl IntoIterator<Item = TextDocumentContentChangeEvent>,
         position_encoding: PositionEncoding,
     ) {
-        let Ok(source) = self.read_source_mut(uri) else { return };
+        let Ok(source) = self.read_source_mut(uri) else {
+            return;
+        };
         changes
             .into_iter()
             .for_each(|change| Self::apply_one_change(source, change, position_encoding));

@@ -120,7 +120,9 @@ impl TypstServer {
             deciding.kind(),
             SyntaxKind::LeftParen | SyntaxKind::Comma | SyntaxKind::Colon
         ) {
-            let Some(prev) = deciding.prev_leaf() else { break };
+            let Some(prev) = deciding.prev_leaf() else {
+                break;
+            };
             deciding = prev;
         }
         deciding
