@@ -59,7 +59,7 @@ export function deactivate(): Promise<void> | undefined {
 
 function getServer(conf: WorkspaceConfiguration): string {
     const pathInConfig = conf.get<string | null>("serverPath");
-    if (pathInConfig !== undefined && pathInConfig !== null) {
+    if (pathInConfig !== undefined && pathInConfig !== null && pathInConfig !== "") {
         const validation = validateServer(pathInConfig);
         if (!validation.valid) {
             throw new Error(
@@ -90,17 +90,26 @@ function getServer(conf: WorkspaceConfiguration): string {
 }
 
 function validateServer(path: string): { valid: true } | { valid: false; message: string } {
-    const result = child_process.spawnSync(path);
-    if (result.status === 0) {
-        return { valid: true };
-    } else {
-        const statusMessage = result.status !== null ? [`return status: ${result.status}`] : [];
-        const errorMessage =
-            result.error?.message !== undefined ? [`error: ${result.error.message}`] : [];
-        const messages = [statusMessage, errorMessage];
-        const messageSuffix = messages.length !== 0 ? `:\n\t${messages.flat().join("\n\t")}` : "";
-        const message = `Failed to launch '${path}'${messageSuffix}`;
-        return { valid: false, message };
+    try {
+        const result = child_process.spawnSync(path);
+        if (result.status === 0) {
+            return { valid: true };
+        } else {
+            const statusMessage = result.status !== null ? [`return status: ${result.status}`] : [];
+            const errorMessage =
+                result.error?.message !== undefined ? [`error: ${result.error.message}`] : [];
+            const messages = [statusMessage, errorMessage];
+            const messageSuffix =
+                messages.length !== 0 ? `:\n\t${messages.flat().join("\n\t")}` : "";
+            const message = `Failed to launch '${path}'${messageSuffix}`;
+            return { valid: false, message };
+        }
+    } catch (e) {
+        if (e instanceof Error) {
+            return { valid: false, message: `Failed to launch '${path}': ${e.message}` };
+        } else {
+            return { valid: false, message: `Failed to launch '${path}': ${JSON.stringify(e)}` };
+        }
     }
 }
 
