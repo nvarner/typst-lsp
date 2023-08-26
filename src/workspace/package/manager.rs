@@ -183,9 +183,9 @@ pub enum ExternalPackageError {
 impl ExternalPackageError {
     pub fn convert(self, id: FileId) -> FileError {
         let Some(spec) = id.package() else {
-                    error!(%id, "cannot get spec to report `PackageError`");
-                    return FileError::Package(TypstPackageError::Other);
-                };
+            error!(%id, "cannot get spec to report `PackageError`");
+            return FileError::Package(TypstPackageError::Other);
+        };
 
         match self {
             Self::Repo(err) => FileError::Package(err.convert(spec)),

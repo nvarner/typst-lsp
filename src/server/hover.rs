@@ -29,7 +29,9 @@ impl TypstServer {
                 Some((typst_offset, typst_tooltip))
             })
             .await;
-        let Some((typst_offset, typst_tooltip)) = result else { return Ok(None) };
+        let Some((typst_offset, typst_tooltip)) = result else {
+            return Ok(None);
+        };
 
         let lsp_tooltip = typst_to_lsp::tooltip(&typst_tooltip);
 
