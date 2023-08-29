@@ -473,9 +473,9 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
-version = "5.5.1"
+version = "5.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edd72493923899c6f10c641bdbdeddc7183d6396641d99c1a0d1597f37f92e28"
+checksum = "9b101bb8960ab42ada6ae98eb82afcea4452294294c45b681295af26610d6d28"
 dependencies = [
  "cfg-if",
  "hashbrown 0.14.0",
@@ -3383,8 +3383,8 @@ dependencies = [
 
 [[package]]
 name = "typstfmt_lib"
-version = "0.1.0"
-source = "git+https://github.com/astrale-sharp/typstfmt?rev=8404a15#8404a15628dafa683975ab9e0c5af2d33b2b2e6b"
+version = "0.2.0"
+source = "git+https://github.com/astrale-sharp/typstfmt?rev=cf0ac91#cf0ac9189a4a2d47f4bc833f2538dca032534455"
 dependencies = [
  "globmatch",
  "itertools 0.10.5",
