@@ -235,11 +235,17 @@ pub mod typst_to_lsp {
 
         let lsp_severity = diagnostic_severity(typst_diagnostic.severity);
 
-        let typst_range = source
-            .find(typst_span)
-            .expect("span should be in source since we got it using the span")
-            .range();
-        let lsp_range = range(typst_range, &source, const_config.position_encoding);
+        // Due to #241 and maybe typst/typst#2035, we sometimes fail to find the span. In that case,
+        // we use a default span as a better alternative to panicking.
+        let lsp_range = if let Some(node) = source.find(typst_span) {
+            let typst_range = node.range();
+            range(typst_range, &source, const_config.position_encoding)
+        } else {
+            LspRange::new(
+                LspRawRange::new(LspPosition::new(0, 0), LspPosition::new(0, 0)),
+                const_config.position_encoding,
+            )
+        };
 
         let typst_message = &typst_diagnostic.message;
         let typst_hints = &typst_diagnostic.hints;
