@@ -3389,8 +3389,8 @@ dependencies = [
 
 [[package]]
 name = "typstfmt_lib"
-version = "0.2.0"
-source = "git+https://github.com/astrale-sharp/typstfmt?rev=cf0ac91#cf0ac9189a4a2d47f4bc833f2538dca032534455"
+version = "0.2.1"
+source = "git+https://github.com/astrale-sharp/typstfmt?tag=0.2.1#8afb675ae56124651bc7e98cd89869f8befc4726"
 dependencies = [
  "globmatch",
  "itertools 0.10.5",
