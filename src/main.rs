@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 use bpaf::{construct, OptionParser, Parser};
 use logging::{tracing_init, tracing_shutdown};
 use server::log::LspLayer;
