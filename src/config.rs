@@ -2,6 +2,7 @@ use std::{fmt, path::PathBuf};
 
 use anyhow::bail;
 use futures::future::BoxFuture;
+use itertools::Itertools;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 use tower_lsp::lsp_types::{
@@ -67,12 +68,28 @@ pub struct Config {
 
 impl Config {
     pub fn get_items() -> Vec<ConfigurationItem> {
-        CONFIG_ITEMS
+        let sections = CONFIG_ITEMS
             .iter()
-            .map(|item| ConfigurationItem {
-                section: Some(format!("typst-lsp.{item}")),
+            .flat_map(|item| [format!("typst-lsp.{item}"), item.to_string()]);
+
+        sections
+            .map(|section| ConfigurationItem {
+                section: Some(section),
                 ..Default::default()
             })
+            .collect()
+    }
+
+    pub fn values_to_map(values: Vec<Value>) -> Map<String, Value> {
+        let unpaired_values = values
+            .into_iter()
+            .tuples()
+            .map(|(a, b)| if !a.is_null() { a } else { b });
+
+        CONFIG_ITEMS
+            .iter()
+            .map(|item| item.to_string())
+            .zip(unpaired_values)
             .collect()
     }
 
@@ -90,14 +107,6 @@ impl Config {
         } else {
             bail!("got invalid configuration object {update}")
         }
-    }
-
-    pub fn values_to_map(values: Vec<Value>) -> Map<String, Value> {
-        CONFIG_ITEMS
-            .iter()
-            .map(|item| (*item).to_owned())
-            .zip(values)
-            .collect()
     }
 
     pub async fn update_by_map(&mut self, update: &Map<String, Value>) -> anyhow::Result<()> {
