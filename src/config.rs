@@ -92,13 +92,15 @@ impl Config {
         }
     }
 
-    pub async fn update_from_values(&mut self, update: Vec<Value>) -> anyhow::Result<()> {
-        let items = CONFIG_ITEMS.iter().map(|item| (*item).to_owned());
-        let map = items.zip(update.into_iter()).collect();
-        self.update_by_map(&map).await
+    pub fn values_to_map(values: Vec<Value>) -> Map<String, Value> {
+        CONFIG_ITEMS
+            .iter()
+            .map(|item| (*item).to_owned())
+            .zip(values)
+            .collect()
     }
 
-    async fn update_by_map(&mut self, update: &Map<String, Value>) -> anyhow::Result<()> {
+    pub async fn update_by_map(&mut self, update: &Map<String, Value>) -> anyhow::Result<()> {
         let export_pdf = update
             .get("exportPdf")
             .map(ExportPdfMode::deserialize)
