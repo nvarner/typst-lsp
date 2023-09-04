@@ -549,18 +549,27 @@ impl LanguageServer for TypstServer {
     }
 
     #[tracing::instrument(skip(self))]
-    async fn did_change_configuration(&self, _params: DidChangeConfigurationParams) {
-        // We don't get the actual changed configuration and need to poll for it
+    async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
+        // For some clients, we don't get the actual changed configuration and need to poll for it
         // https://github.com/microsoft/language-server-protocol/issues/676
+        let values = match params.settings {
+            JsonValue::Object(settings) => Ok(settings),
+            _ => self
+                .client
+                .configuration(Config::get_items())
+                .await
+                .map(Config::values_to_map),
+        };
 
-        let values = self
-            .client
-            .configuration(Config::get_items())
-            .await
-            .unwrap();
+        let result = match values {
+            Ok(values) => {
+                let mut config = self.config.write().await;
+                config.update_by_map(&values).await
+            }
+            Err(err) => Err(err.into()),
+        };
 
-        let mut config = self.config.write().await;
-        match config.update_from_values(values).await {
+        match result {
             Ok(()) => {
                 info!("new settings applied");
             }
