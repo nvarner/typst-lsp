@@ -80,7 +80,10 @@ impl TypstServer {
         LinkedNode::new(source.root()).leaf_at(typst_offset)
     }
 
-    pub fn get_surrounding_function(&self, leaf: &LinkedNode) -> Option<(ast::Ident, ast::Args)> {
+    pub fn get_surrounding_function<'a>(
+        &self,
+        leaf: &'a LinkedNode,
+    ) -> Option<(ast::Ident<'a>, ast::Args<'a>)> {
         let parent = leaf.parent()?;
         let parent = match parent.kind() {
             SyntaxKind::Named => parent.parent()?,
@@ -136,20 +139,18 @@ impl TypstServer {
     ) -> Option<usize> {
         match deciding.kind() {
             // After colon: "func(param:|)", "func(param: |)".
-            SyntaxKind::Colon => deciding
-                .prev_leaf()
-                .and_then(|prev| prev.cast::<ast::Ident>())
-                .and_then(|param_ident| {
-                    function_info
-                        .params
-                        .iter()
-                        .position(|param| param.name == param_ident.as_str())
-                }),
+            SyntaxKind::Colon => {
+                let prev = deciding.prev_leaf()?;
+                let param_ident = prev.cast::<ast::Ident>()?;
+                function_info
+                    .params
+                    .iter()
+                    .position(|param| param.name == param_ident.as_str())
+            }
             // Before: "func(|)", "func(hi|)", "func(12,|)".
             SyntaxKind::Comma | SyntaxKind::LeftParen => {
-                let following_param = deciding
-                    .next_leaf()
-                    .and_then(|next| next.cast::<ast::Ident>());
+                let next = deciding.next_leaf();
+                let following_param = next.as_ref().and_then(|next| next.cast::<ast::Ident>());
                 match following_param {
                     Some(next) => function_info
                         .params
