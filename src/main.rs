@@ -16,7 +16,7 @@ mod server;
 mod workspace;
 
 // TODO: is there a good way to get this automatically at build time?
-pub const TYPST_VERSION: &str = "0.7.0";
+pub const TYPST_VERSION: &str = env!("TYPST_VERSION");
 
 #[tokio::main]
 async fn main() {
