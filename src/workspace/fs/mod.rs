@@ -73,7 +73,7 @@ impl FsError {
             Self::NotSource => FileError::NotSource,
             Self::NotFoundLocal(path) => FileError::NotFound(path),
             Self::Package(err) => err.convert(id),
-            Self::OtherIo(err) => FileError::from_io(err, id.path()),
+            Self::OtherIo(err) => FileError::from_io(err, id.vpath().as_rooted_path()),
             Self::NotProvided(_) | Self::UriJoin(_) | Self::Other(_) => FileError::Other,
         }
     }

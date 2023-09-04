@@ -529,6 +529,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "downcast-rs"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
+
+[[package]]
 name = "ecow"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1262,6 +1268,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "indexmap-nostd"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e04e2fd2b8188ea827b32ef11de88377086d690286ab35747ef7f9bf3ccb590"
+
+[[package]]
 name = "instant"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1285,6 +1297,12 @@ dependencies = [
  "hashbrown 0.12.3",
  "parking_lot",
 ]
+
+[[package]]
+name = "intx"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6f38a50a899dc47a6d0ed5508e7f601a2e34c3a85303514b5d137f3c10a0c75"
 
 [[package]]
 name = "ipnet"
@@ -3235,8 +3253,9 @@ checksum = "6af6ae20167a9ece4bcb41af5b80f8a1f1df981f6391189ce00fd257af04126a"
 [[package]]
 name = "typst"
 version = "0.7.0"
-source = "git+https://github.com/typst/typst.git?tag=v0.7.0#da8367e189b02918a8fe1a98fd3059fd11a82cd9"
+source = "git+https://github.com/typst/typst.git?rev=0e5c48ad0d04c22831e3b41c2904a24c7f5171cb#0e5c48ad0d04c22831e3b41c2904a24c7f5171cb"
 dependencies = [
+ "base64",
  "bitflags 2.4.0",
  "bytemuck",
  "comemo",
@@ -3267,20 +3286,23 @@ dependencies = [
  "tracing",
  "ttf-parser",
  "typst-macros",
- "typst-syntax",
+ "typst-syntax 0.7.0 (git+https://github.com/typst/typst.git?rev=0e5c48ad0d04c22831e3b41c2904a24c7f5171cb)",
  "unicode-general-category",
  "unicode-ident",
  "unicode-math-class",
  "unicode-segmentation",
  "unscanny",
  "usvg",
+ "wasmi",
+ "xmlparser",
+ "xmlwriter",
  "xmp-writer",
 ]
 
 [[package]]
 name = "typst-library"
 version = "0.7.0"
-source = "git+https://github.com/typst/typst.git?tag=v0.7.0#da8367e189b02918a8fe1a98fd3059fd11a82cd9"
+source = "git+https://github.com/typst/typst.git?rev=0e5c48ad0d04c22831e3b41c2904a24c7f5171cb#0e5c48ad0d04c22831e3b41c2904a24c7f5171cb"
 dependencies = [
  "az",
  "chinese-number",
@@ -3365,7 +3387,7 @@ dependencies = [
 [[package]]
 name = "typst-macros"
 version = "0.7.0"
-source = "git+https://github.com/typst/typst.git?tag=v0.7.0#da8367e189b02918a8fe1a98fd3059fd11a82cd9"
+source = "git+https://github.com/typst/typst.git?rev=0e5c48ad0d04c22831e3b41c2904a24c7f5171cb#0e5c48ad0d04c22831e3b41c2904a24c7f5171cb"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -3390,6 +3412,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "typst-syntax"
+version = "0.7.0"
+source = "git+https://github.com/typst/typst.git?rev=0e5c48ad0d04c22831e3b41c2904a24c7f5171cb#0e5c48ad0d04c22831e3b41c2904a24c7f5171cb"
+dependencies = [
+ "comemo",
+ "ecow",
+ "once_cell",
+ "serde",
+ "tracing",
+ "unicode-ident",
+ "unicode-math-class",
+ "unicode-segmentation",
+ "unscanny",
+]
+
+[[package]]
 name = "typstfmt_lib"
 version = "0.2.4"
 source = "git+https://github.com/astrale-sharp/typstfmt?tag=0.2.4#41c834c0021b6f5fb7c603cd4f33a36657a988c9"
@@ -3400,7 +3438,7 @@ dependencies = [
  "serde",
  "toml",
  "tracing",
- "typst-syntax",
+ "typst-syntax 0.7.0 (git+https://github.com/typst/typst.git?tag=v0.7.0)",
  "unicode-segmentation",
 ]
 
@@ -3713,6 +3751,47 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+]
+
+[[package]]
+name = "wasmi"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e51fb5c61993e71158abf5bb863df2674ca3ec39ed6471c64f07aeaf751d67b4"
+dependencies = [
+ "intx",
+ "smallvec",
+ "spin 0.9.8",
+ "wasmi_arena",
+ "wasmi_core",
+ "wasmparser-nostd",
+]
+
+[[package]]
+name = "wasmi_arena"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "401c1f35e413fac1846d4843745589d9ec678977ab35a384db8ae7830525d468"
+
+[[package]]
+name = "wasmi_core"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "624e6333e861ef49095d2d678b76ebf30b06bf37effca845be7e5b87c90071b7"
+dependencies = [
+ "downcast-rs",
+ "libm",
+ "num-traits",
+ "paste",
+]
+
+[[package]]
+name = "wasmparser-nostd"
+version = "0.100.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9157cab83003221bfd385833ab587a039f5d6fa7304854042ba358a3b09e0724"
+dependencies = [
+ "indexmap-nostd",
 ]
 
 [[package]]

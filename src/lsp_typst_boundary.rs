@@ -11,6 +11,7 @@ pub type LspCharacterOffset = u32;
 pub type LspPositionEncoding = crate::config::PositionEncoding;
 /// Byte offset (i.e. UTF-8 bytes) in Typst files, either from the start of the line or the file
 pub type TypstOffset = usize;
+pub type TypstSpan = typst::syntax::Span;
 
 /// An LSP range. It needs its associated `LspPositionEncoding` to be used. The `LspRange` struct
 /// provides this range with that encoding.
@@ -116,13 +117,14 @@ pub mod lsp_to_typst {
 pub mod typst_to_lsp {
     use std::iter;
 
+    use anyhow::bail;
     use futures::{future, stream, StreamExt, TryFutureExt, TryStreamExt};
     use itertools::{Format, Itertools};
     use lazy_static::lazy_static;
     use regex::{Captures, Regex};
     use tower_lsp::lsp_types::{InsertTextFormat, LanguageString, MarkedString};
     use tracing::error;
-    use typst::syntax::Source;
+    use typst::syntax::{FileId, Source};
     use typst_library::prelude::EcoString;
 
     use crate::config::ConstConfig;
@@ -225,27 +227,16 @@ pub mod typst_to_lsp {
         typst_diagnostic: &TypstDiagnostic,
         const_config: &ConstConfig,
     ) -> anyhow::Result<(LspUri, LspDiagnostic)> {
-        let typst_span = typst_diagnostic.span;
-
-        let id = typst_span.id();
+        let Some((id, span)) = diagnostic_span_id(typst_diagnostic) else {
+            bail!("could not find any id")
+        };
         let full_id = project.fill_id(id);
         let uri = project.full_id_to_uri(full_id).await?;
 
         let source = project.read_source_by_uri(&uri)?;
+        let lsp_range = diagnostic_range(&source, span, const_config);
 
         let lsp_severity = diagnostic_severity(typst_diagnostic.severity);
-
-        // Due to #241 and maybe typst/typst#2035, we sometimes fail to find the span. In that case,
-        // we use a default span as a better alternative to panicking.
-        let lsp_range = if let Some(node) = source.find(typst_span) {
-            let typst_range = node.range();
-            range(typst_range, &source, const_config.position_encoding)
-        } else {
-            LspRange::new(
-                LspRawRange::new(LspPosition::new(0, 0), LspPosition::new(0, 0)),
-                const_config.position_encoding,
-            )
-        };
 
         let typst_message = &typst_diagnostic.message;
         let typst_hints = &typst_diagnostic.hints;
@@ -260,6 +251,34 @@ pub mod typst_to_lsp {
         };
 
         Ok((uri, diagnostic))
+    }
+
+    fn diagnostic_span_id(typst_diagnostic: &TypstDiagnostic) -> Option<(FileId, TypstSpan)> {
+        iter::once(typst_diagnostic.span)
+            .chain(typst_diagnostic.trace.iter().map(|trace| trace.span))
+            .find_map(|span| Some((span.id()?, span)))
+    }
+
+    fn diagnostic_range(
+        source: &Source,
+        typst_span: TypstSpan,
+        const_config: &ConstConfig,
+    ) -> LspRange {
+        // Due to #241 and maybe typst/typst#2035, we sometimes fail to find the span. In that case,
+        // we use a default span as a better alternative to panicking.
+        //
+        // This may have been fixed after Typst 0.7.0, but it's still nice to avoid panics in case
+        // something similar reappears.
+        match source.find(typst_span) {
+            Some(node) => {
+                let typst_range = node.range();
+                range(typst_range, source, const_config.position_encoding)
+            }
+            None => LspRange::new(
+                LspRawRange::new(LspPosition::new(0, 0), LspPosition::new(0, 0)),
+                const_config.position_encoding,
+            ),
+        }
     }
 
     fn diagnostic_severity(typst_severity: TypstSeverity) -> LspSeverity {

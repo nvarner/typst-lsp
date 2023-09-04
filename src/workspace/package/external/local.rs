@@ -6,9 +6,8 @@ use async_trait::async_trait;
 use tokio::io::{AsyncBufRead, AsyncRead};
 use tokio_tar::Archive;
 use tower_lsp::lsp_types::Url;
-use typst::syntax::PackageSpec;
+use typst::syntax::{PackageSpec, VirtualPath};
 
-use crate::ext::PathExt;
 use crate::workspace::fs::local::LocalFs;
 use crate::workspace::package::{FullFileId, Package, PackageId};
 
@@ -60,7 +59,7 @@ impl LocalProvider {
     ///
     /// For example, given `preview/test/0.1.0/subdir/example.typ`, the spec `@preview/test:0.1.0`
     /// and path `subdir/example.typ` will be returned.
-    fn split_spec(path: &Path) -> Option<(PackageSpec, PathBuf)> {
+    fn split_spec(path: &Path) -> Option<(PackageSpec, VirtualPath)> {
         let mut components = path.components();
 
         let mut components_str = (&mut components)
@@ -74,7 +73,7 @@ impl LocalProvider {
 
         let spec = PackageSpec::from_str(&spec_str).ok()?;
 
-        let package_path = components.as_path().push_front(Path::root());
+        let package_path = VirtualPath::new(components.as_path());
 
         Some((spec, package_path))
     }

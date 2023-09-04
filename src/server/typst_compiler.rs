@@ -24,7 +24,7 @@ impl TypstServer {
                     .run(|world| {
                         comemo::evict(30);
 
-                        let mut tracer = Tracer::new(None);
+                        let mut tracer = Tracer::default();
                         let result = typst::compile(&world, &mut tracer);
 
                         let mut diagnostics = tracer.warnings();
