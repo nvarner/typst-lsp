@@ -24,8 +24,8 @@ native-tls = ["reqwest?/native-tls"]
 
 [dependencies]
 # Keep typst version in sync with string in `main.rs`
-typst = { git = "https://github.com/typst/typst.git", rev = "0e5c48ad0d04c22831e3b41c2904a24c7f5171cb" }
-typst-library = { git = "https://github.com/typst/typst.git", rev = "0e5c48ad0d04c22831e3b41c2904a24c7f5171cb" }
+typst = { git = "https://github.com/typst/typst.git", rev = "c0b332a4c07b95c0c3196d0d7b149560dcef67fa" }
+typst-library = { git = "https://github.com/typst/typst.git", rev = "c0b332a4c07b95c0c3196d0d7b149560dcef67fa" }
 
 anyhow = "1.0.71"
 async-compression = { version = "0.4.1", features = ["tokio", "gzip"] }
