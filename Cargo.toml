@@ -69,7 +69,7 @@ tracing-subscriber = { version = "0.3.17", default-features = false, features = 
     "registry",
     "fmt",
 ] }
-walkdir = "2.3"
+walkdir = "2.4"
 typstfmt_lib = { git = "https://github.com/astrale-sharp/typstfmt", tag = "0.2.2" }
 
 # jaeger
