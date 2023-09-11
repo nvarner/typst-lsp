@@ -1,4 +1,5 @@
-use std::{fs::File, io::Read};
+use tokio::fs::File;
+use tokio::io::AsyncReadExt;
 
 use tower_lsp::lsp_types::{Position, Range, Registration, TextEdit, Unregistration};
 use typst::syntax::Source;
@@ -26,9 +27,9 @@ pub fn get_formatting_unregistration() -> Unregistration {
 }
 
 impl TypstServer {
-    pub fn format_document(&self, source: &Source) -> anyhow::Result<Vec<TextEdit>> {
+    pub async fn format_document(&self, source: &Source) -> anyhow::Result<Vec<TextEdit>> {
         let original_text = source.text();
-        let res = typstfmt_lib::format(original_text, self.get_fmt_config());
+        let res = typstfmt_lib::format(original_text, self.get_fmt_config().await);
 
         Ok(vec![TextEdit {
             new_text: res,
@@ -45,26 +46,25 @@ impl TypstServer {
         }])
     }
 
-    fn get_fmt_config(&self) -> FmtConfig {
+    async fn get_fmt_config(&self) -> FmtConfig {
         // Ignoring all errors since we're returning the default config in case
         // we can't find something more specific
-        let mut config_file: Option<File> = File::options().read(true).open(CONFIG_PATH).ok();
+        let mut config_file: Option<File> = File::options().read(true).open(CONFIG_PATH).await.ok();
 
         if config_file.is_none() {
-            if let Some(root_path) = &self.config.blocking_read().root_path {
+            if let Some(root_path) = &self.config.read().await.root_path {
                 let mut root_path = root_path.clone();
                 root_path.push(CONFIG_PATH);
-                config_file = File::options().read(true).open(root_path).ok();
+                config_file = File::options().read(true).open(root_path).await.ok();
             }
         }
 
-        config_file
-            .map(|mut f| {
-                let mut buf = String::default();
-                let _ = f.read_to_string(&mut buf);
-                FmtConfig::from_toml(&buf).ok()
-            })
-            .flatten()
-            .unwrap_or_default()
+        if let Some(mut f) = config_file {
+            let mut buf = String::default();
+            let _ = f.read_to_string(&mut buf).await;
+            FmtConfig::from_toml(&buf).unwrap_or_default()
+        } else {
+            FmtConfig::default()
+        }
     }
 }
