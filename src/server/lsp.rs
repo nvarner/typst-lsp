@@ -25,7 +25,7 @@ use super::semantic_tokens::{
     get_semantic_tokens_options, get_semantic_tokens_registration,
     get_semantic_tokens_unregistration,
 };
-use super::TypstServer;
+use super::{TypstServer, SourceScope};
 
 #[async_trait]
 impl LanguageServer for TypstServer {
@@ -605,14 +605,14 @@ impl LanguageServer for TypstServer {
     ) -> jsonrpc::Result<Option<Vec<TextEdit>>> {
         let uri = params.text_document.uri;
 
-        let edits = self
+        let SourceScope { source, project: _ } = self
             .scope_with_source(&uri)
             .await
             .map_err(|err| {
                 error!(%err, %uri, "error getting document to format");
                 jsonrpc::Error::internal_error()
-            })?
-            .run(|source, _| self.format_document(source))
+            })?;
+        let edits = self.format_document(&source).await
             .map_err(|err| {
                 error!(%err, %uri, "error formatting document");
                 jsonrpc::Error::internal_error()
