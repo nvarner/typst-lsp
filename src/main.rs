@@ -44,8 +44,9 @@ struct Args {}
 fn arg_parser() -> OptionParser<Args> {
     construct!(Args {}).to_options().version(
         format!(
-            "{} (Typst version {TYPST_VERSION})",
-            env!("CARGO_PKG_VERSION")
+            "{}, commit {} (Typst version {TYPST_VERSION})",
+            env!("CARGO_PKG_VERSION"),
+            env!("GIT_COMMIT")
         )
         .as_str(),
     )
