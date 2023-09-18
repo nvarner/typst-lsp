@@ -184,12 +184,14 @@ impl ExternalPackageError {
     pub fn convert(self, id: FileId) -> FileError {
         let Some(spec) = id.package() else {
             error!(?id, "cannot get spec to report `PackageError`");
-            return FileError::Package(TypstPackageError::Other);
+            return FileError::Package(TypstPackageError::Other(Some(self.to_string().into())));
         };
 
         match self {
             Self::Repo(err) => FileError::Package(err.convert(spec)),
-            Self::InvalidPath(_) | Self::Other(_) => FileError::Other,
+            Self::InvalidPath(_) | Self::Other(_) => {
+                FileError::Other(Some(self.to_string().into()))
+            }
         }
     }
 }

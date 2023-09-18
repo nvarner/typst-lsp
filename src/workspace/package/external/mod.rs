@@ -161,9 +161,11 @@ impl RepoError {
             Self::InvalidNamespace(_) | Self::NotFound(_) => {
                 TypstPackageError::NotFound(spec.clone())
             }
-            Self::Network(_) => TypstPackageError::NetworkFailed,
-            Self::MalformedArchive(_) => TypstPackageError::MalformedArchive,
-            Self::LocalFs(_) => TypstPackageError::Other,
+            Self::Network(_) => TypstPackageError::NetworkFailed(Some(self.to_string().into())),
+            Self::MalformedArchive(_) => {
+                TypstPackageError::MalformedArchive(Some(self.to_string().into()))
+            }
+            Self::LocalFs(_) => TypstPackageError::Other(Some(self.to_string().into())),
         }
     }
 }

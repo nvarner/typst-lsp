@@ -31,7 +31,8 @@ impl TypstServer {
         for &position in positions {
             let typst_offset =
                 lsp_to_typst::position_to_offset(position, position_encoding, source);
-            let leaf = self.get_leaf(source, typst_offset)?;
+            let tree = LinkedNode::new(source.root());
+            let leaf = tree.leaf_at(typst_offset)?;
             ranges.push(range_for_node(source, position_encoding, &leaf));
         }
         Some(ranges)

@@ -29,6 +29,9 @@ pub type TypstDiagnostic = typst::diag::SourceDiagnostic;
 pub type LspSeverity = lsp_types::DiagnosticSeverity;
 pub type TypstSeverity = typst::diag::Severity;
 
+pub type LspParamInfo = lsp_types::ParameterInformation;
+pub type TypstParamInfo = typst::eval::ParamInfo;
+
 /// An LSP range with its associated encoding.
 pub struct LspRange {
     pub raw_range: LspRawRange,
@@ -122,8 +125,11 @@ pub mod typst_to_lsp {
     use itertools::{Format, Itertools};
     use lazy_static::lazy_static;
     use regex::{Captures, Regex};
-    use tower_lsp::lsp_types::{InsertTextFormat, LanguageString, MarkedString};
+    use tower_lsp::lsp_types::{
+        Documentation, InsertTextFormat, LanguageString, MarkedString, MarkupContent, MarkupKind,
+    };
     use tracing::error;
+    use typst::eval::CastInfo;
     use typst::syntax::{FileId, Source};
     use typst_library::prelude::EcoString;
 
@@ -186,6 +192,7 @@ pub mod typst_to_lsp {
             TypstCompletionKind::Param => LspCompletionKind::VARIABLE,
             TypstCompletionKind::Constant => LspCompletionKind::CONSTANT,
             TypstCompletionKind::Symbol(_) => LspCompletionKind::TEXT,
+            TypstCompletionKind::Type => LspCompletionKind::CLASS,
         }
     }
 
@@ -322,6 +329,41 @@ pub mod typst_to_lsp {
             }),
         };
         LspHoverContents::Scalar(lsp_marked_string)
+    }
+
+    pub fn param_info(typst_param_info: &TypstParamInfo) -> LspParamInfo {
+        LspParamInfo {
+            label: lsp_types::ParameterLabel::Simple(typst_param_info.name.to_owned()),
+            documentation: param_info_to_docs(typst_param_info),
+        }
+    }
+
+    pub fn param_info_to_label(typst_param_info: &TypstParamInfo) -> String {
+        format!(
+            "{}: {}",
+            typst_param_info.name,
+            cast_info_to_label(&typst_param_info.input)
+        )
+    }
+
+    fn param_info_to_docs(typst_param_info: &TypstParamInfo) -> Option<Documentation> {
+        if !typst_param_info.docs.is_empty() {
+            Some(Documentation::MarkupContent(MarkupContent {
+                value: typst_param_info.docs.to_owned(),
+                kind: MarkupKind::Markdown,
+            }))
+        } else {
+            None
+        }
+    }
+
+    pub fn cast_info_to_label(cast_info: &CastInfo) -> String {
+        match cast_info {
+            CastInfo::Any => "any".to_owned(),
+            CastInfo::Value(value, _) => value.repr().to_string(),
+            CastInfo::Type(ty) => ty.to_string(),
+            CastInfo::Union(options) => options.iter().map(cast_info_to_label).join(" "),
+        }
     }
 }
 
