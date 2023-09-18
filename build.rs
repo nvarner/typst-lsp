@@ -80,7 +80,7 @@ fn main() {
         "cargo:rustc-env=GIT_COMMIT={}",
         exec("git", &["rev-parse", "HEAD"]).unwrap()
     );
-  
+
     let metadata = cargo_metadata::MetadataCommand::new().exec().unwrap();
     let typst = metadata
         .packages
