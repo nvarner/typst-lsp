@@ -9,7 +9,7 @@ use tower_lsp::lsp_types::{DocumentFormattingClientCapabilities, Url};
 use tower_lsp::lsp_types::{
     InitializeParams, Position, PositionEncodingKind, SemanticTokensClientCapabilities,
 };
-use typst::syntax::FileId;
+use typst::syntax::{FileId, VirtualPath};
 
 use crate::config::PositionEncoding;
 use crate::workspace::fs::local::LocalFs;
@@ -101,24 +101,22 @@ impl StrExt for str {
 }
 
 pub trait PathExt {
-    /// Creates a [`PathBuf`] with `self` adjoined to `prefix`. See [`PathBuf::push`] for semantics.
-    fn push_front(&self, prefix: impl AsRef<Path>) -> PathBuf;
-
-    fn root() -> &'static Path;
     fn is_typst(&self) -> bool;
 }
 
 impl PathExt for Path {
-    fn push_front(&self, prefix: impl AsRef<Path>) -> PathBuf {
-        prefix.as_ref().join(self)
-    }
-
-    fn root() -> &'static Path {
-        Path::new("/")
-    }
-
     fn is_typst(&self) -> bool {
         self.extension().map_or(false, |ext| ext == "typ")
+    }
+}
+
+pub trait VirtualPathExt {
+    fn with_extension(&self, extension: impl AsRef<OsStr>) -> Self;
+}
+
+impl VirtualPathExt for VirtualPath {
+    fn with_extension(&self, extension: impl AsRef<OsStr>) -> Self {
+        Self::new(self.as_rooted_path().with_extension(extension))
     }
 }
 
@@ -129,8 +127,8 @@ pub trait FileIdExt {
 
 impl FileIdExt for FileId {
     fn with_extension(self, extension: impl AsRef<OsStr>) -> Self {
-        let path = self.path().with_extension(extension);
-        Self::new(self.package().cloned(), &path)
+        let path = self.vpath().with_extension(extension);
+        Self::new(self.package().cloned(), path)
     }
 
     fn fill(self, current: PackageId) -> FullFileId {
@@ -139,7 +137,7 @@ impl FileIdExt for FileId {
             .cloned()
             .map(PackageId::new_external)
             .unwrap_or(current);
-        FullFileId::new(package, self.path().to_owned())
+        FullFileId::new(package, self.vpath().clone())
     }
 }
 
@@ -175,11 +173,11 @@ pub struct PositionDelta {
 pub trait UrlExt {
     /// Joins the path to the URI, treating the URI as if it was the root directory. Returns `Err`
     /// if the path leads out of the root or the URI cannot be used as a base.
-    fn join_rooted(self, path: &Path) -> UriResult<Url>;
+    fn join_rooted(self, vpath: &VirtualPath) -> UriResult<Url>;
 
     /// Gets the relative path to the sub URI, treating this URI as if it was the root. Returns
     /// `None` if the path leads out of the root.
-    fn make_relative_rooted(&self, sub_uri: &Url) -> UriResult<PathBuf>;
+    fn make_relative_rooted(&self, sub_uri: &Url) -> UriResult<VirtualPath>;
 
     /// Unless this URL is cannot-be-a-base, returns the path segments, percent decoded into UTF-8
     /// strings, if possible.
@@ -191,13 +189,13 @@ pub trait UrlExt {
 }
 
 impl UrlExt for Url {
-    fn join_rooted(mut self, path: &Path) -> Result<Url, UriError> {
+    fn join_rooted(mut self, vpath: &VirtualPath) -> Result<Url, UriError> {
         let mut added_len: usize = 0;
         let mut segments = self
             .path_segments_mut()
             .map_err(|()| UriError::CannotBeABase)?;
 
-        for component in path.components() {
+        for component in vpath.as_rootless_path().components() {
             match component {
                 Component::Normal(segment) => {
                     added_len += 1;
@@ -219,7 +217,7 @@ impl UrlExt for Url {
         Ok(self)
     }
 
-    fn make_relative_rooted(&self, sub_uri: &Url) -> UriResult<PathBuf> {
+    fn make_relative_rooted(&self, sub_uri: &Url) -> UriResult<VirtualPath> {
         if self.scheme() != sub_uri.scheme() || self.authority() != sub_uri.authority() {
             return Err(UriError::PathEscapesRoot);
         }
@@ -236,7 +234,7 @@ impl UrlExt for Url {
             .map(|x| x.just_right().ok_or(UriError::PathEscapesRoot))
             .try_collect()?;
 
-        Ok(relative_path.push_front(Path::root()))
+        Ok(VirtualPath::new(relative_path))
     }
 
     fn path_segments_decoded(&self) -> UriResult<Vec<Cow<str>>> {
@@ -292,9 +290,9 @@ mod uri_test {
     #[test]
     fn join_rooted() {
         let url = Url::parse("file:///path/to").unwrap();
-        let path = Path::new("/file.typ");
+        let path = VirtualPath::new("/file.typ");
 
-        let joined = url.join_rooted(path).unwrap();
+        let joined = url.join_rooted(&path).unwrap();
 
         let expected = Url::parse("file:///path/to/file.typ").unwrap();
         assert_eq!(expected, joined);
@@ -303,9 +301,9 @@ mod uri_test {
     #[test]
     fn join_rooted_utf8() {
         let url = Url::parse("file:///path/%E6%B1%89%E5%AD%97/to").unwrap();
-        let path = Path::new("/汉字.typ");
+        let path = VirtualPath::new("/汉字.typ");
 
-        let joined = url.join_rooted(path).unwrap();
+        let joined = url.join_rooted(&path).unwrap();
 
         let expected =
             Url::parse("file:///path/%E6%B1%89%E5%AD%97/to/%E6%B1%89%E5%AD%97.typ").unwrap();
@@ -315,9 +313,9 @@ mod uri_test {
     #[test]
     fn join_rooted_escape() {
         let url = Url::parse("file:///path/to").unwrap();
-        let escapee = Path::new("/../../etc/passwd");
+        let escapee = VirtualPath::new("/../../etc/passwd");
 
-        let error = url.join_rooted(escapee).unwrap_err();
+        let error = url.join_rooted(&escapee).unwrap_err();
 
         assert_eq!(UriError::PathEscapesRoot, error);
     }
@@ -329,7 +327,7 @@ mod uri_test {
 
         let relative = base_url.make_relative_rooted(&sub_url).unwrap();
 
-        assert_eq!(Path::new("/to/file.typ"), &relative);
+        assert_eq!(VirtualPath::new("/to/file.typ"), relative);
     }
 
     #[test]
@@ -340,7 +338,7 @@ mod uri_test {
 
         let relative = base_url.make_relative_rooted(&sub_url).unwrap();
 
-        assert_eq!(Path::new("/to/汉字.typ"), &relative);
+        assert_eq!(VirtualPath::new("/to/汉字.typ"), relative);
     }
 
     #[test]

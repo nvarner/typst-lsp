@@ -1,14 +1,13 @@
 use itertools::Itertools;
 use tower_lsp::lsp_types::{
-    Documentation, MarkupContent, MarkupKind, ParameterInformation, ParameterLabel, SignatureHelp,
+    Documentation, MarkupContent, MarkupKind, ParameterInformation, SignatureHelp,
     SignatureInformation, Url,
 };
 use tracing::trace;
-use typst::eval::{CastInfo, FuncInfo, Scopes, Value};
+use typst::eval::{Func, ParamInfo, Scopes, Value};
 use typst::syntax::{ast, LinkedNode, Source, SyntaxKind};
 
-use crate::ext::StrExt;
-use crate::lsp_typst_boundary::{lsp_to_typst, LspCharacterOffset, LspPosition, TypstOffset};
+use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp, LspPosition, TypstOffset};
 
 use super::TypstServer;
 
@@ -32,55 +31,88 @@ impl TypstServer {
                 source,
             );
 
-            self.get_signature_info_at_offset(source, typst_offset, &scopes)
-                .map(|signature| SignatureHelp {
+            get_signature_info_at_offset(source, typst_offset, &scopes).map(|signature| {
+                SignatureHelp {
                     signatures: vec![signature],
                     active_signature: Some(0),
                     active_parameter: None,
-                })
+                }
+            })
         });
 
         Ok(signature)
     }
+}
 
-    #[tracing::instrument(skip(self, source, scopes))]
-    fn get_signature_info_at_offset(
-        &self,
+#[tracing::instrument(skip(scopes))]
+fn get_signature_info_at_offset(
+    source: &Source,
+    typst_offset: TypstOffset,
+    scopes: &Scopes,
+) -> Option<SignatureInformation> {
+    let param_in_function = ParamInFunction::at_offset(source, typst_offset, scopes)?;
+    trace!(?param_in_function, "got param in function");
+
+    let label = param_in_function.label().to_string();
+    let params = param_in_function.param_infos();
+    trace!(label, ?params, "got signature info");
+
+    let documentation = param_in_function.docs();
+
+    let active_parameter = param_in_function.param_index().map(|i| i as u32);
+
+    Some(SignatureInformation {
+        label,
+        documentation,
+        parameters: Some(params),
+        active_parameter,
+    })
+}
+
+#[derive(Debug, Clone)]
+struct ParamInFunction<'a> {
+    function: &'a Func,
+    param_index: Option<usize>,
+}
+
+impl<'a> ParamInFunction<'a> {
+    #[tracing::instrument(skip(scopes), ret)]
+    pub fn at_offset(
         source: &Source,
         typst_offset: TypstOffset,
-        scopes: &Scopes,
-    ) -> Option<SignatureInformation> {
-        let leaf = self.get_leaf(source, typst_offset)?;
+        scopes: &'a Scopes,
+    ) -> Option<Self> {
+        let tree = LinkedNode::new(source.root());
+        let leaf = tree.leaf_at(typst_offset)?;
         trace!("got leaf");
-        let (func_ident, args) = self.get_surrounding_function(&leaf)?;
-        trace!(ident = func_ident.as_str(), "got surrounding function");
-        let deciding = self.get_deciding(&leaf);
-        trace!(?scopes, "scope");
-        let func_info = self.get_function_info(scopes, &func_ident)?;
-        trace!("got func info");
-        let current_param_index = self.get_current_param_index(&deciding, func_info, args);
 
-        let (label, params) = self.get_param_information(func_info);
+        Self::at_leaf(&leaf, scopes)
+    }
 
-        trace!(?current_param_index, label, ?params, "got signature info");
+    fn at_leaf(leaf: &LinkedNode, scopes: &'a Scopes) -> Option<Self> {
+        let (ident, args) = Self::surrounding_function_syntax(leaf)?;
+        let function = Self::function_value(scopes, &ident)?;
+        trace!(?function, "got function");
 
-        Some(SignatureInformation {
-            label,
-            documentation: Some(self.markdown_docs(func_info.docs)),
-            parameters: Some(params),
-            active_parameter: current_param_index.map(|i| i as u32),
+        let param_index = Self::param_index_at_leaf(leaf, function, args);
+
+        Some(Self {
+            function,
+            param_index,
         })
     }
 
-    pub fn get_leaf<'a>(
-        &self,
-        source: &'a Source,
-        typst_offset: TypstOffset,
-    ) -> Option<LinkedNode<'a>> {
-        LinkedNode::new(source.root()).leaf_at(typst_offset)
+    fn param_index_at_leaf(leaf: &LinkedNode, function: &Func, args: ast::Args) -> Option<usize> {
+        let deciding = Self::deciding_syntax(leaf);
+        let params = function.params()?;
+        let param_index = Self::find_param_index(&deciding, params, args)?;
+        trace!(param_index, "got param index");
+        Some(param_index)
     }
 
-    pub fn get_surrounding_function(&self, leaf: &LinkedNode) -> Option<(ast::Ident, ast::Args)> {
+    fn surrounding_function_syntax<'b>(
+        leaf: &'b LinkedNode,
+    ) -> Option<(ast::Ident<'b>, ast::Args<'b>)> {
         let parent = leaf.parent()?;
         let parent = match parent.kind() {
             SyntaxKind::Named => parent.parent()?,
@@ -102,19 +134,15 @@ impl TypstServer {
         Some((callee, args))
     }
 
-    pub fn get_function_info<'a>(
-        &self,
-        scopes: &'a Scopes,
-        ident: &ast::Ident,
-    ) -> Option<&'a FuncInfo> {
+    fn function_value<'b>(scopes: &'b Scopes, ident: &ast::Ident) -> Option<&'b Func> {
         match scopes.get(ident.as_str()) {
-            Ok(Value::Func(function)) => function.info(),
+            Ok(Value::Func(function)) => Some(function),
             _ => None,
         }
     }
 
     /// Find the piece of syntax that decides what we're completing.
-    pub fn get_deciding<'a>(&self, leaf: &'a LinkedNode) -> LinkedNode<'a> {
+    fn deciding_syntax<'b>(leaf: &'b LinkedNode) -> LinkedNode<'b> {
         let mut deciding = leaf.clone();
         while !matches!(
             deciding.kind(),
@@ -128,31 +156,26 @@ impl TypstServer {
         deciding
     }
 
-    pub fn get_current_param_index(
-        &self,
+    fn find_param_index(
         deciding: &LinkedNode,
-        function_info: &FuncInfo,
+        params: &[ParamInfo],
         args: ast::Args,
     ) -> Option<usize> {
         match deciding.kind() {
             // After colon: "func(param:|)", "func(param: |)".
-            SyntaxKind::Colon => deciding
-                .prev_leaf()
-                .and_then(|prev| prev.cast::<ast::Ident>())
-                .and_then(|param_ident| {
-                    function_info
-                        .params
-                        .iter()
-                        .position(|param| param.name == param_ident.as_str())
-                }),
+            SyntaxKind::Colon => {
+                let prev = deciding.prev_leaf()?;
+                let param_ident = prev.cast::<ast::Ident>()?;
+                params
+                    .iter()
+                    .position(|param| param.name == param_ident.as_str())
+            }
             // Before: "func(|)", "func(hi|)", "func(12,|)".
             SyntaxKind::Comma | SyntaxKind::LeftParen => {
-                let following_param = deciding
-                    .next_leaf()
-                    .and_then(|next| next.cast::<ast::Ident>());
+                let next = deciding.next_leaf();
+                let following_param = next.as_ref().and_then(|next| next.cast::<ast::Ident>());
                 match following_param {
-                    Some(next) => function_info
-                        .params
+                    Some(next) => params
                         .iter()
                         .position(|param| param.named && param.name.starts_with(next.as_str())),
                     None => {
@@ -160,8 +183,7 @@ impl TypstServer {
                             .items()
                             .filter(|arg| matches!(arg, ast::Arg::Pos(_)))
                             .count();
-                        function_info
-                            .params
+                        params
                             .iter()
                             .enumerate()
                             .filter(|(_, param)| param.positional)
@@ -174,74 +196,57 @@ impl TypstServer {
         }
     }
 
-    fn format_cast_info(info: &CastInfo) -> String {
-        match info {
-            CastInfo::Any => "any".to_owned(),
-            CastInfo::Value(value, _) => value.repr().to_string(),
-            CastInfo::Type(ty) => (*ty).to_owned(),
-            CastInfo::Union(options) => options.iter().map(Self::format_cast_info).join(" "),
+    pub fn function_name(&self) -> &str {
+        self.function.name().unwrap_or("<anonymous closure>")
+    }
+
+    pub fn param_index(&self) -> Option<usize> {
+        self.param_index.as_ref().copied()
+    }
+
+    pub fn docs(&self) -> Option<Documentation> {
+        self.function.docs().map(Self::markdown_docs)
+    }
+
+    fn markdown_docs(docs: &str) -> Documentation {
+        Documentation::MarkupContent(MarkupContent {
+            kind: MarkupKind::Markdown,
+            value: docs.to_owned(),
+        })
+    }
+
+    pub fn label(&self) -> String {
+        format!(
+            "{}({}){}",
+            self.function_name(),
+            self.param_label(),
+            self.return_label()
+        )
+    }
+
+    fn param_label(&self) -> String {
+        match self.function.params() {
+            Some(params) => params
+                .iter()
+                .map(typst_to_lsp::param_info_to_label)
+                .join(", "),
+            None => "".to_owned(),
         }
     }
 
-    /// Returns the signature label as well as parameter offsets of the function
-    pub fn get_param_information(&self, info: &FuncInfo) -> (String, Vec<ParameterInformation>) {
-        let encoding = self.const_config().position_encoding;
-
-        let label_start = format!("{}(", info.name);
-        let param_joiner = ", ";
-        let param_joiner_len = param_joiner.encoded_len(encoding);
-
-        let labels = info
-            .params
-            .iter()
-            .map(|param| {
-                let type_string = Self::format_cast_info(&param.cast);
-                format!("{}: {}", param.name, type_string)
-            })
-            .collect::<Vec<_>>();
-
-        let params = labels
-            .iter()
-            .scan(
-                label_start.encoded_len(encoding),
-                |start_of_label, label| {
-                    let len = label.encoded_len(encoding);
-                    let end_of_label = *start_of_label + len;
-                    let offsets = [
-                        *start_of_label as LspCharacterOffset,
-                        end_of_label as LspCharacterOffset,
-                    ];
-
-                    *start_of_label += len + param_joiner_len;
-
-                    Some(offsets)
-                },
-            )
-            .zip(info.params.iter())
-            .map(|(offsets, param)| ParameterInformation {
-                label: ParameterLabel::LabelOffsets(offsets),
-                documentation: Some(self.markdown_docs(param.docs)),
-            })
-            .collect();
-
-        let params_label = labels.iter().join(param_joiner);
-
-        let type_label = Self::format_cast_info(&info.returns);
-        let returns_label = if !type_label.is_empty() {
-            format!(" -> {type_label}")
-        } else {
-            "".to_owned()
-        };
-
-        let label = format!("{label_start}{params_label}){returns_label}");
-
-        (label, params)
+    fn return_label(&self) -> String {
+        match self.function.returns() {
+            Some(returns) => format!("-> {}", typst_to_lsp::cast_info_to_label(returns)),
+            None => "".to_owned(),
+        }
     }
 
-    pub fn markdown_docs(&self, docs: &str) -> Documentation {
-        Documentation::MarkupContent(MarkupContent {
-            kind: MarkupKind::Markdown,
-            value: docs.into(),
-        })
+    pub fn param_infos(&self) -> Vec<ParameterInformation> {
+        self.function
+            .params()
+            .unwrap_or_default()
+            .iter()
+            .map(typst_to_lsp::param_info)
+            .collect()
     }
 }

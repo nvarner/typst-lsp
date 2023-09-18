@@ -1,12 +1,11 @@
 use core::fmt;
 use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
 
 use internment::Intern;
 use tower_lsp::lsp_types::Url;
-use typst::syntax::{FileId, PackageSpec};
+use typst::syntax::{FileId, PackageSpec, VirtualPath};
 
-use crate::ext::{UriResult, UrlExt};
+use crate::ext::{UriResult, UrlExt, VirtualPathExt};
 
 pub mod external;
 pub mod manager;
@@ -28,11 +27,11 @@ impl Package {
     }
 
     /// Converts a path in the package to a URI
-    pub fn path_to_uri(&self, path: &Path) -> UriResult<Url> {
-        self.root.clone().join_rooted(path)
+    pub fn vpath_to_uri(&self, vpath: &VirtualPath) -> UriResult<Url> {
+        self.root.clone().join_rooted(vpath)
     }
 
-    pub fn uri_to_path(&self, uri: &Url) -> UriResult<PathBuf> {
+    pub fn uri_to_vpath(&self, uri: &Url) -> UriResult<VirtualPath> {
         self.root.make_relative_rooted(uri)
     }
 }
@@ -109,7 +108,7 @@ impl fmt::Debug for FullFileId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("FullFileId")
             .field(&self.0.package)
-            .field(&self.0.path)
+            .field(&self.0.vpath)
             .finish()
     }
 }
@@ -117,20 +116,20 @@ impl fmt::Debug for FullFileId {
 #[derive(Debug, Hash, PartialEq, Eq)]
 struct FullFileIdInner {
     package: PackageId,
-    path: PathBuf,
+    vpath: VirtualPath,
 }
 
 impl FullFileId {
-    pub fn new(package: PackageId, path: PathBuf) -> Self {
-        Self(Intern::new(FullFileIdInner { package, path }))
+    pub fn new(package: PackageId, vpath: VirtualPath) -> Self {
+        Self(Intern::new(FullFileIdInner { package, vpath }))
     }
 
     pub fn package(self) -> PackageId {
         self.0.as_ref().package
     }
 
-    pub fn path(self) -> &'static Path {
-        &self.0.as_ref().path
+    pub fn vpath(self) -> &'static VirtualPath {
+        &self.0.as_ref().vpath
     }
 
     pub fn spec(self) -> Option<&'static PackageSpec> {
@@ -140,13 +139,13 @@ impl FullFileId {
     pub fn with_extension(self, extension: impl AsRef<OsStr>) -> Self {
         Self(Intern::new(FullFileIdInner {
             package: self.package(),
-            path: self.path().with_extension(extension),
+            vpath: self.vpath().with_extension(extension),
         }))
     }
 }
 
 impl From<FullFileId> for FileId {
     fn from(full: FullFileId) -> Self {
-        Self::new(full.spec().cloned(), full.path())
+        Self::new(full.spec().cloned(), full.vpath().clone())
     }
 }

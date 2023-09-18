@@ -100,7 +100,7 @@ impl Workspace {
 
     pub async fn uri(&self, full_id: FullFileId) -> FsResult<Url> {
         let package = self.package_manager().package(full_id.package()).await?;
-        let uri = package.path_to_uri(full_id.path())?;
+        let uri = package.vpath_to_uri(full_id.vpath())?;
         Ok(uri)
     }
 

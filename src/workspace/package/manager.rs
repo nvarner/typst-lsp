@@ -80,14 +80,14 @@ impl PackageManager {
         let candidates = self
             .current
             .iter()
-            .filter_map(|(root, package)| Some((root, package.uri_to_path(uri).ok()?)))
+            .filter_map(|(root, package)| Some((root, package.uri_to_vpath(uri).ok()?)))
             .inspect(|(package_root, path)| trace!(%package_root, ?path, %uri, "considering candidate for full id"));
 
         // Our candidates are projects containing a URI, so we expect to get a set of
         // subdirectories. The "best" is the "most specific", that is, the project that is a
         // subdirectory of the rest. This should have the longest length.
         let (best_package_root, best_path) =
-            candidates.max_by_key(|(_, path)| path.components().count())?;
+            candidates.max_by_key(|(_, path)| path.as_rootless_path().components().count())?;
 
         let package_id = PackageId::new_current(best_package_root.clone());
         let full_file_id = FullFileId::new(package_id, best_path);
@@ -163,7 +163,7 @@ pub enum CurrentPackageError {
 impl CurrentPackageError {
     pub fn convert(self, id: FileId) -> FileError {
         match self {
-            Self::NotFound => FileError::NotFound(id.path().to_owned()),
+            Self::NotFound => FileError::NotFound(id.vpath().as_rootless_path().to_owned()),
         }
     }
 }
@@ -183,13 +183,15 @@ pub enum ExternalPackageError {
 impl ExternalPackageError {
     pub fn convert(self, id: FileId) -> FileError {
         let Some(spec) = id.package() else {
-            error!(%id, "cannot get spec to report `PackageError`");
-            return FileError::Package(TypstPackageError::Other);
+            error!(?id, "cannot get spec to report `PackageError`");
+            return FileError::Package(TypstPackageError::Other(Some(self.to_string().into())));
         };
 
         match self {
             Self::Repo(err) => FileError::Package(err.convert(spec)),
-            Self::InvalidPath(_) | Self::Other(_) => FileError::Other,
+            Self::InvalidPath(_) | Self::Other(_) => {
+                FileError::Other(Some(self.to_string().into()))
+            }
         }
     }
 }
