@@ -78,7 +78,7 @@ pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {
 fn main() {
     println!(
         "cargo:rustc-env=GIT_COMMIT={}",
-        exec("git", &["rev-parse", "HEAD"]).unwrap()
+        exec("git", &["rev-parse", "HEAD"]).unwrap_or_else(|_| String::from("unknown"))
     );
 
     let metadata = cargo_metadata::MetadataCommand::new().exec().unwrap();
