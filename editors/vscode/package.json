@@ -10,7 +10,7 @@
     "author": "Nathan Varner",
     "publisher": "nvarner",
     "license": "Apache-2.0 OR MIT",
-    "version": "0.10.0",
+    "version": "0.10.1",
     "engines": {
         "vscode": "^1.71.0"
     },
