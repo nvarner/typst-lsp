@@ -126,11 +126,13 @@ pub mod typst_to_lsp {
     use lazy_static::lazy_static;
     use regex::{Captures, Regex};
     use tower_lsp::lsp_types::{
-        Documentation, InsertTextFormat, LanguageString, MarkedString, MarkupContent, MarkupKind,
+        DiagnosticRelatedInformation, Documentation, InsertTextFormat, LanguageString, Location,
+        MarkedString, MarkupContent, MarkupKind,
     };
     use tracing::error;
+    use typst::diag::Tracepoint;
     use typst::eval::CastInfo;
-    use typst::syntax::{FileId, Source};
+    use typst::syntax::{FileId, Source, Spanned};
     use typst_library::prelude::EcoString;
 
     use crate::config::ConstConfig;
@@ -229,6 +231,50 @@ pub mod typst_to_lsp {
         typst_completions.iter().map(completion).collect_vec()
     }
 
+    async fn tracepoint_to_relatedinformation(
+        project: &Project,
+        tracepoint: &Spanned<Tracepoint>,
+        const_config: &ConstConfig,
+    ) -> anyhow::Result<Option<DiagnosticRelatedInformation>> {
+        if let Some(id) = tracepoint.span.id() {
+            let full_id = project.fill_id(id);
+            let uri = project.full_id_to_uri(full_id).await?;
+            let source = project.read_source_by_uri(&uri)?;
+
+            if let Some(typst_range) = source.range(tracepoint.span) {
+                let lsp_range =
+                    typst_to_lsp::range(typst_range, &source, const_config.position_encoding);
+
+                return Ok(Some(DiagnosticRelatedInformation {
+                    location: Location {
+                        uri,
+                        range: lsp_range.raw_range,
+                    },
+                    message: tracepoint.v.to_string(),
+                }));
+            }
+        }
+        
+        return Ok(None);
+    }
+    
+    
+    async fn diagnostic_related_information(
+        project: &Project,
+        typst_diagnostic: &TypstDiagnostic,
+        const_config: &ConstConfig,
+    ) -> anyhow::Result<Vec<DiagnosticRelatedInformation>> {
+        let mut tracepoints = vec![];
+
+        for tracepoint in &typst_diagnostic.trace {
+            if let Some(info) = tracepoint_to_relatedinformation(project, &tracepoint, const_config).await? {
+                tracepoints.push(info);
+            }
+        }
+        
+        Ok(tracepoints)
+    }
+
     async fn diagnostic(
         project: &Project,
         typst_diagnostic: &TypstDiagnostic,
@@ -249,11 +295,14 @@ pub mod typst_to_lsp {
         let typst_hints = &typst_diagnostic.hints;
         let lsp_message = format!("{typst_message}{}", diagnostic_hints(typst_hints));
 
+        let tracepoints = diagnostic_related_information(project, typst_diagnostic, const_config).await?;
+
         let diagnostic = LspDiagnostic {
             range: lsp_range.raw_range,
             severity: Some(lsp_severity),
             message: lsp_message,
             source: Some("typst".to_owned()),
+            related_information: Some(tracepoints),
             ..Default::default()
         };
 
