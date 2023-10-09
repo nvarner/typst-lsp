@@ -43,7 +43,7 @@ indexmap = "2.0.0"
 internment = "0.7.1"
 itertools = "0.11.0"
 lazy_static = "1.4.0"
-memmap2 = "0.8"
+memmap2 = "0.9"
 once_cell = "1.0"
 parking_lot = "0.12.1"
 percent-encoding = "2.3.0"
@@ -54,7 +54,7 @@ serde_json = "1.0.94"
 siphasher = "1.0"
 strum = { version = "0.25.0", features = ["derive"] }
 thiserror = "1.0.44"
-tokio = { version = "1.32.0", features = [
+tokio = { version = "1.33.0", features = [
     "macros",
     "rt-multi-thread",
     "io-std",
