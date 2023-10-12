@@ -255,7 +255,7 @@ pub mod typst_to_lsp {
             }
         }
         
-        return Ok(None);
+        Ok(None)
     }
     
     
@@ -267,7 +267,7 @@ pub mod typst_to_lsp {
         let mut tracepoints = vec![];
 
         for tracepoint in &typst_diagnostic.trace {
-            if let Some(info) = tracepoint_to_relatedinformation(project, &tracepoint, const_config).await? {
+            if let Some(info) = tracepoint_to_relatedinformation(project, tracepoint, const_config).await? {
                 tracepoints.push(info);
             }
         }
