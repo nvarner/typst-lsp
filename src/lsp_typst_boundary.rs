@@ -254,11 +254,10 @@ pub mod typst_to_lsp {
                 }));
             }
         }
-        
+
         Ok(None)
     }
-    
-    
+
     async fn diagnostic_related_information(
         project: &Project,
         typst_diagnostic: &TypstDiagnostic,
@@ -267,11 +266,13 @@ pub mod typst_to_lsp {
         let mut tracepoints = vec![];
 
         for tracepoint in &typst_diagnostic.trace {
-            if let Some(info) = tracepoint_to_relatedinformation(project, tracepoint, const_config).await? {
+            if let Some(info) =
+                tracepoint_to_relatedinformation(project, tracepoint, const_config).await?
+            {
                 tracepoints.push(info);
             }
         }
-        
+
         Ok(tracepoints)
     }
 
@@ -295,7 +296,8 @@ pub mod typst_to_lsp {
         let typst_hints = &typst_diagnostic.hints;
         let lsp_message = format!("{typst_message}{}", diagnostic_hints(typst_hints));
 
-        let tracepoints = diagnostic_related_information(project, typst_diagnostic, const_config).await?;
+        let tracepoints =
+            diagnostic_related_information(project, typst_diagnostic, const_config).await?;
 
         let diagnostic = LspDiagnostic {
             range: lsp_range.raw_range,
