@@ -47,7 +47,7 @@ memmap2 = "0.9"
 once_cell = "1.0"
 parking_lot = "0.12.1"
 percent-encoding = "2.3.0"
-regex = "1.8.1"
+regex = "1.10.1"
 same-file = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.94"
