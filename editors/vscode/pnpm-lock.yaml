@@ -24,7 +24,7 @@ devDependencies:
     version: 6.7.2(eslint@8.51.0)(typescript@5.2.2)
   '@vscode/vsce':
     specifier: ^2.21.0
-    version: 2.21.0
+    version: 2.22.0
   esbuild:
     specifier: ^0.19.3
     version: 0.19.3
@@ -492,8 +492,8 @@ packages:
       eslint-visitor-keys: 3.4.3
     dev: true
 
-  /@vscode/vsce@2.21.0:
-    resolution: {integrity: sha512-KuxYqScqUY/duJbkj9eE2tN2X/WJoGAy54hHtxT3ZBkM6IzrOg7H7CXGUPBxNlmqku2w/cAjOUSrgIHlzz0mbA==}
+  /@vscode/vsce@2.22.0:
+    resolution: {integrity: sha512-8df4uJiM3C6GZ2Sx/KilSKVxsetrTBBIUb3c0W4B1EWHcddioVs5mkyDKtMNP0khP/xBILVSzlXxhV+nm2rC9A==}
     engines: {node: '>= 14'}
     hasBin: true
     dependencies:
@@ -1988,7 +1988,7 @@ packages:
     engines: {node: '>= 14'}
     hasBin: true
     dependencies:
-      '@vscode/vsce': 2.21.0
+      '@vscode/vsce': 2.22.0
       commander: 6.2.1
       follow-redirects: 1.15.2
       is-ci: 2.0.0
