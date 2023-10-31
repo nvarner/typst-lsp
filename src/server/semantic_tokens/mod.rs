@@ -167,7 +167,7 @@ fn token_from_node(node: &LinkedNode) -> Option<TokenType> {
         Underscore if node.parent_kind() == Some(MathAttach) => Some(TokenType::Operator),
 
         MathIdent | Ident => Some(token_from_ident(node)),
-        Hashtag => token_from_hashtag(node),
+        Hash => token_from_hashtag(node),
 
         LeftBrace | RightBrace | LeftBracket | RightBracket | LeftParen | RightParen | Comma
         | Semicolon | Colon => Some(TokenType::Punctuation),
@@ -224,7 +224,7 @@ fn get_expr_following_hashtag<'a>(hashtag: &LinkedNode<'a>) -> Option<LinkedNode
         .next_sibling()
         .filter(|next| {
             next.cast::<ast::Expr>()
-                .map_or(false, |expr| expr.hashtag())
+                .map_or(false, |expr| expr.hash())
         })
         .and_then(|node| node.leftmost_leaf())
 }

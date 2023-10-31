@@ -18,7 +18,7 @@ const INTERPOLATED: SemanticTokenType = SemanticTokenType::new("pol");
 const ERROR: SemanticTokenType = SemanticTokenType::new("error");
 const TEXT: SemanticTokenType = SemanticTokenType::new("text");
 
-/// Very similar to [`typst::ide::Tag`], but with convenience traits, and extensible because we want
+/// Very similar to [`typst_ide::Tag`], but with convenience traits, and extensible because we want
 /// to further customize highlighting
 #[derive(Clone, Copy, EnumIter)]
 #[repr(u32)]

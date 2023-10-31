@@ -16,7 +16,7 @@ impl TypstServer {
         self.thread_with_world(source_uri)
             .await?
             .run(move |world| {
-                let data = typst::export::pdf(&document);
+                let data = typst::export::pdf(&document, None, None); // fixme: fill some real args
 
                 world
                     .write_raw(&pdf_uri, &data)
