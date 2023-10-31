@@ -77,7 +77,9 @@ impl LspFs {
                 let range = LspRange::new(lsp_range, position_encoding).into_range_on(source);
                 source.edit(range, &replacement);
             }
-            None => source.replace(replacement),
+            None => {
+                source.replace(&replacement);
+            }
         }
     }
 

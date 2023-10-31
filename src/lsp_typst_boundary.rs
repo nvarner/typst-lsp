@@ -18,7 +18,7 @@ pub type TypstSpan = typst::syntax::Span;
 pub type LspRawRange = lsp_types::Range;
 pub type TypstRange = std::ops::Range<usize>;
 
-pub type TypstTooltip = typst::ide::Tooltip;
+pub type TypstTooltip = typst_ide::Tooltip;
 pub type LspHoverContents = lsp_types::HoverContents;
 
 pub type TypstDatetime = typst::eval::Datetime;
@@ -53,8 +53,8 @@ impl LspRange {
 
 pub type LspCompletion = lsp_types::CompletionItem;
 pub type LspCompletionKind = lsp_types::CompletionItemKind;
-pub type TypstCompletion = typst::ide::Completion;
-pub type TypstCompletionKind = typst::ide::CompletionKind;
+pub type TypstCompletion = typst_ide::Completion;
+pub type TypstCompletionKind = typst_ide::CompletionKind;
 
 pub mod lsp_to_typst {
     use typst::syntax::Source;
@@ -131,7 +131,7 @@ pub mod typst_to_lsp {
     };
     use tracing::error;
     use typst::diag::Tracepoint;
-    use typst::eval::CastInfo;
+    use typst::eval::{CastInfo, Repr};
     use typst::syntax::{FileId, Source, Spanned};
     use typst_library::prelude::EcoString;
 

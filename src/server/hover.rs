@@ -24,7 +24,7 @@ impl TypstServer {
                 let typst_offset =
                     lsp_to_typst::position_to_offset(position, position_encoding, &source);
 
-                let typst_tooltip = typst::ide::tooltip(&world, &[], &source, typst_offset)?;
+                let typst_tooltip = typst_ide::tooltip(&world, &[], &source, typst_offset)?;
 
                 Some((typst_offset, typst_tooltip))
             })

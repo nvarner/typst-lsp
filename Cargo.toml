@@ -23,8 +23,9 @@ rustls-tls = ["reqwest?/rustls-tls"]
 native-tls = ["reqwest?/native-tls"]
 
 [dependencies]
-typst = { git = "https://github.com/typst/typst.git", tag = "v0.8.0" }
-typst-library = { git = "https://github.com/typst/typst.git", tag = "v0.8.0" }
+typst = { git = "https://github.com/typst/typst.git", tag = "v0.9.0" }
+typst-library = { git = "https://github.com/typst/typst.git", tag = "v0.9.0" }
+typst-ide = { git = "https://github.com/typst/typst.git", tag = "v0.9.0" }
 
 anyhow = "1.0.71"
 async-compression = { version = "0.4.1", features = ["tokio", "gzip"] }
@@ -39,7 +40,7 @@ dirs = "5.0"
 elsa = "1.9.0"
 futures = "0.3"
 if_chain = "1.0"
-indexmap = "2.0.0"
+indexmap = "2.0.2"
 internment = "0.7.1"
 itertools = "0.11.0"
 lazy_static = "1.4.0"
