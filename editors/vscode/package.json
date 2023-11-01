@@ -246,11 +246,17 @@
                         "markup.bold.term.typst"
                     ],
                     "label": [
-                        "entity.name.label.typst"
+                        "string.other.link.title.typst",
+                        "entity.name.label.typst",
+                        "meta.link.inline.typst",
+                        "markup.underline.link.typst"
                     ],
                     "ref": [
+                        "string.other.link.typst",
                         "markup.other.reference.typst",
-                        "entity.name.label.typst"
+                        "entity.name.label.typst",
+                        "meta.link.inline.typst",
+                        "markup.underline.link.typst"
                     ],
                     "pol": [
                         "meta.interpolation.typst",
