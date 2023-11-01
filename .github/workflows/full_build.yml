@@ -15,11 +15,6 @@ jobs:
             vs-code-target: win32-x64
             features:
 
-          - os: windows-latest
-            rust-target: i686-pc-windows-msvc
-            vs-code-target: win32-ia32
-            features:
-
           # Ring fails to compile on this target, so don't use rustls
           - os: windows-latest
             rust-target: aarch64-pc-windows-msvc
