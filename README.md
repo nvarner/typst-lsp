@@ -49,6 +49,15 @@ cargo build --release --no-default-features --features remote-packages,native-tl
 
 For Linux, `native-tls` means OpenSSL. You will need to install its headers to compile with `native-tls`.
 
+### Bumping the Typst version
+**Warning:** at time of writing, the Typst API has changed in every release. Until the language is stable, you may need Rust knowledge to address changes in Typst to successfully compile against a new version of Typst.
+
+You will need to modify the Typst dependencies in `Cargo.toml`. These are at the top of the `[dependencies]` section, have names starting with `typst`, and reference `git = "https://github.com/typst/typst.git"`.
+
+If you want to compile against a versioned release of Typst, change the `tag`s to the tag for your desired release. Usually, the tags are named `vX.X.X`.
+
+If you want to compile against a commit that hasn't been released, replace the `tag`s with `rev`s, and set their values to the Git commit hash. Commit hashes are hexadecimal strings, and have long and short versions that both name the commit. Among other places, a commit's hash can be found at the end of the GitHub URL for that commit.
+
 ## Development guide
 
 ### Prerequisites
