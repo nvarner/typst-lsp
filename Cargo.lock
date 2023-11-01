@@ -1024,7 +1024,7 @@ dependencies = [
  "biblatex",
  "ciborium",
  "citationberg",
- "indexmap 2.0.2",
+ "indexmap 2.1.0",
  "numerals",
  "paste",
  "rkyv",
@@ -1360,9 +1360,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.0.2"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8adf3ddd720272c6ea8bf59463c04e0f93d0bbf7c5439b691bca2987e0270897"
+checksum = "d530e1a18b1cb4c484e6e34556a0d948706958449fca0cab753d649f2bce3d1f"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.2",
@@ -2642,7 +2642,7 @@ version = "0.9.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3cc7a1570e38322cfe4154732e5110f887ea57e22b76f4bfd32b5bdd3368666c"
 dependencies = [
- "indexmap 2.0.2",
+ "indexmap 2.1.0",
  "itoa",
  "ryu",
  "serde",
@@ -3223,7 +3223,7 @@ version = "0.19.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b5bb770da30e5cbfde35a2d7b9b8a2c4b8ef89548a7a6aeab5c9a576e3e7421"
 dependencies = [
- "indexmap 2.0.2",
+ "indexmap 2.1.0",
  "serde",
  "serde_spanned",
  "toml_datetime",
@@ -3236,7 +3236,7 @@ version = "0.20.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "70f427fce4d84c72b5b732388bf4a9f4531b53f74e2887e3ecb2481f68f66d81"
 dependencies = [
- "indexmap 2.0.2",
+ "indexmap 2.1.0",
  "serde",
  "serde_spanned",
  "toml_datetime",
@@ -3415,7 +3415,7 @@ dependencies = [
  "flate2",
  "fontdb",
  "image",
- "indexmap 2.0.2",
+ "indexmap 2.1.0",
  "kurbo",
  "log",
  "miniz_oxide",
@@ -3483,7 +3483,7 @@ dependencies = [
  "icu_provider_adapters",
  "icu_provider_blob",
  "icu_segmenter",
- "indexmap 2.0.2",
+ "indexmap 2.1.0",
  "kurbo",
  "lipsum",
  "log",
@@ -3521,7 +3521,7 @@ dependencies = [
  "elsa",
  "futures",
  "if_chain",
- "indexmap 2.0.2",
+ "indexmap 2.1.0",
  "internment",
  "itertools 0.11.0",
  "lazy_static",
@@ -3599,8 +3599,8 @@ dependencies = [
 
 [[package]]
 name = "typstfmt_lib"
-version = "0.2.5"
-source = "git+https://github.com/astrale-sharp/typstfmt?tag=0.2.5#98b08f5ab033e657c8e81f95c86b111f4fd662a4"
+version = "0.2.6"
+source = "git+https://github.com/astrale-sharp/typstfmt?tag=0.2.6#b45cab03ac76e621ef1174160d03c4f7637a82df"
 dependencies = [
  "globmatch",
  "itertools 0.10.5",
