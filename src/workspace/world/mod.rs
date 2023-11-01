@@ -39,6 +39,10 @@ impl ProjectWorld {
         }
     }
 
+    pub fn now(&self) -> Option<Datetime> {
+        self.now.datetime()
+    }
+
     /// Write raw data to a file.
     ///
     /// This can cause cache invalidation errors if `uri` refers to a file in the cache, since the
