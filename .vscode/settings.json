@@ -4,6 +4,7 @@
         "editors/vscode"
     ],
     "rust-analyzer.linkedProjects": [
-        "./Cargo.toml"
+        "./Cargo.toml",
+        "./editors/lapce/Cargo.toml"
     ]
 }

@@ -207,7 +207,8 @@ pub mod typst_to_lsp {
         let mut counter = 1;
         let result =
             TYPST_SNIPPET_PLACEHOLDER_RE.replace_all(typst_snippet.as_str(), |cap: &Captures| {
-                let substitution = format!("${{{}:{}}}", counter, &cap[1]);
+                // let substitution = format!("${{{}:{}}}", counter, &cap[1]);
+                let substitution = format!("${counter}");
                 counter += 1;
                 substitution
             });

@@ -1,6 +1,8 @@
-/target
+/target/
+/editors/lapce/target/
 result*
 .direnv
 .envrc
-/editors/vscode/out/
 node_modules/
+/editors/vscode/out/
+/editors/lapce/out/
