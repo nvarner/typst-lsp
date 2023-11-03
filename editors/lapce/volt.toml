@@ -3,10 +3,12 @@ version = "0.11.0"
 author = "nvarner"
 display-name = "Typst LSP"
 description = "A language server for Typst"
-wasm = "target/wasm32-wasi/debug/lapce.wasm"
+icon = "icon-typst.png"
+respository = "https://github.com/nvarner/typst-lsp/"
+wasm = "out/lapce.wasm"
 
 [activation]
-language = []
+language = ["typst"]
 workspace-contains = ["**/*.typ"]
 
 [config."typst-lsp.serverPath"]
