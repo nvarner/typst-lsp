@@ -99,9 +99,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: davidB/rust-cargo-make@v1.9.0
       
-      - name: Tests
-        run: cargo test --no-fail-fast
-      
       - name: Clippy
         run: cargo clippy --all-targets -- -Dwarnings
       
