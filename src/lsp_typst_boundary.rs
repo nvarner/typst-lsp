@@ -126,8 +126,8 @@ pub mod typst_to_lsp {
     use lazy_static::lazy_static;
     use regex::{Captures, Regex};
     use tower_lsp::lsp_types::{
-        DiagnosticRelatedInformation, Documentation, InsertTextFormat, LanguageString, Location,
-        MarkedString, MarkupContent, MarkupKind,
+        CompletionTextEdit, DiagnosticRelatedInformation, Documentation, InsertTextFormat,
+        LanguageString, Location, MarkedString, MarkupContent, MarkupKind, TextEdit,
     };
     use tracing::error;
     use typst::diag::Tracepoint;
@@ -207,8 +207,7 @@ pub mod typst_to_lsp {
         let mut counter = 1;
         let result =
             TYPST_SNIPPET_PLACEHOLDER_RE.replace_all(typst_snippet.as_str(), |cap: &Captures| {
-                // let substitution = format!("${{{}:{}}}", counter, &cap[1]);
-                let substitution = format!("${counter}");
+                let substitution = format!("${{{}:{}}}", counter, &cap[1]);
                 counter += 1;
                 substitution
             });
@@ -216,20 +215,35 @@ pub mod typst_to_lsp {
         result.to_string()
     }
 
-    pub fn completion(typst_completion: &TypstCompletion) -> LspCompletion {
-        // TODO: provide `text_edit` instead of `insert_text` as recommended by the LSP spec
+    pub fn completion(
+        typst_completion: &TypstCompletion,
+        lsp_replace: LspRawRange,
+    ) -> LspCompletion {
+        let typst_snippet = typst_completion
+            .apply
+            .as_ref()
+            .unwrap_or(&typst_completion.label);
+        let lsp_snippet = snippet(typst_snippet);
+        let text_edit = CompletionTextEdit::Edit(TextEdit::new(lsp_replace, lsp_snippet));
+
         LspCompletion {
             label: typst_completion.label.to_string(),
             kind: Some(completion_kind(typst_completion.kind.clone())),
             detail: typst_completion.detail.as_ref().map(String::from),
-            insert_text: typst_completion.apply.as_ref().map(snippet),
+            text_edit: Some(text_edit),
             insert_text_format: Some(InsertTextFormat::SNIPPET),
             ..Default::default()
         }
     }
 
-    pub fn completions(typst_completions: &[TypstCompletion]) -> Vec<LspCompletion> {
-        typst_completions.iter().map(completion).collect_vec()
+    pub fn completions(
+        typst_completions: &[TypstCompletion],
+        lsp_replace: LspRawRange,
+    ) -> Vec<LspCompletion> {
+        typst_completions
+            .iter()
+            .map(|typst_completion| completion(typst_completion, lsp_replace))
+            .collect_vec()
     }
 
     async fn tracepoint_to_relatedinformation(
