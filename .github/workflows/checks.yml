@@ -95,7 +95,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: wasm23-wasi
+          targets: wasm32-wasi
       - uses: Swatinem/rust-cache@v2
       - uses: davidB/rust-cargo-make@v1.9.0
       
