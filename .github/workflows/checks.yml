@@ -49,6 +49,11 @@ jobs:
   vs-code-extension:
     runs-on: ubuntu-latest
     name: VS Code Extension
+
+    defaults:
+      run:
+        working-directory: ./editors/vscode
+
     steps:
       - uses: actions/checkout@v3
 
@@ -57,28 +62,45 @@ jobs:
           node-version: 16
 
       - run: npm install
-        working-directory: ./editors/vscode
 
       - name: Compilation
         run: npm run compile
-        working-directory: ./editors/vscode
 
       - name: Type Checking
         run: npm run check
-        working-directory: ./editors/vscode
 
       - name: Tests
         run: npm run test
-        working-directory: ./editors/vscode
 
       - name: Linting and Formatting
         run: |
           npm run lint
           npm run format-check
-        working-directory: ./editors/vscode
 
       - name: Packaging
         # raises an error with packaging issues, eg. `@types/vscode` out of sync
         # with `engines.vscode`
         run: npx vsce ls
-        working-directory: ./editors/vscode
+  
+  lapce-extension:
+    runs-on: ubuntu-latest
+    name: Lapce Extension
+
+    defaults:
+      run:
+        working-directory: ./editors/lapce
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: davidB/rust-cargo-make@v1.9.0
+      
+      - name: Tests
+        run: cargo test --no-fail-fast
+      
+      - name: Clippy
+        run: cargo clippy --all-targets -- -Dwarnings
+      
+      - name: Formatting
+        run: cargo fmt --all --check
