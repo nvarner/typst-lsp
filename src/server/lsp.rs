@@ -16,7 +16,8 @@ use crate::config::{
     SemanticTokensMode,
 };
 use crate::ext::InitializeParamsExt;
-use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp};
+use crate::lsp_typst_boundary::typst_to_lsp::offset_to_position;
+use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp, LspRawRange};
 use crate::server::formatting::{get_formatting_registration, get_formatting_unregistration};
 use crate::workspace::Workspace;
 
@@ -398,10 +399,18 @@ impl LanguageServer for TypstServer {
 
                 let typst_offset =
                     lsp_to_typst::position_to_offset(position, position_encoding, &source);
-                typst_ide::autocomplete(&world, &doc.pages, &source, typst_offset, explicit)
+                let (typst_start_offset, completions) =
+                    typst_ide::autocomplete(&world, &doc.pages, &source, typst_offset, explicit)?;
+                let lsp_start_position =
+                    offset_to_position(typst_start_offset, position_encoding, &source);
+
+                Some((lsp_start_position, completions))
             })
             .await
-            .map(|(_, completions)| typst_to_lsp::completions(&completions).into());
+            .map(|(start_position, completions)| {
+                let replace_range = LspRawRange::new(start_position, position);
+                typst_to_lsp::completions(&completions, replace_range).into()
+            });
         Ok(completions)
     }
 
