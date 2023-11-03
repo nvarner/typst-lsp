@@ -5,13 +5,13 @@ on:
   pull_request:
 
 jobs:
-  rust:
+  language-server:
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
-    name: Rust ${{ matrix.os }}
+    name: Language Server ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -41,14 +41,15 @@ jobs:
         run: cargo fmt --all --check
 
   cargo-deny:
+    name: Cargo Deny
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - uses: EmbarkStudios/cargo-deny-action@v1
 
   vs-code-extension:
-    runs-on: ubuntu-latest
     name: VS Code Extension
+    runs-on: ubuntu-latest
 
     defaults:
       run:
@@ -83,8 +84,8 @@ jobs:
         run: npx vsce ls
   
   lapce-extension:
-    runs-on: ubuntu-latest
     name: Lapce Extension
+    runs-on: ubuntu-latest
 
     defaults:
       run:
@@ -93,6 +94,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm23-wasi
       - uses: Swatinem/rust-cache@v2
       - uses: davidB/rust-cargo-make@v1.9.0
       
