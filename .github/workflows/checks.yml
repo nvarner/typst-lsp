@@ -87,10 +87,6 @@ jobs:
     name: Lapce Extension
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: ./editors/lapce
-
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
