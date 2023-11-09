@@ -1,27 +1,39 @@
-[tasks.build-debug-lsp-binary]
-command = "cargo"
-args = ["build"]
-
 # Lapce extension
 [tasks.lapce-extension-dev-setup.linux]
 script = '''
 ln -s "$(realpath .)/editors/lapce/" "${XDG_DATA_HOME:-$HOME/.local/share}/lapce-stable/plugins/nvarner.typst-lsp"
 '''
 
-[tasks.build-lapce-extension-flow]
-# TODO: for a release build, don't build the LSP binary
+[tasks.lapce-extension-check-flow]
 dependencies = [
-    "build-debug-lsp-binary",
-    "build-lapce-extension-wasm",
-    "copy-wasm-to-lapce-extension",
+    "lapce-extension-build-wasm",
+    "lapce-extension-clippy",
+    "lapce-extension-fmt-check",
 ]
 
-[tasks.build-lapce-extension-wasm]
+[tasks.lapce-extension-clippy]
+cwd = "editors/lapce/"
+command = "cargo"
+args = ["clippy", "--all-targets", "--", "-Dwarnings"]
+
+[tasks.lapce-extension-fmt-check]
+cwd = "editors/lapce/"
+command = "cargo"
+args = ["fmt", "--all", "--check"]
+
+[tasks.lapce-extension-build-flow]
+dependencies = [
+    "build",
+    "lapce-extension-build-wasm",
+    "lapce-extension-copy-wasm",
+]
+
+[tasks.lapce-extension-build-wasm]
 cwd = "editors/lapce/"
 command = "cargo"
 args = ["build"]
 
-[tasks.copy-wasm-to-lapce-extension]
+[tasks.lapce-extension-copy-wasm]
 cwd = "editors/lapce/"
 script_runner = "@shell"
 script = '''
