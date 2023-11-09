@@ -98,9 +98,6 @@ jobs:
           targets: wasm32-wasi
       - uses: Swatinem/rust-cache@v2
       - uses: davidB/rust-cargo-make@v1.9.0
-      
-      - name: Clippy
-        run: cargo clippy --all-targets -- -Dwarnings
-      
-      - name: Formatting
-        run: cargo fmt --all --check
+
+      - name: Check
+        run: cargo make lapce-extension-check-flow
