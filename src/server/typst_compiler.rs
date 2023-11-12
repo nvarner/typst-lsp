@@ -15,7 +15,7 @@ impl TypstServer {
         &self,
         uri: &Url,
     ) -> anyhow::Result<(Option<Document>, DiagnosticsMap)> {
-        self.scope_with_source(uri)
+        let doc = self.scope_with_source(uri)
             .await?
             .run2(|source, project| async move {
                 let (document, diagnostics) = self
@@ -42,9 +42,14 @@ impl TypstServer {
                     typst_to_lsp::diagnostics(&project, diagnostics.as_ref(), self.const_config())
                         .await;
 
-                Ok((document, diagnostics))
+                let res: anyhow::Result<(Option<Document>, DiagnosticsMap)> = Ok((document, diagnostics));
+                res
             })
-            .await
+            .await?;
+        if let Some(doc) = &doc.0 {
+            *self.document.lock().await = doc.clone();
+        }
+        Ok(doc)
     }
 
     #[tracing::instrument(skip(self, uri), fields(%uri))]

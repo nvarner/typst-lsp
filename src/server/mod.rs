@@ -6,6 +6,7 @@ use tokio::sync::{Mutex, OwnedRwLockReadGuard, RwLock, RwLockReadGuard};
 use tower_lsp::lsp_types::Url;
 use tower_lsp::Client;
 use tracing_subscriber::{reload, Registry};
+use typst::doc::Document;
 use typst::syntax::Source;
 
 use crate::config::{Config, ConstConfig};
@@ -37,6 +38,7 @@ pub mod watch;
 
 pub struct TypstServer {
     client: Client,
+    document: Arc<Mutex<Document>>,
     typst_thread: TypstThread,
     workspace: OnceCell<Arc<RwLock<Workspace>>>,
     config: Arc<RwLock<Config>>,
@@ -60,6 +62,7 @@ impl TypstServer {
             diagnostics: Mutex::new(DiagnosticsManager::new(client.clone())),
             lsp_tracing_layer_handle,
             client,
+            document: Default::default(),
         }
     }
 
