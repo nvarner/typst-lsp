@@ -38,7 +38,7 @@ pub mod watch;
 
 pub struct TypstServer {
     client: Client,
-    document: Arc<Mutex<Document>>,
+    document: Mutex<Arc<Document>>,
     typst_thread: TypstThread,
     workspace: OnceCell<Arc<RwLock<Workspace>>>,
     config: Arc<RwLock<Config>>,
