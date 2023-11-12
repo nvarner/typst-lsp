@@ -40,7 +40,7 @@ impl TypstServer {
     }
 
     pub async fn run_diagnostics(&self, uri: &Url) -> anyhow::Result<()> {
-        let (_, diagnostics) = self.eval_source(uri).await?;
+        let (_, diagnostics) = self.compile_source(uri).await?;
 
         self.update_all_diagnostics(diagnostics).await;
 
