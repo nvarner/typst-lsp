@@ -15,7 +15,8 @@ impl TypstServer {
         &self,
         uri: &Url,
     ) -> anyhow::Result<(Option<Document>, DiagnosticsMap)> {
-        let doc = self.scope_with_source(uri)
+        let doc = self
+            .scope_with_source(uri)
             .await?
             .run2(|source, project| async move {
                 let (document, diagnostics) = self
@@ -42,7 +43,8 @@ impl TypstServer {
                     typst_to_lsp::diagnostics(&project, diagnostics.as_ref(), self.const_config())
                         .await;
 
-                let res: anyhow::Result<(Option<Document>, DiagnosticsMap)> = Ok((document, diagnostics));
+                let res: anyhow::Result<(Option<Document>, DiagnosticsMap)> =
+                    Ok((document, diagnostics));
                 res
             })
             .await?;

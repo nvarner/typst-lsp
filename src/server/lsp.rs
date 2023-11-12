@@ -385,9 +385,7 @@ impl LanguageServer for TypstServer {
             .map(|context| context.trigger_kind == CompletionTriggerKind::INVOKED)
             .unwrap_or(false);
         let position_encoding = self.const_config().position_encoding;
-        let frames = {
-            self.document.lock().await.pages.clone()
-        };
+        let frames = { self.document.lock().await.pages.clone() };
         let completions = self
             .thread_with_world(&uri)
             .await
