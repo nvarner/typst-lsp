@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::Context;
 use tower_lsp::lsp_types::Url;
 use tracing::info;
@@ -9,7 +11,11 @@ use super::TypstServer;
 
 impl TypstServer {
     #[tracing::instrument(skip(self))]
-    pub async fn export_pdf(&self, source_uri: &Url, document: Document) -> anyhow::Result<()> {
+    pub async fn export_pdf(
+        &self,
+        source_uri: &Url,
+        document: Arc<Document>,
+    ) -> anyhow::Result<()> {
         let pdf_uri = source_uri.clone().with_extension("pdf")?;
         info!(%pdf_uri, "exporting PDF");
 

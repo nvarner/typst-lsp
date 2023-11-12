@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use comemo::Track;
 use tower_lsp::lsp_types::Url;
 use typst::doc::Document;
@@ -14,7 +16,7 @@ impl TypstServer {
     pub async fn compile_source(
         &self,
         uri: &Url,
-    ) -> anyhow::Result<(Option<Document>, DiagnosticsMap)> {
+    ) -> anyhow::Result<(Option<Arc<Document>>, DiagnosticsMap)> {
         let doc = self
             .scope_with_source(uri)
             .await?
@@ -30,7 +32,7 @@ impl TypstServer {
 
                         let mut diagnostics = tracer.warnings();
                         match result {
-                            Ok(document) => (Some(document), diagnostics),
+                            Ok(document) => (Some(Arc::new(document)), diagnostics),
                             Err(errors) => {
                                 diagnostics.extend_from_slice(&errors);
                                 (None, diagnostics)
@@ -43,7 +45,7 @@ impl TypstServer {
                     typst_to_lsp::diagnostics(&project, diagnostics.as_ref(), self.const_config())
                         .await;
 
-                let res: anyhow::Result<(Option<Document>, DiagnosticsMap)> =
+                let res: anyhow::Result<(Option<Arc<Document>>, DiagnosticsMap)> =
                     Ok((document, diagnostics));
                 res
             })

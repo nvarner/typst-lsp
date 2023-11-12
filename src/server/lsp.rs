@@ -385,7 +385,7 @@ impl LanguageServer for TypstServer {
             .map(|context| context.trigger_kind == CompletionTriggerKind::INVOKED)
             .unwrap_or(false);
         let position_encoding = self.const_config().position_encoding;
-        let frames = { self.document.lock().await.pages.clone() };
+        let doc = { self.document.lock().await.clone() };
         let completions = self
             .thread_with_world(&uri)
             .await
@@ -398,7 +398,7 @@ impl LanguageServer for TypstServer {
 
                 let typst_offset =
                     lsp_to_typst::position_to_offset(position, position_encoding, &source);
-                typst_ide::autocomplete(&world, &frames, &source, typst_offset, explicit)
+                typst_ide::autocomplete(&world, &doc.pages, &source, typst_offset, explicit)
             })
             .await
             .map(|(_, completions)| typst_to_lsp::completions(&completions).into());
