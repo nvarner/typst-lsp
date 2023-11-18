@@ -5,7 +5,7 @@ edition = "2021"
 license = "Apache-2.0 OR MIT"
 
 [features]
-default = ["remote-packages", "rustls-tls"]
+default = ["remote-packages", "rustls-tls", "fontconfig"]
 
 jaeger = ["opentelemetry", "opentelemetry-jaeger", "tracing-opentelemetry"]
 
@@ -21,6 +21,10 @@ remote-packages = ["reqwest"]
 # prefered regardless of compilation woes.
 rustls-tls = ["reqwest?/rustls-tls"]
 native-tls = ["reqwest?/native-tls"]
+
+# Enables support for fontconfig.
+# Required for font support in NixOS.
+fontconfig = ["fontdb/fontconfig"]
 
 [dependencies]
 typst = { git = "https://github.com/typst/typst.git", tag = "v0.9.0" }
@@ -38,7 +42,7 @@ chrono = { version = "0.4.24", default-features = false, features = [
 comemo = "0.3"
 dirs = "5.0"
 elsa = "1.9.0"
-fontdb = "0.16.0"
+fontdb = { version = "0.16.0", default-features = false, features = ["std", "fs", "memmap"] }
 futures = "0.3"
 if_chain = "1.0"
 indexmap = "2.1.0"
