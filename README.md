@@ -54,6 +54,20 @@ for the LSP to detect fonts in certain Linux distributions, such as NixOS, and i
 If this causes any problems for your distribution, you can disable support for `fontconfig` by not enabling that feature,
 such as by compiling with the flags `--no-default-features --features remote-packages,rustls-tls`.
 
+**NOTE:** If the LSP fails to find your fonts through `fontconfig`, try setting (when running the LSP) the `FONTCONFIG_FILE`
+environment variable to the absolute path of the fontconfig configuration file specifying your desired font paths. This can happen
+when using VSCode through Flatpak on distributions such as NixOS, and can lead to some fonts not being detected when compiling your
+Typst documents. To set the environment variable through Flatpak, you may either use Flatseal or run a command such as below
+(assuming a `--user` installation) - make sure to replace the path after `FONTCONFIG_FILE` with the appropriate one for your system:
+
+```sh
+# For VSCode:
+flatpak override --user --env=FONTCONFIG_FILE=$HOME/.config/fontconfig/conf.d/configfilenamehere.conf com.visualstudio.code
+
+# For VSCodium:
+flatpak override --user --env=FONTCONFIG_FILE=$HOME/.config/fontconfig/conf.d/configfilenamehere.conf com.vscodium.codium
+```
+
 ### Bumping the Typst version
 **Warning:** at time of writing, the Typst API has changed in every release. Until the language is stable, you may need Rust knowledge to address changes in Typst to successfully compile against a new version of Typst.
 
