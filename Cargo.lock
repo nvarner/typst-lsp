@@ -779,6 +779,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
+name = "fontconfig-parser"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "674e258f4b5d2dcd63888c01c68413c51f565e8af99d2f7701c7b81d79ef41c4"
+dependencies = [
+ "roxmltree",
+]
+
+[[package]]
 name = "fontdb"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -787,7 +796,21 @@ dependencies = [
  "log",
  "slotmap",
  "tinyvec",
- "ttf-parser",
+ "ttf-parser 0.19.2",
+]
+
+[[package]]
+name = "fontdb"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98b88c54a38407f7352dd2c4238830115a6377741098ffd1f997c813d0e088a6"
+dependencies = [
+ "fontconfig-parser",
+ "log",
+ "memmap2",
+ "slotmap",
+ "tinyvec",
+ "ttf-parser 0.20.0",
 ]
 
 [[package]]
@@ -2006,7 +2029,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f67591f21f6668e63c1cd85adab066ac8a92bc7b962668dd8042197a6e4b8f8f"
 dependencies = [
- "ttf-parser",
+ "ttf-parser 0.19.2",
 ]
 
 [[package]]
@@ -2482,7 +2505,7 @@ dependencies = [
  "bitflags 1.3.2",
  "bytemuck",
  "smallvec",
- "ttf-parser",
+ "ttf-parser 0.19.2",
  "unicode-bidi-mirroring",
  "unicode-ccc",
  "unicode-properties",
@@ -3397,6 +3420,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49d64318d8311fc2668e48b63969f4343e0a85c4a109aa8460d6672e364b8bd1"
 
 [[package]]
+name = "ttf-parser"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17f77d76d837a7830fe1d4f12b7b4ba4192c1888001c7164257e4bc6d21d96b4"
+
+[[package]]
 name = "typed-arena"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3413,7 +3442,7 @@ dependencies = [
  "comemo",
  "ecow 0.2.0",
  "flate2",
- "fontdb",
+ "fontdb 0.15.0",
  "image",
  "indexmap 2.1.0",
  "kurbo",
@@ -3436,7 +3465,7 @@ dependencies = [
  "tiny-skia",
  "toml 0.8.6",
  "tracing",
- "ttf-parser",
+ "ttf-parser 0.19.2",
  "typst-macros",
  "typst-syntax 0.9.0",
  "unicode-ident",
@@ -3497,7 +3526,7 @@ dependencies = [
  "time",
  "toml 0.8.6",
  "tracing",
- "ttf-parser",
+ "ttf-parser 0.19.2",
  "typed-arena",
  "typst",
  "unicode-bidi",
@@ -3519,13 +3548,13 @@ dependencies = [
  "comemo",
  "dirs",
  "elsa",
+ "fontdb 0.16.0",
  "futures",
  "if_chain",
  "indexmap 2.1.0",
  "internment",
  "itertools 0.11.0",
  "lazy_static",
- "memmap2",
  "once_cell",
  "opentelemetry",
  "opentelemetry-jaeger",
@@ -3775,7 +3804,7 @@ version = "0.36.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4d2374378cb7a3fb8f33894e0fdb8625e1bbc4f25312db8d91f862130b541593"
 dependencies = [
- "fontdb",
+ "fontdb 0.15.0",
  "kurbo",
  "log",
  "rustybuzz",
