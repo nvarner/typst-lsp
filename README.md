@@ -44,10 +44,15 @@ implementation; by default, [Rustls](https://github.com/rustls/rustls) is used. 
 
 For example, the following command will build with `native-tls`:
 ```sh
-cargo build --release --no-default-features --features remote-packages,native-tls
+cargo build --release --no-default-features --features remote-packages,fontconfig,native-tls
 ```
 
 For Linux, `native-tls` means OpenSSL. You will need to install its headers to compile with `native-tls`.
+
+Additionally, the `fontconfig` feature is used to enable minimal support for `fontconfig`. This is necessary
+for the LSP to detect fonts in certain Linux distributions, such as NixOS, and is thus enabled by default.
+If this causes any problems for your distribution, you can disable support for `fontconfig` by not enabling that feature,
+such as by compiling with the flags `--no-default-features --features remote-packages,rustls-tls`.
 
 ### Bumping the Typst version
 **Warning:** at time of writing, the Typst API has changed in every release. Until the language is stable, you may need Rust knowledge to address changes in Typst to successfully compile against a new version of Typst.
