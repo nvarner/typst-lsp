@@ -1,16 +1,14 @@
 //! Derived from https://github.com/typst/typst/blob/main/cli/src/main.rs
 
 use core::fmt;
-use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use comemo::Prehashed;
-use memmap2::Mmap;
+use fontdb::{Database, Source};
 use once_cell::sync::OnceCell;
 use tracing::error;
 use typst::eval::Bytes;
 use typst::font::{Font, FontBook, FontInfo};
-use walkdir::WalkDir;
 
 use super::fs::local::LocalFs;
 use super::fs::FsError;
@@ -160,79 +158,32 @@ impl Builder {
         self
     }
 
-    /// Search for fonts in the linux system font directories.
-    #[cfg(all(unix, not(target_os = "macos")))]
+    /// Search for fonts in the system font directories.
     fn search_system(&mut self) {
-        self.search_dir("/usr/share/fonts");
-        self.search_dir("/usr/local/share/fonts");
+        let mut db = Database::new();
 
-        if let Some(dir) = dirs::font_dir() {
-            self.search_dir(dir);
-        }
-    }
+        // System fonts have second priority.
+        db.load_system_fonts();
 
-    /// Search for fonts in the macOS system font directories.
-    #[cfg(target_os = "macos")]
-    fn search_system(&mut self) {
-        self.search_dir("/Library/Fonts");
-        self.search_dir("/Network/Library/Fonts");
-        self.search_dir("/System/Library/Fonts");
+        for face in db.faces() {
+            let path = match &face.source {
+                Source::File(path) | Source::SharedFile(path, _) => path,
+                // We never add binary sources to the database, so there
+                // shouln't be any.
+                Source::Binary(_) => continue,
+            };
 
-        if let Some(dir) = dirs::font_dir() {
-            self.search_dir(dir);
-        }
-    }
+            let info = db
+                .with_face_data(face.id, FontInfo::new)
+                .expect("database must contain this font");
 
-    /// Search for fonts in the Windows system font directories.
-    #[cfg(windows)]
-    fn search_system(&mut self) {
-        let windir = std::env::var("WINDIR").unwrap_or_else(|_| "C:\\Windows".to_string());
-
-        self.search_dir(Path::new(&windir).join("Fonts"));
-
-        if let Some(roaming) = dirs::config_dir() {
-            self.search_dir(roaming.join("Microsoft\\Windows\\Fonts"));
-        }
-
-        if let Some(local) = dirs::cache_dir() {
-            self.search_dir(local.join("Microsoft\\Windows\\Fonts"));
-        }
-    }
-
-    /// Search for all fonts in a directory recursively.
-    fn search_dir(&mut self, path: impl AsRef<Path>) {
-        for entry in WalkDir::new(path)
-            .follow_links(true)
-            .sort_by(|a, b| a.file_name().cmp(b.file_name()))
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            let path = entry.path();
-            if matches!(
-                path.extension().and_then(|s| s.to_str()),
-                Some("ttf" | "otf" | "TTF" | "OTF" | "ttc" | "otc" | "TTC" | "OTC"),
-            ) {
-                self.search_file(path);
-            }
-        }
-    }
-
-    /// Index the fonts in the file at the given path.
-    fn search_file(&mut self, path: impl AsRef<Path>) {
-        let path = path
-            .as_ref()
-            .canonicalize()
-            .expect("could not canonicalize font file path");
-        if let Ok(file) = File::open(&path) {
-            if let Ok(mmap) = unsafe { Mmap::map(&file) } {
-                for (i, info) in FontInfo::iter(&mmap).enumerate() {
-                    self.book.push(info);
-                    self.fonts.push(FontSlot {
-                        path: Some(path.clone()),
-                        index: i as u32,
-                        font: OnceCell::new(),
-                    });
-                }
+            if let Some(info) = info {
+                self.book.push(info);
+                self.fonts.push(FontSlot {
+                    path: Some(path.clone()),
+                    index: face.index,
+                    font: OnceCell::new(),
+                });
             }
         }
     }
