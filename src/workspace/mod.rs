@@ -32,6 +32,7 @@
 //! context needed to interpret it, which is a project.
 
 use std::collections::HashSet;
+use std::path::PathBuf;
 
 use comemo::Prehashed;
 use itertools::Itertools;
@@ -76,7 +77,7 @@ impl Workspace {
 
         Self {
             fs: FsManager::default(),
-            fonts: FontManager::builder().with_system().with_embedded().build(),
+            fonts: Self::create_font_manager(&[]),
             packages: PackageManager::new(root_paths, ExternalPackageManager::new()),
         }
     }
@@ -135,8 +136,8 @@ impl Workspace {
     }
 
     pub fn update_fonts(&mut self, font_paths: &FontPaths) {
-        // TODO
-        trace!("Updating fonts to {font_paths:?}");
+        trace!("updating font paths to {font_paths:?}");
+        self.fonts = Self::create_font_manager(font_paths);
     }
 
     pub fn open_lsp(&mut self, uri: Url, text: String) -> FsResult<()> {
@@ -185,5 +186,13 @@ impl Workspace {
         self.fs.clear();
         self.register_files()?;
         Ok(())
+    }
+
+    fn create_font_manager(font_paths: &[PathBuf]) -> FontManager {
+        FontManager::builder()
+            .with_system()
+            .with_embedded()
+            .with_font_paths(font_paths)
+            .build()
     }
 }
