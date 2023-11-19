@@ -43,7 +43,7 @@ use tracing::trace;
 use typst::eval::{Bytes, Library};
 use typst::syntax::Source;
 
-use crate::config::PositionEncoding;
+use crate::config::{PositionEncoding, FontPaths};
 use crate::ext::InitializeParamsExt;
 
 use self::font_manager::FontManager;
@@ -132,6 +132,11 @@ impl Workspace {
 
     pub fn known_uris(&self) -> HashSet<Url> {
         self.fs.known_uris()
+    }
+
+    pub fn update_fonts(&mut self, font_paths: &FontPaths) {
+        // TODO
+        trace!("Updating fonts to {font_paths:?}");
     }
 
     pub fn open_lsp(&mut self, uri: Url, text: String) -> FsResult<()> {

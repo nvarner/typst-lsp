@@ -224,6 +224,22 @@ impl LanguageServer for TypstServer {
             }
         }
 
+        {
+            trace!("setting up listener to changes to font paths");
+            let workspace = self.workspace().clone();
+            config.listen_font_paths(Box::new(move |font_paths| {
+                let workspace = workspace.clone();
+                let update_fonts = move || {
+                    async move {
+                        let mut workspace = workspace.write().await;
+                        workspace.update_fonts(font_paths);
+                        Ok(())
+                    }
+                };
+                update_fonts().boxed()
+            }));
+        }
+
         trace!("setting up to watch Typst files");
         let watch_files_error = self
             .client
