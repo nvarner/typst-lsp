@@ -43,7 +43,7 @@ use tracing::trace;
 use typst::eval::{Bytes, Library};
 use typst::syntax::Source;
 
-use crate::config::{PositionEncoding, FontPaths};
+use crate::config::{FontPaths, PositionEncoding};
 use crate::ext::InitializeParamsExt;
 
 use self::font_manager::FontManager;

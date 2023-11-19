@@ -229,12 +229,10 @@ impl LanguageServer for TypstServer {
             let workspace = self.workspace().clone();
             config.listen_font_paths(Box::new(move |font_paths| {
                 let workspace = workspace.clone();
-                let update_fonts = move || {
-                    async move {
-                        let mut workspace = workspace.write().await;
-                        workspace.update_fonts(font_paths);
-                        Ok(())
-                    }
+                let update_fonts = move || async move {
+                    let mut workspace = workspace.write().await;
+                    workspace.update_fonts(font_paths);
+                    Ok(())
                 };
                 update_fonts().boxed()
             }));
