@@ -19,7 +19,7 @@ jobs:
           - os: windows-latest
             rust-target: aarch64-pc-windows-msvc
             vs-code-target: win32-arm64
-            features: --no-default-features -F remote-packages,native-tls
+            features: --no-default-features -F remote-packages,fontconfig,native-tls
 
           - os: ubuntu-20.04
             rust-target: x86_64-unknown-linux-gnu
