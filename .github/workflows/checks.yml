@@ -32,10 +32,10 @@ jobs:
         run: cargo clippy --all-targets --no-default-features -- -Dwarnings
 
       - name: Tests (native-tls)
-        run: cargo test --no-fail-fast --no-default-features -F remote-packages,native-tls
+        run: cargo test --no-fail-fast --no-default-features -F remote-packages,fontconfig,native-tls
 
       - name: Clippy (native-tls)
-        run: cargo clippy --all-targets --no-default-features -F remote-packages,native-tls -- -Dwarnings
+        run: cargo clippy --all-targets --no-default-features -F remote-packages,fontconfig,native-tls -- -Dwarnings
 
       - name: Formatting
         run: cargo fmt --all --check
