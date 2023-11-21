@@ -98,8 +98,7 @@
         "configurationDefaults": {
             "[typst]": {
                 "editor.wordWrap": "on",
-                "editor.semanticHighlighting.enabled": true,
-                "editor.tabSize": 2
+                "editor.semanticHighlighting.enabled": true
             }
         },
         "languages": [
