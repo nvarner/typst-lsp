@@ -100,3 +100,29 @@ jobs:
         with:
           name: typst-lsp-${{ matrix.vs-code-target }}
           path: typst-lsp-${{ matrix.rust-target }}${{ env.BIN_EXT }}
+
+  # Lapce build is platform independent, and since the editor/extensions are
+  # in beta and not well documented, allow this to fail
+  build-lapce:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasi
+      - uses: Swatinem/rust-cache@v2
+      - uses: davidB/rust-cargo-make@v1.9.0
+
+      - name: Build
+        run: cargo make lapce-extension-build-release-flow
+
+      # It's not clear if `volts` can bundle an extension without uploading it,
+      # so we just send all the files it needs so it can bundle and upload in a
+      # later stage
+      - name: Upload extension files
+        uses: actions/upload-artifact@v3
+        with:
+          name: lapce
+          path: editors/lapce/
