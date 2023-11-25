@@ -28,10 +28,21 @@ dependencies = [
     "lapce-extension-copy-wasm",
 ]
 
+[tasks.lapce-extension-build-release-flow]
+dependencies = [
+    "lapce-extension-build-release-wasm",
+    "lapce-extension-copy-release-wasm",
+]
+
 [tasks.lapce-extension-build-wasm]
 cwd = "editors/lapce/"
 command = "cargo"
 args = ["build"]
+
+[tasks.lapce-extension-build-release-wasm]
+cwd = "editors/lapce/"
+command = "cargo"
+args = ["build", "--release"]
 
 [tasks.lapce-extension-copy-wasm]
 cwd = "editors/lapce/"
@@ -39,4 +50,12 @@ script_runner = "@shell"
 script = '''
 mkdir -p out/
 cp target/wasm32-wasi/debug/lapce.wasm out/
+'''
+
+[tasks.lapce-extension-copy-release-wasm]
+cwd = "editors/lapce/"
+script_runner = "@shell"
+script = '''
+mkdir -p out/
+cp target/wasm32-wasi/release/lapce.wasm out/
 '''
