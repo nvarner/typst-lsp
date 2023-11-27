@@ -125,4 +125,8 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: lapce
-          path: editors/lapce/
+          path: |
+            editors/lapce/
+            !editors/lapce/Cargo.*
+            !editors/lapce/src/
+            !editors/lapce/target/
