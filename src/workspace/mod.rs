@@ -32,6 +32,7 @@
 //! context needed to interpret it, which is a project.
 
 use std::collections::HashSet;
+use std::path::PathBuf;
 
 use comemo::Prehashed;
 use itertools::Itertools;
@@ -43,7 +44,7 @@ use tracing::trace;
 use typst::eval::{Bytes, Library};
 use typst::syntax::Source;
 
-use crate::config::PositionEncoding;
+use crate::config::{FontPaths, PositionEncoding};
 use crate::ext::InitializeParamsExt;
 
 use self::font_manager::FontManager;
@@ -76,7 +77,7 @@ impl Workspace {
 
         Self {
             fs: FsManager::default(),
-            fonts: FontManager::builder().with_system().with_embedded().build(),
+            fonts: Self::create_font_manager(&[]),
             packages: PackageManager::new(root_paths, ExternalPackageManager::new()),
         }
     }
@@ -134,6 +135,11 @@ impl Workspace {
         self.fs.known_uris()
     }
 
+    pub fn update_fonts(&mut self, font_paths: &FontPaths) {
+        trace!("updating font paths to {font_paths:?}");
+        self.fonts = Self::create_font_manager(font_paths);
+    }
+
     pub fn open_lsp(&mut self, uri: Url, text: String) -> FsResult<()> {
         self.fs.open_lsp(uri, text, &self.packages)
     }
@@ -180,5 +186,13 @@ impl Workspace {
         self.fs.clear();
         self.register_files()?;
         Ok(())
+    }
+
+    fn create_font_manager(font_paths: &[PathBuf]) -> FontManager {
+        FontManager::builder()
+            .with_system()
+            .with_embedded()
+            .with_font_paths(font_paths)
+            .build()
     }
 }

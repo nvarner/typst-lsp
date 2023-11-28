@@ -49,11 +49,14 @@ pub enum SemanticTokensMode {
 
 pub type Listener<T> = Box<dyn FnMut(&T) -> BoxFuture<anyhow::Result<()>> + Send + Sync>;
 
+pub type FontPaths = Vec<PathBuf>;
+
 const CONFIG_ITEMS: &[&str] = &[
     "exportPdf",
     "rootPath",
     "semanticTokens",
     "experimentalFormatterMode",
+    "fontPaths",
 ];
 
 #[derive(Default)]
@@ -62,8 +65,10 @@ pub struct Config {
     pub root_path: Option<PathBuf>,
     pub semantic_tokens: SemanticTokensMode,
     pub formatter: ExperimentalFormatterMode,
+    pub font_paths: Vec<PathBuf>,
     semantic_tokens_listeners: Vec<Listener<SemanticTokensMode>>,
     formatter_listeners: Vec<Listener<ExperimentalFormatterMode>>,
+    font_paths_listeners: Vec<Listener<FontPaths>>,
 }
 
 impl Config {
@@ -99,6 +104,10 @@ impl Config {
 
     pub fn listen_formatting(&mut self, listener: Listener<ExperimentalFormatterMode>) {
         self.formatter_listeners.push(listener);
+    }
+
+    pub fn listen_font_paths(&mut self, listener: Listener<FontPaths>) {
+        self.font_paths_listeners.push(listener);
     }
 
     pub async fn update(&mut self, update: &Value) -> anyhow::Result<()> {
@@ -150,6 +159,17 @@ impl Config {
             self.formatter = formatter;
         }
 
+        let font_paths = update
+            .get("fontPaths")
+            .map(FontPaths::deserialize)
+            .and_then(Result::ok);
+        if let Some(font_paths) = font_paths {
+            for listener in &mut self.font_paths_listeners {
+                listener(&font_paths).await?;
+            }
+            self.font_paths = font_paths;
+        }
+
         Ok(())
     }
 }
@@ -160,6 +180,7 @@ impl fmt::Debug for Config {
             .field("export_pdf", &self.export_pdf)
             .field("formatter", &self.formatter)
             .field("semantic_tokens", &self.semantic_tokens)
+            .field("font_paths", &self.font_paths)
             .field(
                 "semantic_tokens_listeners",
                 &format_args!("Vec[len = {}]", self.semantic_tokens_listeners.len()),
@@ -167,6 +188,10 @@ impl fmt::Debug for Config {
             .field(
                 "formatter_listeners",
                 &format_args!("Vec[len = {}]", self.formatter_listeners.len()),
+            )
+            .field(
+                "font_paths_listeners",
+                &format_args!("Vec[len = {}]", self.font_paths_listeners.len()),
             )
             .finish()
     }

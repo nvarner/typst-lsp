@@ -160,6 +160,14 @@ impl Builder {
         self
     }
 
+    /// Include user-specified font paths.
+    pub fn with_font_paths(mut self, font_paths: &[PathBuf]) -> Self {
+        for font_path in font_paths {
+            self.search_dir(font_path);
+        }
+        self
+    }
+
     /// Search for fonts in the linux system font directories.
     #[cfg(all(unix, not(target_os = "macos")))]
     fn search_system(&mut self) {
