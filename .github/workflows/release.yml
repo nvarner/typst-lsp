@@ -42,11 +42,20 @@ jobs:
       - uses: actions/download-artifact@v3
 
       - name: Deploy to VS Code Marketplace
-        run: npx vsce publish --packagePath $(find . -type f -iname '*.vsix')
         env:
           VSCE_PAT: ${{ secrets.VSCODE_MARKETPLACE_TOKEN }}
+        run: npx vsce publish --packagePath $(find . -type f -iname '*.vsix')
 
       - name: Deploy to OpenVSX
-        run: npx ovsx publish --packagePath $(find . -type f -iname '*.vsix')
         env:
           OVSX_PAT: ${{ secrets.OPENVSX_ACCESS_TOKEN }}
+        run: npx ovsx publish --packagePath $(find . -type f -iname '*.vsix')
+      
+      # Since the editor/extensions are in beta and not well documented, allow
+      # this to fail
+      - name: Deploy to Lapce
+        continue-on-error: true
+        working-directory: ./lapce
+        env:
+          LAPCE_TOKEN: ${{ secrets.LAPCE_PLUGINS_API_TOKEN }}
+        run: volts --token "$LAPCE_TOKEN" publish
