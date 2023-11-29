@@ -20,6 +20,10 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           path: artifacts
+      
+      - name: Remove Lapce files from artifacts
+        continue-on-error: true
+        run: rm -r lapce/
 
       - name: Display structure of downloaded files
         run: ls -R artifacts
