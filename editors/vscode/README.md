@@ -27,9 +27,3 @@ A VS Code extension for Typst.
 
 The extension uses [Typst LSP](https://github.com/nvarner/typst-lsp) on the
 backend.
-
-Both `language-configuration.json` and `typst.tmLanguage.json` are from
-Typst. See [the source here](https://github.com/typst/typst/tree/main/tools/support).
-
-The syntax highlighting that was previously provided by `typst.tmLanguage.json`
-is being phased out in favor of LSP Semantic Tokens.
