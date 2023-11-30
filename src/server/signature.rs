@@ -4,7 +4,7 @@ use tower_lsp::lsp_types::{
     SignatureInformation, Url,
 };
 use tracing::trace;
-use typst::eval::{Func, ParamInfo, Scopes, Value};
+use typst::foundations::{Func, ParamInfo, Scopes, Value};
 use typst::syntax::{ast, LinkedNode, Source, SyntaxKind};
 
 use crate::lsp_typst_boundary::{lsp_to_typst, typst_to_lsp, LspPosition, TypstOffset};

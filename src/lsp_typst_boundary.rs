@@ -21,7 +21,7 @@ pub type TypstRange = std::ops::Range<usize>;
 pub type TypstTooltip = typst_ide::Tooltip;
 pub type LspHoverContents = lsp_types::HoverContents;
 
-pub type TypstDatetime = typst::eval::Datetime;
+pub type TypstDatetime = typst::foundations::Datetime;
 
 pub type LspDiagnostic = lsp_types::Diagnostic;
 pub type TypstDiagnostic = typst::diag::SourceDiagnostic;
@@ -30,7 +30,7 @@ pub type LspSeverity = lsp_types::DiagnosticSeverity;
 pub type TypstSeverity = typst::diag::Severity;
 
 pub type LspParamInfo = lsp_types::ParameterInformation;
-pub type TypstParamInfo = typst::eval::ParamInfo;
+pub type TypstParamInfo = typst::foundations::ParamInfo;
 
 /// An LSP range with its associated encoding.
 pub struct LspRange {
@@ -130,10 +130,9 @@ pub mod typst_to_lsp {
         LanguageString, Location, MarkedString, MarkupContent, MarkupKind, TextEdit,
     };
     use tracing::error;
-    use typst::diag::Tracepoint;
-    use typst::eval::{CastInfo, Repr};
+    use typst::diag::{EcoString, Tracepoint};
+    use typst::foundations::{CastInfo, Repr};
     use typst::syntax::{FileId, Source, Spanned};
-    use typst_library::prelude::EcoString;
 
     use crate::config::ConstConfig;
     use crate::server::diagnostics::DiagnosticsMap;

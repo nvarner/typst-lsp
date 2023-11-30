@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use tower_lsp::lsp_types::Url;
 use tracing::info;
-use typst::doc::Document;
+use typst::model::Document;
 
 use crate::ext::UrlExt;
 
@@ -22,7 +22,7 @@ impl TypstServer {
         self.thread_with_world(source_uri)
             .await?
             .run(move |world| {
-                let data = typst::export::pdf(&document, Some(pdf_uri.as_str()), world.now());
+                let data = typst_pdf::pdf(&document, Some(pdf_uri.as_str()), world.now());
 
                 world
                     .write_raw(&pdf_uri, &data)

@@ -4,8 +4,8 @@ use tower_lsp::lsp_types::{
     Registration, SemanticToken, SemanticTokensEdit, SemanticTokensFullOptions,
     SemanticTokensLegend, SemanticTokensOptions, Unregistration,
 };
+use typst::diag::EcoString;
 use typst::syntax::{ast, LinkedNode, Source, SyntaxKind};
-use typst_library::prelude::EcoString;
 
 use self::delta::token_delta;
 use self::modifier_set::ModifierSet;

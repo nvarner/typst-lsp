@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use tower_lsp::lsp_types::{TextDocumentContentChangeEvent, Url};
-use typst::eval::Bytes;
+use typst::foundations::Bytes;
 use typst::syntax::Source;
 
 use crate::config::PositionEncoding;

@@ -1,6 +1,6 @@
 use tower_lsp::lsp_types::{Position, SemanticToken};
+use typst::diag::EcoString;
 use typst::syntax::Source;
-use typst_library::prelude::EcoString;
 
 use crate::config::PositionEncoding;
 use crate::ext::{PositionExt, StrExt};
