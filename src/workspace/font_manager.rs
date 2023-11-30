@@ -7,8 +7,8 @@ use comemo::Prehashed;
 use fontdb::{Database, Source};
 use once_cell::sync::OnceCell;
 use tracing::error;
-use typst::eval::Bytes;
-use typst::font::{Font, FontBook, FontInfo};
+use typst::foundations::Bytes;
+use typst::text::{Font, FontBook, FontInfo};
 
 use super::fs::local::LocalFs;
 use super::fs::FsError;

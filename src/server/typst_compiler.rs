@@ -2,8 +2,10 @@ use std::sync::Arc;
 
 use comemo::Track;
 use tower_lsp::lsp_types::Url;
-use typst::doc::Document;
-use typst::eval::{Module, Route, Tracer};
+use typst::engine::Route;
+use typst::eval::Tracer;
+use typst::foundations::Module;
+use typst::model::Document;
 use typst::World;
 
 use crate::lsp_typst_boundary::typst_to_lsp;

@@ -400,7 +400,7 @@ impl LanguageServer for TypstServer {
                 let typst_offset =
                     lsp_to_typst::position_to_offset(position, position_encoding, &source);
                 let (typst_start_offset, completions) =
-                    typst_ide::autocomplete(&world, &doc.pages, &source, typst_offset, explicit)?;
+                    typst_ide::autocomplete(&world, Some(&doc), &source, typst_offset, explicit)?;
                 let lsp_start_position =
                     offset_to_position(typst_start_offset, position_encoding, &source);
 

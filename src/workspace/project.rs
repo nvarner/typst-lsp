@@ -4,9 +4,10 @@ use std::sync::Arc;
 use comemo::Prehashed;
 use tokio::sync::OwnedRwLockReadGuard;
 use tower_lsp::lsp_types::Url;
-use typst::eval::{Bytes, Library};
-use typst::font::{Font, FontBook};
+use typst::foundations::Bytes;
 use typst::syntax::{FileId, Source};
+use typst::text::{Font, FontBook};
+use typst::Library;
 
 use crate::ext::FileIdExt;
 

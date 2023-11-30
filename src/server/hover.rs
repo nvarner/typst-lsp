@@ -15,6 +15,8 @@ impl TypstServer {
     ) -> anyhow::Result<Option<Hover>> {
         let position_encoding = self.const_config().position_encoding;
 
+        let doc = self.document.lock().await.clone();
+
         let result = self
             .thread_with_world(uri)
             .await?
@@ -24,7 +26,7 @@ impl TypstServer {
                 let typst_offset =
                     lsp_to_typst::position_to_offset(position, position_encoding, &source);
 
-                let typst_tooltip = typst_ide::tooltip(&world, &[], &source, typst_offset)?;
+                let typst_tooltip = typst_ide::tooltip(&world, Some(&doc), &source, typst_offset)?;
 
                 Some((typst_offset, typst_tooltip))
             })
