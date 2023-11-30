@@ -40,8 +40,9 @@ use tower_lsp::lsp_types::{
     InitializeParams, TextDocumentContentChangeEvent, Url, WorkspaceFoldersChangeEvent,
 };
 use tracing::trace;
-use typst::eval::{Bytes, Library};
+use typst::foundations::Bytes;
 use typst::syntax::Source;
+use typst::Library;
 
 use crate::config::PositionEncoding;
 use crate::ext::InitializeParamsExt;
@@ -60,7 +61,7 @@ pub mod project;
 pub mod world;
 
 lazy_static! {
-    pub static ref TYPST_STDLIB: Prehashed<Library> = Prehashed::new(typst_library::build());
+    pub static ref TYPST_STDLIB: Prehashed<Library> = Prehashed::new(Library::default());
 }
 
 #[derive(Debug)]

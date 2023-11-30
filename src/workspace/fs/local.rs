@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use tower_lsp::lsp_types::Url;
-use typst::eval::Bytes;
+use typst::foundations::Bytes;
 use typst::syntax::Source;
 use walkdir::WalkDir;
 

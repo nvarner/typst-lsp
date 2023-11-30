@@ -6,7 +6,7 @@ use tokio::sync::{Mutex, OwnedRwLockReadGuard, RwLock, RwLockReadGuard};
 use tower_lsp::lsp_types::Url;
 use tower_lsp::Client;
 use tracing_subscriber::{reload, Registry};
-use typst::doc::Document;
+use typst::model::Document;
 use typst::syntax::Source;
 
 use crate::config::{Config, ConstConfig};
@@ -78,8 +78,8 @@ impl TypstServer {
             .expect("workspace should be initialized")
     }
 
-    pub fn typst_global_scopes(&self) -> typst::eval::Scopes {
-        typst::eval::Scopes::new(Some(&TYPST_STDLIB))
+    pub fn typst_global_scopes(&self) -> typst::foundations::Scopes {
+        typst::foundations::Scopes::new(Some(&TYPST_STDLIB))
     }
 
     #[tracing::instrument(skip(self))]

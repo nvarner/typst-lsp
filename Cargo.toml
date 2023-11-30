@@ -27,9 +27,9 @@ native-tls = ["reqwest?/native-tls"]
 fontconfig = ["fontdb/fontconfig"]
 
 [dependencies]
-typst = { git = "https://github.com/typst/typst.git", tag = "v0.9.0" }
-typst-library = { git = "https://github.com/typst/typst.git", tag = "v0.9.0" }
-typst-ide = { git = "https://github.com/typst/typst.git", tag = "v0.9.0" }
+typst = { git = "https://github.com/typst/typst.git", tag = "v0.10.0" }
+typst-ide = { git = "https://github.com/typst/typst.git", tag = "v0.10.0" }
+typst-pdf = { git = "https://github.com/typst/typst.git", tag = "v0.10.0" }
 
 anyhow = "1.0.71"
 async-compression = { version = "0.4.1", features = ["tokio", "gzip"] }
@@ -42,7 +42,11 @@ chrono = { version = "0.4.24", default-features = false, features = [
 comemo = "0.3"
 dirs = "5.0"
 elsa = "1.9.0"
-fontdb = { version = "0.16.0", default-features = false, features = ["std", "fs", "memmap"] }
+fontdb = { version = "0.16.0", default-features = false, features = [
+    "std",
+    "fs",
+    "memmap",
+] }
 futures = "0.3"
 if_chain = "1.0"
 indexmap = "2.1.0"

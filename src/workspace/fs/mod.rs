@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use tower_lsp::lsp_types::Url;
 use tracing::error;
 use typst::diag::FileError;
-use typst::eval::Bytes;
+use typst::foundations::Bytes;
 use typst::syntax::{FileId, Source};
 
 use crate::ext::UriError;
