@@ -6,7 +6,8 @@
 			"dependsOn": [
 				"Compile VS Code Extension",
 				"Build Debug LSP Binary",
-				"Copy Debug LSP Binary to VS Code Extension"
+				"Copy Debug LSP Binary to VS Code Extension",
+				"Compile TM Grammar to JSON"
 			],
 			"dependsOrder": "sequence",
 		},
@@ -15,7 +16,8 @@
 			"dependsOn": [
 				"Compile VS Code Extension",
 				"Build Debug LSP Binary [Jaeger]",
-				"Copy Debug LSP Binary to VS Code Extension"
+				"Copy Debug LSP Binary to VS Code Extension",
+				"Compile TM Grammar to JSON"
 			],
 			"dependsOrder": "sequence"
 		},
@@ -69,6 +71,13 @@
 					"${workspaceFolder}/editors/vscode/out/"
 				]
 			}
+		},
+		{
+			"label": "Compile TM Grammar to JSON",
+			"type": "cargo",
+			"command": "make",
+			"args": [ "tm-grammar-to-vs-code-extension" ],
+			"group": "build"
 		}
 	]
 }

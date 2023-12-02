@@ -62,6 +62,7 @@ jobs:
         with:
           node-version: 16
       - uses: Swatinem/rust-cache@v2
+      - uses: davidB/rust-cargo-make@v1.9.0
       - run: npm install
         working-directory: ./editors/vscode
 
@@ -83,6 +84,9 @@ jobs:
           mkdir -p editors/vscode/out
           cp "target/${{ matrix.rust-target }}/release/typst-lsp${{ env.BIN_EXT }}" editors/vscode/out/
           cp "target/${{ matrix.rust-target }}/release/typst-lsp${{ env.BIN_EXT }}" "typst-lsp-${{ matrix.rust-target }}${{ env.BIN_EXT }}"
+      
+      - name: Compile TM Grammar to JSON
+        run: cargo make tm-grammar-to-vs-code-extension
 
       - name: Package VS Code extension
         shell: bash

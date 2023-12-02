@@ -1,3 +1,14 @@
+# Grammar
+[tasks.tm-grammar-to-vs-code-extension]
+install_crate = { crate_name = "yj", binary = "yj", test_arg = ["--help"] }
+command = "yj"
+args = [
+    "-c",
+    "assets/grammar/typst.tmLanguage.yaml",
+    "--output",
+    "editors/vscode/out/typst.tmLanguage.json",
+]
+
 # Lapce extension
 [tasks.lapce-extension-dev-setup.linux]
 script = '''

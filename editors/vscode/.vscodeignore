@@ -1,9 +1,9 @@
 **
 !language-configuration.json
-!typst.tmLanguage.json
 !out/extension.js
 !out/typst-lsp
 !out/typst-lsp.exe
+!out/typst.tmLanguage.json
 !package.json
 !package-lock.json
 !icons/**

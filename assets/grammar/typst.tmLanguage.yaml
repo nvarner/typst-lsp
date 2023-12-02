@@ -1,0 +1,111 @@
+scopeName: source.typst
+name: Typst
+
+patterns:
+  - {include: "#markup"}
+
+repository:
+    # Markup patterns
+    markup:
+      patterns:
+        - {include: "#mkp-backslash"}
+        - {include: "#mkp-raw"}
+        - {include: "#mkp-shorthand"}
+    
+    # Starts with backslash
+    mkp-backslash:
+      patterns:
+        # Unicode escape
+        - name: constant.character.escape.content.typst
+          match: \\u{[a-zA-Z0-9]*}?
+        
+        # Linebreak
+        - name: punctuation.definition.linebreak.typst
+          match: \\($|\s)
+
+        # Escape        
+        - name: constant.character.escape.content.typst
+          match: \\.?
+    
+    # Raw/starts with `
+    mkp-raw:
+      patterns:
+        # Embedded languages
+        # For info on Typst's default supported languages, see here:
+        # https://github.com/typst/typst/blob/9926a594e7f462103b47930270a00c1b9ce3cbf3/crates/typst/src/text/raw.rs#L735
+        - contentName: meta.embedded.block.typst
+          begin: (`{3,})(?i:typ|typst)(?=\s|$)
+          end: \1
+          patterns:
+            - {include: $self}
+          captures:
+            "0":
+              name: punctuation.definition.raw.typst
+        
+        - contentName: meta.embedded.block.typc
+          begin: (`{3,})(?i:typc)(?=\s|$)
+          end: \1
+          patterns:
+            - {include: "#code"}
+          captures:
+            "0":
+              name: punctuation.definition.raw.typst
+
+        - contentName: meta.embedded.block.json
+          begin: (`{3,})(?i:json)(?=\s|$)
+          end: \1
+          patterns:
+            - {include: source.json}
+          captures:
+            "0":
+              name: punctuation.definition.raw.typst
+
+        - contentName: meta.embedded.block.html
+          begin: (`{3,})(?i:html)(?=\s|$)
+          end: \1
+          patterns:
+            - {include: text.html.derivative}
+          captures:
+            "0":
+              name: punctuation.definition.raw.typst
+
+        - contentName: meta.embedded.block.rust
+          begin: (`{3,})(?i:rs|rust)(?=\s|$)
+          end: \1
+          patterns:
+            - {include: source.rust}
+          captures:
+            "0":
+              name: punctuation.definition.raw.typst
+
+        - contentName: meta.embedded.block.ocaml
+          begin: (`{3,})(?i:ml|mli|ocaml)(?=\s|$)
+          end: \1
+          patterns:
+            - {include: source.ocaml}
+          captures:
+            "0":
+              name: punctuation.definition.raw.typst
+
+        - contentName: markup.raw.block.typst
+          begin: "`{3,}"
+          end: \0
+          captures:
+            "0":
+              name: punctuation.definition.raw.typst
+
+        - contentName: markup.raw.inline.typst
+          begin: "`"
+          end: "`"
+          captures:
+            "0":
+              name: punctuation.definition.raw.typst
+    
+    mkp-shorthand:
+      patterns:
+        - name: constant.character.escape.typst
+          match: \.\.\.|---|--|-?|-\d
+
+    # Code patterns
+    code:
+      patterns:

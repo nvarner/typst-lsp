@@ -118,6 +118,18 @@
                 }
             }
         ],
+        "grammars": [
+            {
+                "language": "typst",
+                "scopeName": "source.typst",
+                "path": "./out/typst.tmLanguage.json",
+                "embeddedLanguages": {
+                    "meta.embedded.block.json": "json",
+                    "meta.embedded.block.html": "html",
+                    "meta.embedded.block.ocaml": "ocaml"
+                }
+            }
+        ],
         "semanticTokenTypes": [
             {
                 "id": "bool",
