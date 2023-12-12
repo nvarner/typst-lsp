@@ -78,6 +78,10 @@ impl TypstServer {
             .expect("workspace should be initialized")
     }
 
+    pub async fn main_url(&self) -> Option<Url> {
+        self.config.read().await.main_file.clone()
+    }
+
     pub fn typst_global_scopes(&self) -> typst::foundations::Scopes {
         typst::foundations::Scopes::new(Some(&TYPST_STDLIB))
     }

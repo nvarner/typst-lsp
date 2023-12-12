@@ -4,7 +4,7 @@ use tower_lsp::{
     jsonrpc::{Error, Result},
     lsp_types::Url,
 };
-use tracing::error;
+use tracing::{error, info};
 
 use super::TypstServer;
 
@@ -97,14 +97,18 @@ impl TypstServer {
             )
         };
 
-        self.config
-            .write()
-            .await
-            .update_main_file(file_uri)
-            .await
-            .map_err(|err| {
-                error!(%err, "could not set main file");
-                jsonrpc::Error::internal_error()
-            })
+        let update_result = self.config.write().await.update_main_file(file_uri).await;
+
+        update_result.map_err(|err| {
+            error!(%err, "could not set main file");
+            jsonrpc::Error::internal_error()
+        })?;
+
+        info!(
+            "main file pinned: {main_url:?}",
+            main_url = self.main_url().await
+        );
+
+        Ok(())
     }
 }

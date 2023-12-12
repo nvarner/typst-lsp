@@ -17,11 +17,12 @@ impl TypstServer {
 
         let doc = self.document.lock().await.clone();
 
+        let fid = self.workspace().read().await.full_id(uri)?;
         let result = self
-            .thread_with_world(uri)
+            .thread_with_world(self.main_url().await.as_ref().unwrap_or(uri))
             .await?
             .run(move |world| {
-                let source = world.main();
+                let source = world.source(fid.into()).ok()?;
 
                 let typst_offset =
                     lsp_to_typst::position_to_offset(position, position_encoding, &source);
