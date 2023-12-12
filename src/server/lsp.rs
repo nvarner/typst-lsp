@@ -343,6 +343,9 @@ impl LanguageServer for TypstServer {
             Some(LspCommand::ClearCache) => {
                 self.command_clear_cache(arguments).await?;
             }
+            Some(LspCommand::PinMain) => {
+                self.command_pin_main(arguments).await?;
+            }
             None => {
                 error!("asked to execute unknown command");
                 return Err(jsonrpc::Error::method_not_found());
