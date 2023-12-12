@@ -1,7 +1,10 @@
 use anyhow::anyhow;
+use tokio::io::AsyncReadExt;
+use tokio::sync::OnceCell;
 use tower_lsp::lsp_types::Url;
 use tracing::{info, warn};
-use typst::syntax::PackageSpec;
+use typst::diag::EcoString;
+use typst::syntax::{PackageSpec, PackageVersion};
 
 use crate::workspace::package::manager::{ExternalPackageError, ExternalPackageResult};
 use crate::workspace::package::{FullFileId, Package};
@@ -31,6 +34,7 @@ pub struct ExternalPackageManager<
     providers: Vec<Box<dyn ExternalPackageProvider>>,
     cache: Option<Dest>,
     repo: Repo,
+    packages: OnceCell<Vec<(PackageSpec, Option<EcoString>)>>,
 }
 
 impl ExternalPackageManager {
@@ -75,6 +79,7 @@ impl ExternalPackageManager {
             providers,
             cache,
             repo: get_default_repo_provider(),
+            packages: OnceCell::default(),
         }
     }
 }
@@ -107,6 +112,58 @@ impl<Dest: RepoRetrievalDest, Repo: RepoProvider> ExternalPackageManager<Dest, R
                 "nowhere to download package {spec}"
             )))
         }
+    }
+
+    async fn packages_inner(&self) -> ExternalPackageResult<Vec<(PackageSpec, Option<EcoString>)>> {
+        let mut buf = vec![];
+        let mut index = Box::into_pin(self.repo.retrieve_index().await?);
+        index.read_to_end(&mut buf).await.map_err(|err| {
+            ExternalPackageError::Other(anyhow!("could not read index from repo provider: {err}"))
+        })?;
+
+        #[derive(serde::Deserialize)]
+        struct RemotePackageIndex {
+            name: EcoString,
+            version: PackageVersion,
+            description: Option<EcoString>,
+        }
+
+        Ok(serde_json::from_slice::<Vec<RemotePackageIndex>>(&buf)
+            .map_err(|err| ExternalPackageError::Other(anyhow!(err)))?
+            .into_iter()
+            .map(
+                |RemotePackageIndex {
+                     name,
+                     version,
+                     description,
+                 }| {
+                    (
+                        PackageSpec {
+                            namespace: "preview".into(),
+                            name,
+                            version,
+                        },
+                        description,
+                    )
+                },
+            )
+            .collect::<Vec<_>>())
+    }
+
+    #[tracing::instrument]
+    pub async fn packages(&self) -> &[(PackageSpec, Option<EcoString>)] {
+        self.packages
+            .get_or_init(|| async {
+                match self.packages_inner().await {
+                    Ok(index) => index,
+                    Err(err) => {
+                        warn!(%err, "could not get packages from repo provider");
+                        vec![]
+                    }
+                }
+            })
+            .await
+            .as_slice()
     }
 }
 

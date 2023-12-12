@@ -4,8 +4,9 @@ use std::sync::Arc;
 use comemo::Prehashed;
 use tokio::sync::OwnedRwLockReadGuard;
 use tower_lsp::lsp_types::Url;
+use typst::diag::EcoString;
 use typst::foundations::Bytes;
-use typst::syntax::{FileId, Source};
+use typst::syntax::{FileId, PackageSpec, Source};
 use typst::text::{Font, FontBook};
 use typst::Library;
 
@@ -44,6 +45,10 @@ impl Project {
 
     pub fn font(&self, id: usize) -> Option<Font> {
         self.workspace().font_manager().font(id)
+    }
+
+    pub async fn packages(&self) -> &[(PackageSpec, Option<EcoString>)] {
+        self.workspace().package_manager().packages().await
     }
 
     pub fn fill_id(&self, id: FileId) -> FullFileId {

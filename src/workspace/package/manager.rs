@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use itertools::Itertools;
 use tower_lsp::lsp_types::{Url, WorkspaceFoldersChangeEvent};
 use tracing::{error, info, trace, warn};
-use typst::diag::{FileError, PackageError as TypstPackageError};
+use typst::diag::{EcoString, FileError, PackageError as TypstPackageError};
 use typst::syntax::{FileId, PackageSpec};
 
 use crate::ext::{UriError, UrlExt};
@@ -132,6 +132,10 @@ impl PackageManager {
 
     pub fn current(&self) -> impl Iterator<Item = &Package> {
         self.current.values()
+    }
+
+    pub async fn packages(&self) -> &[(PackageSpec, Option<EcoString>)] {
+        self.external.packages().await
     }
 }
 

@@ -106,7 +106,6 @@ impl World for ProjectWorld {
 
     #[tracing::instrument]
     fn packages(&self) -> &[(PackageSpec, Option<EcoString>)] {
-        // TODO: implement package completion
-        &[]
+        self.block(self.project.packages())
     }
 }
