@@ -17,7 +17,10 @@ impl TypstServer {
                     self.run_diagnostics(uri).await?
                 }
             }
-            _ => self.run_diagnostics(uri).await?,
+            _ => {
+                self.run_diagnostics(self.main_url().await.as_ref().unwrap_or(uri))
+                    .await?
+            }
         }
 
         Ok(())
