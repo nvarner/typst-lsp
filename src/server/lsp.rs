@@ -381,10 +381,20 @@ impl LanguageServer for TypstServer {
     ) -> jsonrpc::Result<Option<CompletionResponse>> {
         let uri = params.text_document_position.text_document.uri;
         let position = params.text_document_position.position;
-        let explicit = params
-            .context
-            .map(|context| context.trigger_kind == CompletionTriggerKind::INVOKED)
-            .unwrap_or(false);
+
+        // FIXME: correctly identify a completion which is triggered
+        // by explicit action, such as by pressing control and space
+        // or something similar.
+        //
+        // See <https://github.com/microsoft/language-server-protocol/issues/1101>
+        // > As of LSP 3.16, CompletionTriggerKind takes the value Invoked for
+        // > both manually invoked (for ex: ctrl + space in VSCode) completions
+        // > and always on (what the spec refers to as 24/7 completions).
+        //
+        // Hence, we cannot distinguish between the two cases. Conservatively, we
+        // assume that the completion is not explicit.
+        let explicit = false;
+
         let position_encoding = self.const_config().position_encoding;
         let doc = { self.document.lock().await.clone() };
         let completions = self
