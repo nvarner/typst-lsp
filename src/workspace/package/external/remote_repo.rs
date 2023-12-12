@@ -39,6 +39,13 @@ impl RepoProvider for RemoteRepoProvider {
         let downloaded = self.download_raw(url).await?;
         Ok(Box::new(downloaded))
     }
+
+    async fn retrieve_index(&self) -> RepoResult<Box<dyn AsyncBufRead + Send>> {
+        // typicially, it is https://packages.typst.org/preview/index.json
+        let url = self.index_url(PREVIEW_NAMESPACE);
+        let downloaded = self.download_raw(url).await?;
+        Ok(Box::new(downloaded))
+    }
 }
 
 impl RemoteRepoProvider {
@@ -72,6 +79,11 @@ impl RemoteRepoProvider {
 
     fn url(&self, spec: &PackageSpec) -> Url {
         let path = format!("{}/{}-{}.tar.gz", spec.namespace, spec.name, spec.version);
+        self.base_url.join(&path).expect("should be a valid URL")
+    }
+
+    fn index_url(&self, namespace: &str) -> Url {
+        let path = format!("{namespace}/index.json");
         self.base_url.join(&path).expect("should be a valid URL")
     }
 
