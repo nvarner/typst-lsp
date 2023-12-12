@@ -37,7 +37,9 @@ pub enum ExportPdfMode {
     Never,
     #[default]
     OnSave,
+    OnPinnedMainSave,
     OnType,
+    OnPinnedMainType,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
