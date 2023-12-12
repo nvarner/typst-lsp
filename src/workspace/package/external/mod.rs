@@ -31,6 +31,7 @@ pub trait ExternalPackageProvider: fmt::Debug + Send + Sync {
 pub trait RepoProvider: fmt::Debug + Send + Sync {
     async fn retrieve_tar_gz(&self, spec: &PackageSpec)
         -> RepoResult<Box<dyn AsyncBufRead + Send>>;
+    async fn retrieve_index(&self) -> RepoResult<Box<dyn AsyncBufRead + Send>>;
 }
 
 #[async_trait]
@@ -41,6 +42,12 @@ impl RepoProvider for () {
     ) -> RepoResult<Box<dyn AsyncBufRead + Send>> {
         Err(RepoError::NotFound(anyhow!(
             "no repo access to download {spec}"
+        )))
+    }
+
+    async fn retrieve_index(&self) -> RepoResult<Box<dyn AsyncBufRead + Send>> {
+        Err(RepoError::NotFound(anyhow!(
+            "no repo access to download index"
         )))
     }
 }
@@ -54,6 +61,13 @@ impl<R: RepoProvider> RepoProvider for Option<R> {
         match self {
             Some(repo) => repo.retrieve_tar_gz(spec).await,
             None => ().retrieve_tar_gz(spec).await,
+        }
+    }
+
+    async fn retrieve_index(&self) -> RepoResult<Box<dyn AsyncBufRead + Send>> {
+        match self {
+            Some(repo) => repo.retrieve_index().await,
+            None => ().retrieve_index().await,
         }
     }
 }
