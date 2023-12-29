@@ -114,6 +114,7 @@ impl LanguageServer for TypstServer {
                 document_symbol_provider: Some(OneOf::Left(true)),
                 workspace_symbol_provider: Some(OneOf::Left(true)),
                 selection_range_provider: Some(SelectionRangeProviderCapability::Simple(true)),
+                folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),
                 workspace: Some(WorkspaceServerCapabilities {
                     workspace_folders: Some(WorkspaceFoldersServerCapabilities {
                         supported: Some(true),
@@ -616,6 +617,23 @@ impl LanguageServer for TypstServer {
             .run(|source, _| self.get_selection_range(source, &positions));
 
         Ok(selection_range)
+    }
+
+    async fn folding_range(
+        &self,
+        params: FoldingRangeParams,
+    ) -> jsonrpc::Result<Option<Vec<FoldingRange>>> {
+        let uri = params.text_document.uri;
+        let folding_ranges = self
+            .scope_with_source(&uri)
+            .await
+            .map_err(|err| {
+                error!(%err, %uri, "error getting folding ranges");
+                jsonrpc::Error::internal_error()
+            })?
+            .run(|source, _| self.get_folding_ranges(source));
+        
+        Ok(folding_ranges)
     }
 
     async fn formatting(

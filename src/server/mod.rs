@@ -25,6 +25,7 @@ pub mod command;
 pub mod diagnostics;
 pub mod document;
 pub mod export;
+pub mod folding_range;
 pub mod formatting;
 pub mod hover;
 pub mod log;
