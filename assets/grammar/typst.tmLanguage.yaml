@@ -6,10 +6,42 @@ patterns:
 
 repository:
   #########################################
+  # Common patterns
+  #########################################
+  common:
+    patterns:
+      - { include: "#cmn-whitespace" }
+      - { include: "#cmn-line-comment" }
+      - { include: "#cmn-block-comment" }
+
+  # Whitespace
+  cmn-whitespace:
+    match: \p{White_Space}+
+
+  # Single line comment beginning with //
+  cmn-line-comment:
+    name: comment.line.double-slash.typst
+    match: //.*$
+
+  # Block comment between /* and */
+  cmn-block-comment:
+    name: comment.block.typst
+    begin: /\*
+    end: \*/
+    # Typst allows for "recursive" block comments, so a block comment won't end
+    # at the first */ if there's another /* first. A terminating */ can also be
+    # "commented out" with //
+    patterns:
+      - { include: "#cmn-block-comment" }
+      - { include: "#cmn-line-comment" }
+      - match: ([^/*]|/(?![/*])|\*(?!/))+
+
+  #########################################
   # Markup patterns
   #########################################
   markup:
     patterns:
+      - { include: "#common" }
       - { include: "#mkp-backslash" }
       - { include: "#mkp-raw" }
       - { include: "#mkp-link" }
@@ -118,14 +150,13 @@ repository:
 
   # Links
   mkp-link:
-    patterns:
-      - name: markup.underline.link.typst
-        # Typst checks for balanced parenthesis and brackets and stops lexing
-        # links where those are not balanced, but for simplicity, we ignore
-        # this case. Semantic highlighting should usually hide this problem if
-        # it does come up, but the functionality can be added here if it
-        # causes problems in the future.
-        match: https?://([0-9a-zA-Z!#$%&*+,\-./:;=?@_~'\[(\]\)]*[0-9a-zA-Z#$%&*+\-/=@_~\[(\]\)]+)?
+    name: markup.underline.link.typst
+    # Typst checks for balanced parenthesis and brackets and stops lexing
+    # links where those are not balanced, but for simplicity, we ignore
+    # this case. Semantic highlighting should usually hide this problem if
+    # it does come up, but the functionality can be added here if it
+    # causes problems in the future.
+    match: https?://([0-9a-zA-Z!#$%&*+,\-./:;=?@_~'\[(\]\)]*[0-9a-zA-Z#$%&*+\-/=@_~\[(\]\)]+)?
 
   # Labels
   mkp-label:
@@ -139,73 +170,64 @@ repository:
 
   # Ref markers
   mkp-ref-marker:
-    patterns:
-      - name: markup.other.reference.typst
-        match: (@([\p{XID_Continue}_\-:.]*[\p{XID_Continue}_\-]+)?)
+    name: markup.other.reference.typst
+    match: (@([\p{XID_Continue}_\-:.]*[\p{XID_Continue}_\-]+)?)
 
   # Shorthands/(multi)character abbreviations for hard-to-type Unicode chars
   mkp-shorthand:
-    patterns:
-      - name: constant.character.escape.typst
-        match: \.\.\.|---|--|-\?|-(?=\d)|~
+    name: constant.character.escape.typst
+    match: \.\.\.|---|--|-\?|-(?=\d)|~
 
   # Star denoting bold
   mkp-star:
-    patterns:
-      - name: punctuation.definition.bold.typst
-        # Typst checks that `*` is not in a word. This is defined so that `*`
-        # should match if it has a "non-wordy" char either before or after (or
-        # there is no char before or after).
-        #
-        # A non-wordy char is one which is not alphanumeric or has script
-        # Han, Hiragana, or Katakana.
-        #
-        # `/\p{Alphabetic}/` is equivalent to `char::is_alphabetic`
-        # `/\p{Nd}|\p{Nl}|\p{No}/` is equivalent to `char::is_numeric`
-        #
-        # So the following matches a non-wordy char:
-        # `/[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]]/`
-        match: (?<=^|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]])\*|\*(?=$|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]])
+    name: punctuation.definition.bold.typst
+    # Typst checks that `*` is not in a word. This is defined so that `*`
+    # should match if it has a "non-wordy" char either before or after (or
+    # there is no char before or after).
+    #
+    # A non-wordy char is one which is not alphanumeric or has script
+    # Han, Hiragana, or Katakana.
+    #
+    # `/\p{Alphabetic}/` is equivalent to `char::is_alphabetic`
+    # `/\p{Nd}|\p{Nl}|\p{No}/` is equivalent to `char::is_numeric`
+    #
+    # So the following matches a non-wordy char:
+    # `/[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]]/`
+    match: (?<=^|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]])\*|\*(?=$|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]])
 
   # Underscore denoting italics
   mkp-underscore:
-    patterns:
-      - name: punctuation.definition.italic.typst
-        # See `mkp-star` for information on this regex
-        match: (?<=^|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]])_|_(?=$|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]])
+    name: punctuation.definition.italic.typst
+    # See `mkp-star` for information on this regex
+    match: (?<=^|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]])_|_(?=$|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]])
 
   # Hash, which enters code mode
   mkp-hash:
-    patterns:
-      # Hashes are supposed to be highlighted based on the syntax that
-      # follows, but for simplicity, we just color it as an operator
-      - name: keyword.operator.typst
-        match: \#
+    # Hashes are supposed to be highlighted based on the syntax that
+    # follows, but for simplicity, we just color it as an operator
+    name: keyword.operator.typst
+    match: \#
 
   # Punctuation
   mkp-punctuation:
-    patterns:
-      - name: punctuation.typst
-        match: ([\[\]:])
+    name: punctuation.typst
+    match: ([\[\]:])
 
   # Smart quotes
   mkp-smart-quote:
-    patterns:
-      - match: '"|'''
+    match: '"|'''
 
   # Dollar, which enters math mode
   mkp-dollar:
-    patterns:
-      - name: punctuation.definition.math.typst
-        match: \$
+    name: punctuation.definition.math.typst
+    match: \$
 
   # Starts with =
   mkp-equal:
-    patterns:
-      # Heading markers must be followed by whitespace or EOF, and other
-      # appearances of = are considered text, but either way, they will not have
-      # special highlighting
-      - match: =+
+    # Heading markers must be followed by whitespace or EOF, and other
+    # appearances of = are considered text, but either way, they will not have
+    # special highlighting
+    match: =+
 
   # Markers for list entries
   mkp-list-marker:
@@ -213,7 +235,7 @@ repository:
       # list, enum list, and term list markers
       # + ...   - ...   / ...
       - name: punctuation.definition.list.typst
-        match: -+/(?=\p{White_Space}|$)
+        match: ([\-+/](?=\p{White_Space}|$))
 
       # numbered enum list markers
       # These are supposed to be checked by parsing as usize, but we skip that
@@ -224,9 +246,8 @@ repository:
 
   # Non-special text content
   mkp-text:
-    patterns:
-      - name: meta.paragraph.typst
-        match: ([^ \t\n\x0b\x0c\r\\/\[\]{}~\-.'"*_:h`$<>@#]| (?=[\p{Alphabetic}\p{Nd}\p{Nl}\p{No}])|/(?![/*])|-(?![\-?])|\.(?!\.\.)|h(?!ttps?://)|@(?![\p{XID_Start}_]))
+    name: meta.paragraph.typst
+    match: ([^ \t\n\x0b\x0c\r\\/\[\]{}~\-.'"*_:h`$<>@#]| (?=[\p{Alphabetic}\p{Nd}\p{Nl}\p{No}])|/(?![/*])|-(?![\-?])|\.(?!\.\.)|h(?!ttps?://)|@(?![\p{XID_Start}_]))+
 
   #########################################
   # Code patterns
