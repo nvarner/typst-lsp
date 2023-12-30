@@ -55,7 +55,7 @@ repository:
       - { include: "#mkp-smart-quote" }
       - { include: "#mkp-dollar" }
       - { include: "#mkp-equal" }
-      - { include: "#mkp-list-marker" }
+      - { include: "#mkp-list" }
       - { include: "#mkp-text" }
 
   # Nesting within markup using [ ... ]. This prevents paired delimiters, e.g.
@@ -254,8 +254,8 @@ repository:
     patterns:
       # Heading
       - name: markup.heading.typst
-        # A heading is terminated by an end of a line, right bracket, or label
         begin: =+(?=\s|$)
+        # A heading is terminated by an end of a line, right bracket, or label
         end: (?=$|]|\s*(<[\p{XID_Continue}_\-:.]+>|<[\p{XID_Continue}_\-:.]+([^\p{XID_Continue}_\-:.]*?>?|$)))
         patterns:
           - { include: "#markup" }
@@ -264,20 +264,27 @@ repository:
       - name: meta.paragraph.typst
         match: =+
 
-  # Markers for list entries
-  mkp-list-marker:
+  mkp-list:
     patterns:
-      # list, enum list, and term list markers
-      # + ...   - ...   / ...
-      - name: punctuation.definition.list.typst
-        match: ([\-+/](?=\p{White_Space}|$))
-
-      # numbered enum list markers
-      # These are supposed to be checked by parsing as usize, but we skip that
-      # here for simplicity. This likely only checks for overflow. This can be
-      # added if needed.
-      - name: punctuation.definition.list.typst
-        match: ([0-9]+\.(?=\p{White_Space}|$))
+      - name: meta.list.typst
+        # Lists are started by list, (numbered) enum list, and term list markers
+        #
+        # list, enum list, and term list markers
+        # + ...   - ...   / ...
+        #
+        # numbered enum list markers
+        # These are supposed to be checked by parsing as usize, but we skip that
+        # here for simplicity. This likely only checks for overflow. This can be
+        # added if needed.
+        begin: ((?<=^\p{White_Space}*)\p{White_Space}*)([\-+/]|[0-9]+\.)(?=\p{White_Space}|$)
+        # A list item is terminated by a right bracket or a nontrivial line not
+        # sufficiently indented
+        end: (?=])|^(?!\1\p{White_Space})(?=.*\p{^White_Space})
+        beginCaptures:
+          0:
+            name: punctuation.definition.list.typst
+        patterns:
+          - { include: "#markup" }
 
   # Non-special text content
   mkp-text:
