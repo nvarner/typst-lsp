@@ -241,6 +241,7 @@ repository:
 
   # Smart quotes
   mkp-smart-quote:
+    name: meta.paragraph.typst
     match: '"|'''
 
   # Dollar, which enters math mode
@@ -250,10 +251,18 @@ repository:
 
   # Starts with =
   mkp-equal:
-    # Heading markers must be followed by whitespace or EOF, and other
-    # appearances of = are considered text, but either way, they will not have
-    # special highlighting
-    match: =+
+    patterns:
+      # Heading
+      - name: markup.heading.typst
+        # A heading is terminated by an end of a line, right bracket, or label
+        begin: =+(?=\s|$)
+        end: (?=$|]|\s*(<[\p{XID_Continue}_\-:.]+>|<[\p{XID_Continue}_\-:.]+([^\p{XID_Continue}_\-:.]*?>?|$)))
+        patterns:
+          - { include: "#markup" }
+
+      # Just `=` in text
+      - name: meta.paragraph.typst
+        match: =+
 
   # Markers for list entries
   mkp-list-marker:
