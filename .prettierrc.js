@@ -10,4 +10,12 @@ module.exports = {
     bracketSpacing: true,
     arrowParens: "always",
     singleAttributePerLine: false,
+    overrides: [
+        {
+            files: "**/*.yaml",
+            options: {
+                tabWidth: 2,
+            },
+        },
+    ],
 };

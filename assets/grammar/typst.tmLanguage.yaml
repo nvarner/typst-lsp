@@ -2,110 +2,234 @@ scopeName: source.typst
 name: Typst
 
 patterns:
-  - {include: "#markup"}
+  - { include: "#markup" }
 
 repository:
-    # Markup patterns
-    markup:
-      patterns:
-        - {include: "#mkp-backslash"}
-        - {include: "#mkp-raw"}
-        - {include: "#mkp-shorthand"}
-    
-    # Starts with backslash
-    mkp-backslash:
-      patterns:
-        # Unicode escape
-        - name: constant.character.escape.content.typst
-          match: \\u{[a-zA-Z0-9]*}?
-        
-        # Linebreak
-        - name: punctuation.definition.linebreak.typst
-          match: \\($|\s)
+  #########################################
+  # Markup patterns
+  #########################################
+  markup:
+    patterns:
+      - { include: "#mkp-backslash" }
+      - { include: "#mkp-raw" }
+      - { include: "#mkp-link" }
+      - { include: "#mkp-label" }
+      - { include: "#mkp-ref-marker" }
+      - { include: "#mkp-shorthand" }
+      - { include: "#mkp-star" }
+      - { include: "#mkp-underscore" }
+      - { include: "#mkp-hash" }
+      - { include: "#mkp-punctuation" }
+      - { include: "#mkp-smart-quote" }
+      - { include: "#mkp-dollar" }
+      - { include: "#mkp-equal" }
+      - { include: "#mkp-list-marker" }
+      - { include: "#mkp-text" }
 
-        # Escape        
-        - name: constant.character.escape.content.typst
-          match: \\.?
-    
-    # Raw/starts with `
-    mkp-raw:
-      patterns:
-        # Embedded languages
-        # For info on Typst's default supported languages, see here:
-        # https://github.com/typst/typst/blob/9926a594e7f462103b47930270a00c1b9ce3cbf3/crates/typst/src/text/raw.rs#L735
-        - contentName: meta.embedded.block.typst
-          begin: (`{3,})(?i:typ|typst)(?=\s|$)
-          end: \1
-          patterns:
-            - {include: $self}
-          captures:
-            "0":
-              name: punctuation.definition.raw.typst
-        
-        - contentName: meta.embedded.block.typc
-          begin: (`{3,})(?i:typc)(?=\s|$)
-          end: \1
-          patterns:
-            - {include: "#code"}
-          captures:
-            "0":
-              name: punctuation.definition.raw.typst
+  # Starts with \
+  mkp-backslash:
+    patterns:
+      # Unicode escape
+      - name: constant.character.escape.content.typst
+        match: \\u{[a-zA-Z0-9]*}?
 
-        - contentName: meta.embedded.block.json
-          begin: (`{3,})(?i:json)(?=\s|$)
-          end: \1
-          patterns:
-            - {include: source.json}
-          captures:
-            "0":
-              name: punctuation.definition.raw.typst
+      # Linebreak
+      - name: punctuation.definition.linebreak.typst
+        match: \\($|\s)
 
-        - contentName: meta.embedded.block.html
-          begin: (`{3,})(?i:html)(?=\s|$)
-          end: \1
-          patterns:
-            - {include: text.html.derivative}
-          captures:
-            "0":
-              name: punctuation.definition.raw.typst
+      # Escape
+      - name: constant.character.escape.content.typst
+        match: \\.?
 
-        - contentName: meta.embedded.block.rust
-          begin: (`{3,})(?i:rs|rust)(?=\s|$)
-          end: \1
-          patterns:
-            - {include: source.rust}
-          captures:
-            "0":
-              name: punctuation.definition.raw.typst
+  # Raw/starts with `
+  mkp-raw:
+    patterns:
+      # Embedded languages
+      # TODO: generate this programmatically
+      # For info on Typst's default supported languages, see here:
+      # https://github.com/typst/typst/blob/9926a594e7f462103b47930270a00c1b9ce3cbf3/crates/typst/src/text/raw.rs#L735
+      - contentName: meta.embedded.block.typst
+        begin: (`{3,})(?i:typ|typst)(?=\s|$)
+        end: \1
+        patterns:
+          - { include: $self }
+        captures:
+          "0":
+            name: punctuation.definition.raw.typst
 
-        - contentName: meta.embedded.block.ocaml
-          begin: (`{3,})(?i:ml|mli|ocaml)(?=\s|$)
-          end: \1
-          patterns:
-            - {include: source.ocaml}
-          captures:
-            "0":
-              name: punctuation.definition.raw.typst
+      - contentName: meta.embedded.block.typc
+        begin: (`{3,})(?i:typc)(?=\s|$)
+        end: \1
+        patterns:
+          - { include: "#code" }
+        captures:
+          "0":
+            name: punctuation.definition.raw.typst
 
-        - contentName: markup.raw.block.typst
-          begin: "`{3,}"
-          end: \0
-          captures:
-            "0":
-              name: punctuation.definition.raw.typst
+      - contentName: meta.embedded.block.json
+        begin: (`{3,})(?i:json)(?=\s|$)
+        end: \1
+        patterns:
+          - { include: source.json }
+        captures:
+          "0":
+            name: punctuation.definition.raw.typst
 
-        - contentName: markup.raw.inline.typst
-          begin: "`"
-          end: "`"
-          captures:
-            "0":
-              name: punctuation.definition.raw.typst
-    
-    mkp-shorthand:
-      patterns:
-        - name: constant.character.escape.typst
-          match: \.\.\.|---|--|-?|-\d
+      - contentName: meta.embedded.block.html
+        begin: (`{3,})(?i:html)(?=\s|$)
+        end: \1
+        patterns:
+          - { include: text.html.derivative }
+        captures:
+          "0":
+            name: punctuation.definition.raw.typst
 
-    # Code patterns
-    code:
-      patterns:
+      - contentName: meta.embedded.block.rust
+        begin: (`{3,})(?i:rs|rust)(?=\s|$)
+        end: \1
+        patterns:
+          - { include: source.rust }
+        captures:
+          "0":
+            name: punctuation.definition.raw.typst
+
+      - contentName: meta.embedded.block.ocaml
+        begin: (`{3,})(?i:ml|mli|ocaml)(?=\s|$)
+        end: \1
+        patterns:
+          - { include: source.ocaml }
+        captures:
+          "0":
+            name: punctuation.definition.raw.typst
+
+      - contentName: markup.raw.block.typst
+        begin: "`{3,}"
+        end: \0
+        captures:
+          "0":
+            name: punctuation.definition.raw.typst
+
+      - contentName: markup.raw.inline.typst
+        begin: "`"
+        end: "`"
+        captures:
+          "0":
+            name: punctuation.definition.raw.typst
+
+  # Links
+  mkp-link:
+    patterns:
+      - name: markup.underline.link.typst
+        # Typst checks for balanced parenthesis and brackets and stops lexing
+        # links where those are not balanced, but for simplicity, we ignore
+        # this case. Semantic highlighting should usually hide this problem if
+        # it does come up, but the functionality can be added here if it
+        # causes problems in the future.
+        match: https?://([0-9a-zA-Z!#$%&*+,\-./:;=?@_~'\[(\]\)]*[0-9a-zA-Z#$%&*+\-/=@_~\[(\]\)]+)?
+
+  # Labels
+  mkp-label:
+    patterns:
+      - name: entity.name.label.typst
+        match: <[\p{XID_Continue}_\-:.]+>
+
+        # Label is empty or contains invalid characters/is unclosed
+      - name: invalid.typst
+        match: <[\p{XID_Continue}_\-:.]+([^\p{XID_Continue}_\-:.]*?>?|$)
+
+  # Ref markers
+  mkp-ref-marker:
+    patterns:
+      - name: markup.other.reference.typst
+        match: (@([\p{XID_Continue}_\-:.]*[\p{XID_Continue}_\-]+)?)
+
+  # Shorthands/(multi)character abbreviations for hard-to-type Unicode chars
+  mkp-shorthand:
+    patterns:
+      - name: constant.character.escape.typst
+        match: \.\.\.|---|--|-\?|-(?=\d)|~
+
+  # Star denoting bold
+  mkp-star:
+    patterns:
+      - name: punctuation.definition.bold.typst
+        # Typst checks that `*` is not in a word. This is defined so that `*`
+        # should match if it has a "non-wordy" char either before or after (or
+        # there is no char before or after).
+        #
+        # A non-wordy char is one which is not alphanumeric or has script
+        # Han, Hiragana, or Katakana.
+        #
+        # `/\p{Alphabetic}/` is equivalent to `char::is_alphabetic`
+        # `/\p{Nd}|\p{Nl}|\p{No}/` is equivalent to `char::is_numeric`
+        #
+        # So the following matches a non-wordy char:
+        # `/[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]]/`
+        match: (?<=^|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]])\*|\*(?=$|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]])
+
+  # Underscore denoting italics
+  mkp-underscore:
+    patterns:
+      - name: punctuation.definition.italic.typst
+        # See `mkp-star` for information on this regex
+        match: (?<=^|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]])_|_(?=$|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]])
+
+  # Hash, which enters code mode
+  mkp-hash:
+    patterns:
+      # Hashes are supposed to be highlighted based on the syntax that
+      # follows, but for simplicity, we just color it as an operator
+      - name: keyword.operator.typst
+        match: \#
+
+  # Punctuation
+  mkp-punctuation:
+    patterns:
+      - name: punctuation.typst
+        match: ([\[\]:])
+
+  # Smart quotes
+  mkp-smart-quote:
+    patterns:
+      - match: '"|'''
+
+  # Dollar, which enters math mode
+  mkp-dollar:
+    patterns:
+      - name: punctuation.definition.math.typst
+        match: \$
+
+  # Starts with =
+  mkp-equal:
+    patterns:
+      # Heading markers must be followed by whitespace or EOF, and other
+      # appearances of = are considered text, but either way, they will not have
+      # special highlighting
+      - match: =+
+
+  # Markers for list entries
+  mkp-list-marker:
+    patterns:
+      # list, enum list, and term list markers
+      # + ...   - ...   / ...
+      - name: punctuation.definition.list.typst
+        match: -+/(?=\p{White_Space}|$)
+
+      # numbered enum list markers
+      # These are supposed to be checked by parsing as usize, but we skip that
+      # here for simplicity. This likely only checks for overflow. This can be
+      # added if needed.
+      - name: punctuation.definition.list.typst
+        match: ([0-9]+\.(?=\p{White_Space}|$))
+
+  # Non-special text content
+  mkp-text:
+    patterns:
+      - name: meta.paragraph.typst
+        match: ([^ \t\n\x0b\x0c\r\\/\[\]{}~\-.'"*_:h`$<>@#]| (?=[\p{Alphabetic}\p{Nd}\p{Nl}\p{No}])|/(?![/*])|-(?![\-?])|\.(?!\.\.)|h(?!ttps?://)|@(?![\p{XID_Start}_]))
+
+  #########################################
+  # Code patterns
+  #########################################
+  # code:
+  #   patterns:

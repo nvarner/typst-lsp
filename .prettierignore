@@ -1,7 +1,7 @@
 .git/**
 .github/**
 .vscode/**
-assets/**
+assets/fonts/**
 src/**
 target/**
 *.toml
