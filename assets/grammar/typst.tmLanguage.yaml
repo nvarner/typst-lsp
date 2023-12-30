@@ -34,13 +34,13 @@ repository:
     patterns:
       - { include: "#cmn-block-comment" }
       - { include: "#cmn-line-comment" }
-      - match: ([^/*]|/(?![/*])|\*(?!/))+
 
   #########################################
   # Markup patterns
   #########################################
   markup:
     patterns:
+      - { include: "#mkp-nesting" }
       - { include: "#common" }
       - { include: "#mkp-backslash" }
       - { include: "#mkp-raw" }
@@ -48,8 +48,8 @@ repository:
       - { include: "#mkp-label" }
       - { include: "#mkp-ref-marker" }
       - { include: "#mkp-shorthand" }
-      - { include: "#mkp-star" }
-      - { include: "#mkp-underscore" }
+      - { include: "#mkp-strong" }
+      - { include: "#mkp-emph" }
       - { include: "#mkp-hash" }
       - { include: "#mkp-punctuation" }
       - { include: "#mkp-smart-quote" }
@@ -57,6 +57,18 @@ repository:
       - { include: "#mkp-equal" }
       - { include: "#mkp-list-marker" }
       - { include: "#mkp-text" }
+
+  # Nesting within markup using [ ... ]. This prevents paired delimiters, e.g.
+  # *strong stars*, from ending within a nested section, e.g.
+  # `*bold [*this is also bold*] bold*`
+  mkp-nesting:
+    begin: \[
+    end: \]
+    captures:
+      0:
+        name: punctuation.typst
+    patterns:
+      - { include: "#markup" }
 
   # Starts with \
   mkp-backslash:
@@ -178,9 +190,9 @@ repository:
     name: constant.character.escape.typst
     match: \.\.\.|---|--|-\?|-(?=\d)|~
 
-  # Star denoting bold
-  mkp-star:
-    name: punctuation.definition.bold.typst
+  # Strong (usually bold) text *between stars*
+  mkp-strong:
+    name: markup.bold.typst
     # Typst checks that `*` is not in a word. This is defined so that `*`
     # should match if it has a "non-wordy" char either before or after (or
     # there is no char before or after).
@@ -193,13 +205,27 @@ repository:
     #
     # So the following matches a non-wordy char:
     # `/[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]]/`
-    match: (?<=^|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]])\*|\*(?=$|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]])
+    begin: (?<=^|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}])\*|\*(?=$|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}])
+    # Strong text can be terminated by `*` (expected) but also by `]` (so it
+    # doesn't go past the end of a `#[...]` block) and a parbreak
+    end: (?<=^|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}])\*|\*(?=$|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}])|]|^\s*$
+    captures:
+      0:
+        name: punctuation.definition.bold.typst
+    patterns:
+      - { include: "#markup" }
 
-  # Underscore denoting italics
-  mkp-underscore:
-    name: punctuation.definition.italic.typst
-    # See `mkp-star` for information on this regex
-    match: (?<=^|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]])_|_(?=$|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}]])
+  # Emphasized (usually italicized) text _between underscores_
+  # See `mkp-strong`, which is very similar, for more on this rule
+  mkp-emph:
+    name: markup.italic.typst
+    begin: (?<=^|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}])_|_(?=$|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}])
+    end: (?<=^|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}])_|_(?=$|[[^\p{Alphabetic}\p{Nd}\p{Nl}\p{No}]\p{Han}\p{Hiragana}\p{Katakana}])|]|^\s*$
+    captures:
+      0:
+        name: punctuation.definition.italic.typst
+    patterns:
+      - { include: "#markup" }
 
   # Hash, which enters code mode
   mkp-hash:
