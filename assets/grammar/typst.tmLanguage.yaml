@@ -286,27 +286,22 @@ repository:
       - name: meta.paragraph.typst
         match: =+
 
+  # Lists. These rules could be expanded to more fully parse list items, but
+  # that is difficult, likely does not matter for overall correct parsing, and
+  # should be covered by semantic tokens regardless.
   mkp-list:
     patterns:
-      - name: meta.list.typst
-        # Lists are started by list, (numbered) enum list, and term list markers
-        #
-        # list, enum list, and term list markers
-        # + ...   - ...   / ...
-        #
-        # numbered enum list markers
-        # These are supposed to be checked by parsing as usize, but we skip that
-        # here for simplicity. This likely only checks for overflow. This can be
-        # added if needed.
-        begin: ((?<=^\p{White_Space}*)\p{White_Space}*)([\-+/]|[0-9]+\.)(?=\p{White_Space}|$)
-        # A list item is terminated by a right bracket or a nontrivial line not
-        # sufficiently indented
-        end: (?=])|^(?!\1\p{White_Space})(?=.*\p{^White_Space})
-        beginCaptures:
-          0:
-            name: punctuation.definition.list.typst
-        patterns:
-          - { include: "#markup" }
+      # list, enum list, and term list markers
+      # - ...   + ...   / ...
+      - name: punctuation.definition.list.typst
+        match: ([\-+/](?=\p{White_Space}|$))
+
+      # numbered enum list markers
+      # These are supposed to be checked by parsing as usize, but we skip that
+      # here for simplicity. This likely only checks for overflow. This can be
+      # added if needed.
+      - name: punctuation.definition.list.typst
+        match: ([0-9]+\.(?=\p{White_Space}|$))
 
   # Non-special text content
   mkp-text:
