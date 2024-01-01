@@ -130,6 +130,7 @@
                 },
                 "tokenTypes": {
                     "punctuation.nonmatching.typst": "string",
+                    "constant.character.escape.nonmatching.typst": "string",
                     "text.nonmatching.typst": "string"
                 }
             }

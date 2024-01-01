@@ -5,6 +5,7 @@ name: Typst
 # disable. In the VS Code extension's `package.json`, we tell VS Code not to
 # perform brace matching for:
 # - `punctuation.nonmatching.typst`
+# - `constant.character.escape.nonmatching.typst`
 # - `text.nonmatching.typst`
 
 patterns:
@@ -41,45 +42,9 @@ repository:
       - { include: "#cmn-block-comment" }
       - { include: "#cmn-line-comment" }
 
-  #########################################
-  # Markup patterns
-  #########################################
-  markup:
-    patterns:
-      - { include: "#mkp-nesting" }
-      - { include: "#common" }
-      - { include: "#mkp-backslash" }
-      - { include: "#mkp-raw" }
-      - { include: "#mkp-link" }
-      - { include: "#mkp-label" }
-      - { include: "#mkp-ref" }
-      - { include: "#mkp-shorthand" }
-      - { include: "#mkp-strong" }
-      - { include: "#mkp-emph" }
-      - { include: "#mkp-hash" }
-      - { include: "#mkp-punctuation" }
-      - { include: "#mkp-smart-quote" }
-      - { include: "#mkp-dollar" }
-      - { include: "#mkp-equal" }
-      - { include: "#mkp-list" }
-      - { include: "#mkp-text" }
-
-  # Nesting within markup using [ ... ]. This prevents paired delimiters, e.g.
-  # *strong stars*, from ending within a nested section, e.g.
-  # `*bold [*this is also bold*] bold*`
-  mkp-nesting:
-    begin: \[
-    end: \]
-    captures:
-      0:
-        # It doesn't really make sense to enable bracket matching here, but it
-        # wouldn't necessarily be wrong, since these brackets do match
-        name: punctuation.nonmatching.typst
-    patterns:
-      - { include: "#markup" }
-
   # Starts with \
-  mkp-backslash:
+  # Same for markup and math
+  mkp-math-backslash:
     patterns:
       # Unicode escape
       - name: constant.character.escape.typst
@@ -102,6 +67,56 @@ repository:
       # Escape
       - name: constant.character.escape.content.typst
         match: \\.?
+
+  # String literal
+  # Same for math and code
+  math-code-string:
+    begin: '"'
+    end: '"'
+    # We have to prevent the end pattern from matching against an escaped quote,
+    # so we need to eat all escaped quotes. But we also have to be sure we don't
+    # eat something like `\\"`, where the quote isn't actually escaped (assuming
+    # that is preceded by more backslashes, at least). So we eat all escaped
+    # pairs.
+    patterns:
+      - match: \\.
+
+  #########################################
+  # Markup patterns
+  #########################################
+  markup:
+    patterns:
+      - { include: "#mkp-nesting" }
+      - { include: "#common" }
+      - { include: "#mkp-math-backslash" }
+      - { include: "#mkp-raw" }
+      - { include: "#mkp-link" }
+      - { include: "#mkp-label" }
+      - { include: "#mkp-ref" }
+      - { include: "#mkp-shorthand" }
+      - { include: "#mkp-strong" }
+      - { include: "#mkp-emph" }
+      - { include: "#mkp-hash" }
+      - { include: "#mkp-punctuation" }
+      - { include: "#mkp-smart-quote" }
+      - { include: "#mkp-math" }
+      - { include: "#mkp-equal" }
+      - { include: "#mkp-list" }
+      - { include: "#mkp-text" }
+
+  # Nesting within markup using [ ... ]. This prevents paired delimiters, e.g.
+  # *strong stars*, from ending within a nested section, e.g.
+  # `*bold [*this is also bold*] bold*`
+  mkp-nesting:
+    begin: \[
+    end: \]
+    captures:
+      0:
+        # It doesn't really make sense to enable bracket matching here, but it
+        # wouldn't necessarily be wrong, since these brackets do match
+        name: punctuation.nonmatching.typst
+    patterns:
+      - { include: "#markup" }
 
   # Raw/starts with `
   mkp-raw:
@@ -277,10 +292,15 @@ repository:
   mkp-smart-quote:
     match: '"|'''
 
-  # Dollar, which enters math mode
-  mkp-dollar:
-    name: punctuation.definition.math.typst
-    match: \$
+  # Math mode in markup
+  mkp-math:
+    begin: \$
+    end: \$
+    captures:
+      0:
+        name: punctuation.definition.math.typst
+    patterns:
+      - { include: "#math" }
 
   # Starts with =
   mkp-equal:
@@ -322,7 +342,24 @@ repository:
         match: ([^ \t\n\x0b\x0c\r\\/\[\]~\-.'"*_:h`$<>@#]| (?=[\p{Alphabetic}\p{Nd}\p{Nl}\p{No}])|/(?![/*])|-(?![\-?])|\.(?!\.\.)|h(?!ttps?://)|@(?![\p{XID_Start}_]))+
 
   #########################################
-  # Code patterns
+  # Math patterns
   #########################################
-  # code:
-  #   patterns:
+  math:
+    patterns:
+      - { include: "#mkp-math-backslash" }
+      - { include: "#math-code-string" }
+      - { include: "#math-shorthand" }
+
+  # Shorthands/(multi)character abbreviations for hard-to-type Unicode chars
+  math-shorthand:
+    patterns:
+      # Shorthand where VS Code would attempt to match brackets
+      - name: constant.character.escape.typst
+        match: \[\||\|]
+        captures:
+          0:
+            name: constant.character.escape.nonmatching.typst
+
+      # Most shorthand
+      - name: constant.character.escape.typst
+        match: ->>|->|-->|:=|::=|!=|\.\.\.|<==>|<-->|<--|<-<|<->|<<-|<<<|<=>|<==|<~~|<=|<<|<-|<~|>->|>>>|==>|=>|=:|>=|>>|\|->|\|=>|\|\||~~>|~>|\*|-
