@@ -367,7 +367,9 @@ repository:
       - { include: "#math-code-string" }
       - { include: "#math-shorthand" }
       - { include: "#mkp-math-hash" }
-      - { include: "#math-ops" }
+      - { include: "#math-op" }
+      - { include: "#math-ident" }
+      - { include: "#math-text" }
 
   # Shorthands/(multi)character abbreviations for hard-to-type Unicode chars
   math-shorthand:
@@ -383,12 +385,26 @@ repository:
       - name: constant.character.escape.typst
         match: ->>|->|-->|:=|::=|!=|\.\.\.|<==>|<-->|<--|<-<|<->|<<-|<<<|<=>|<==|<~~|<=|<<|<-|<~|>->|>>>|==>|=>|=:|>=|>>|\|->|\|=>|\|\||~~>|~>|\*|-
 
-# Math operators
-math-ops:
-  name: keyword.operator.math.typst
-  match: √|∛|∜|&|'
+  # Math operators
+  math-op:
+    name: keyword.operator.math.typst
+    match: √|∛|∜|&|'
 
-# Math identifiers
-math-idents:
-  name: meta.interpolation.typst
-  match:
+  # Math identifiers
+  math-ident:
+    name: meta.interpolation.typst
+    match: \p{XID_Start}[\p{XID_Continue}&&[^_]]+
+
+  # Math text, which includes numerical literals and single characters
+  # (technically single grapheme clusters)
+  math-text:
+    patterns:
+      # Number
+      - match: ([\p{Nd}\p{Nl}\p{No}]+)(\.[\p{Nd}\p{Nl}\p{No}]+)
+
+      # Grapheme cluster. Prevent VS Code from attempting bracket matching if
+      # the character happens to be a bracket.
+      - name: text.nonmatching.typst
+        match: \X
+
+  # TODO: _/^
