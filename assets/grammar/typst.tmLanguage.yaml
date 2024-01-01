@@ -71,6 +71,7 @@ repository:
   # String literal
   # Same for math and code
   math-code-string:
+    name: string.quoted.double.typst
     begin: '"'
     end: '"'
     # We have to prevent the end pattern from matching against an escaped quote,
