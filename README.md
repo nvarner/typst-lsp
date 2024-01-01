@@ -178,3 +178,20 @@ Run `CocConfig` to edit the settings so that `coc.nvim` could offer functions su
     }
 }
 ```
+
+### Helix
+
+Helix support LSPs but for typst you need to add some configuration.
+Add this in `language.toml`:
+
+```toml
+[[language]]
+ name = "typst"
+ scope = "source.typst"
+ injection-regex = "^typst$"
+ file-types = ["typ"]
+ comment-token = "//"
+ indent = { tab-width = 2, unit = "  " }
+ roots = []
+ language-server = { command = "typst-lsp" }
+```
