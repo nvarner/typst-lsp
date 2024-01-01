@@ -68,6 +68,14 @@ repository:
       - name: constant.character.escape.content.typst
         match: \\.?
 
+  # Hash, which enters code mode
+  # Same for markup and math
+  mkp-math-hash:
+    # Hashes are supposed to be highlighted based on the syntax that
+    # follows, but for simplicity, we just color it as an operator
+    name: keyword.operator.typst
+    match: \#
+
   # String literal
   # Same for math and code
   math-code-string:
@@ -97,7 +105,7 @@ repository:
       - { include: "#mkp-shorthand" }
       - { include: "#mkp-strong" }
       - { include: "#mkp-emph" }
-      - { include: "#mkp-hash" }
+      - { include: "#mkp-math-hash" }
       - { include: "#mkp-punctuation" }
       - { include: "#mkp-smart-quote" }
       - { include: "#mkp-math" }
@@ -272,13 +280,6 @@ repository:
     patterns:
       - { include: "#markup" }
 
-  # Hash, which enters code mode
-  mkp-hash:
-    # Hashes are supposed to be highlighted based on the syntax that
-    # follows, but for simplicity, we just color it as an operator
-    name: keyword.operator.typst
-    match: \#
-
   # Punctuation.
   mkp-punctuation:
     patterns:
@@ -299,7 +300,12 @@ repository:
     end: \$
     captures:
       0:
-        name: punctuation.definition.math.typst
+        # This isn't the officially recommended TM scope, but it seems to have
+        # good support in themes.
+        name: string.quoted.other.typst
+        patterns:
+          - name: punctuation.definition.math.typst
+            match: .*
     patterns:
       - { include: "#math" }
 
@@ -325,8 +331,18 @@ repository:
     patterns:
       # list, enum list, and term list markers
       # - ...   + ...   / ...
-      - name: punctuation.definition.list.typst
+      # This isn't the officially recommended TM scope, but it seems to be
+      # needed for some themes.
+      - name: markup.list.typst
         match: ([\-+/](?=\p{White_Space}|$))
+        captures:
+          0:
+            # This isn't an officially recommended TM scope, but it seems to be
+            # needed for some themes.
+            name: punctuation.definition.list.begin.typst
+            patterns:
+              - name: punctuation.definition.list.typst
+                match: .*
 
       # numbered enum list markers
       # These are supposed to be checked by parsing as usize, but we skip that
@@ -350,6 +366,8 @@ repository:
       - { include: "#mkp-math-backslash" }
       - { include: "#math-code-string" }
       - { include: "#math-shorthand" }
+      - { include: "#mkp-math-hash" }
+      - { include: "#math-ops" }
 
   # Shorthands/(multi)character abbreviations for hard-to-type Unicode chars
   math-shorthand:
@@ -361,6 +379,16 @@ repository:
           0:
             name: constant.character.escape.nonmatching.typst
 
-      # Most shorthand
+      # Most shorthands
       - name: constant.character.escape.typst
         match: ->>|->|-->|:=|::=|!=|\.\.\.|<==>|<-->|<--|<-<|<->|<<-|<<<|<=>|<==|<~~|<=|<<|<-|<~|>->|>>>|==>|=>|=:|>=|>>|\|->|\|=>|\|\||~~>|~>|\*|-
+
+# Math operators
+math-ops:
+  name: keyword.operator.math.typst
+  match: √|∛|∜|&|'
+
+# Math identifiers
+math-idents:
+  name: meta.interpolation.typst
+  match:
