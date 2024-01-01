@@ -52,7 +52,7 @@ repository:
       - { include: "#mkp-raw" }
       - { include: "#mkp-link" }
       - { include: "#mkp-label" }
-      - { include: "#mkp-ref-marker" }
+      - { include: "#mkp-ref" }
       - { include: "#mkp-shorthand" }
       - { include: "#mkp-strong" }
       - { include: "#mkp-emph" }
@@ -198,10 +198,21 @@ repository:
       - name: invalid.typst
         match: <[\p{XID_Continue}_\-:.]+([^\p{XID_Continue}_\-:.]*?>?|$)
 
-  # Ref markers
-  mkp-ref-marker:
-    name: markup.other.reference.typst
-    match: (@([\p{XID_Continue}_\-:.]*[\p{XID_Continue}_\-]+)?)
+  # Refs
+  mkp-ref:
+    patterns:
+      # Reference like `@ref[content]`
+      - begin: (@([\p{XID_Continue}_\-:.]*[\p{XID_Continue}_\-]+)?)\[
+        end: "]"
+        beginCaptures:
+          1:
+            name: markup.other.reference.typst
+        patterns:
+          - { include: "#markup" }
+
+      # Reference like `@ref`
+      - name: markup.other.reference.typst
+        match: (@([\p{XID_Continue}_\-:.]*[\p{XID_Continue}_\-]+)?)
 
   # Shorthands/(multi)character abbreviations for hard-to-type Unicode chars
   mkp-shorthand:
