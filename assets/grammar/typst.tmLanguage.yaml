@@ -21,6 +21,13 @@ repository:
       - { include: "#cmn-line-comment" }
       - { include: "#cmn-block-comment" }
 
+  # Trivia, which is skipped in math and code
+  cmn-trivia:
+    patterns:
+      - { include: "#cmn-whitespace" }
+      - { include: "#cmn-line-comment" }
+      - { include: "#cmn-block-comment" }
+
   # Whitespace
   cmn-whitespace:
     match: \p{White_Space}+
@@ -361,14 +368,18 @@ repository:
   #########################################
   # Math patterns
   #########################################
+  # Opening delimiters are matched by `/[(\[{⌈⌊⌜⌞❲⟦⟨⟪⟬⟮⦃⦅⦇⦉⦋⦍⦏⦑⦓⦕⦗⧘⧚⧼]/`
+  # Closing delimiters are matched by `/[)\]}⌉⌋⌝⌟❳⟧⟩⟫⟭⟯⦄⦆⦈⦊⦌⦎⦐⦒⦔⦖⦘⧙⧛⧽]/`
   math:
     patterns:
+      - { include: "#cmn-trivia" }
       - { include: "#mkp-math-backslash" }
       - { include: "#math-code-string" }
       - { include: "#math-shorthand" }
       - { include: "#mkp-math-hash" }
       - { include: "#math-op" }
       - { include: "#math-ident" }
+      - { include: "#math-delim" }
       - { include: "#math-text" }
 
   # Shorthands/(multi)character abbreviations for hard-to-type Unicode chars
@@ -392,8 +403,38 @@ repository:
 
   # Math identifiers
   math-ident:
-    name: meta.interpolation.typst
-    match: \p{XID_Start}[\p{XID_Continue}&&[^_]]+
+    patterns:
+      # Identifier followed by arguments
+      - begin: (\p{XID_Start}[\p{XID_Continue}&&[^_]]+)(\()
+        end: (\))|(?=\$)
+        beginCaptures:
+          1:
+            name: meta.interpolation.typst
+          2:
+            name: punctuation.typst
+        endCaptures:
+          1:
+            name: punctuation.typst
+        patterns:
+          - { include: "#math-args" }
+
+      # Just an identifier
+      - name: meta.interpolation.typst
+        match: \p{XID_Start}[\p{XID_Continue}&&[^_]]+
+
+  # Delimited math. This isn't actually allowed everywhere we highlight it, but
+  # it seems to correctly highlight valid Typst, and is far simpler
+  math-delim:
+    begin: ([(\[{⌈⌊⌜⌞❲⟦⟨⟪⟬⟮⦃⦅⦇⦉⦋⦍⦏⦑⦓⦕⦗⧘⧚⧼])
+    end: ([)\]}⌉⌋⌝⌟❳⟧⟩⟫⟭⟯⦄⦆⦈⦊⦌⦎⦐⦒⦔⦖⦘⧙⧛⧽])|(?=\$)
+    # Prevent VS Code from attempting
+    # bracket matching because the matching bracket can be a different kind of
+    # bracket. For example, `(...]` is accepted.
+    captures:
+      1:
+        name: text.nonmatching.typst
+    patterns:
+      - { include: "#math" }
 
   # Math text, which includes numerical literals and single characters
   # (technically single grapheme clusters)
@@ -408,3 +449,29 @@ repository:
         match: \X
 
   # TODO: _/^
+
+  #########################################
+  # Math arg patterns
+  #########################################
+  math-args:
+    patterns:
+      - { include: "#cmn-trivia" }
+      - { include: "#math-args-label" }
+      - { include: "#math-args-sep" }
+      - { include: "#math" }
+
+  # Labels for named arguments, which is an ident or text followed by `:`
+  math-args-label:
+    match: (\p{XID_Start}[\p{XID_Continue}&&[^_]]+|[\p{Nd}\p{Nl}\p{No}]+(\.[\p{Nd}\p{Nl}\p{No}]+)|\X)(:)
+    captures:
+      1:
+        name: meta.interpolation.typst
+      3:
+        name: punctuation.typst
+
+  # Separators between arguments
+  math-args-sep:
+    match: ;|,
+    captures:
+      0:
+        name: punctuation.typst
