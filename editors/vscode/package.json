@@ -127,6 +127,10 @@
                     "meta.embedded.block.json": "json",
                     "meta.embedded.block.html": "html",
                     "meta.embedded.block.ocaml": "ocaml"
+                },
+                "tokenTypes": {
+                    "punctuation.nonmatching.typst": "string",
+                    "text.nonmatching.typst": "string"
                 }
             }
         ],

@@ -1,6 +1,12 @@
 scopeName: source.typst
 name: Typst
 
+# VS Code has an automatic brace matching feature, which we sometimes need to
+# disable. In the VS Code extension's `package.json`, we tell VS Code not to
+# perform brace matching for:
+# - `punctuation.nonmatching.typst`
+# - `text.nonmatching.typst`
+
 patterns:
   - { include: "#markup" }
 
@@ -66,7 +72,9 @@ repository:
     end: \]
     captures:
       0:
-        name: punctuation.typst
+        # It doesn't really make sense to enable bracket matching here, but it
+        # wouldn't necessarily be wrong, since these brackets do match
+        name: punctuation.nonmatching.typst
     patterns:
       - { include: "#markup" }
 
@@ -74,12 +82,22 @@ repository:
   mkp-backslash:
     patterns:
       # Unicode escape
-      - name: constant.character.escape.content.typst
+      - name: constant.character.escape.typst
         match: \\u{[a-zA-Z0-9]*}?
 
       # Linebreak
-      - name: punctuation.definition.linebreak.typst
+      - name: constant.character.escape.typst
         match: \\($|\s)
+        captures:
+          0:
+            name: punctuation.nonmatching.typst
+
+      # Escape that VS Code would try to perform brace matching on
+      - name: constant.character.escape.typst
+        match: \\[\[\](){}]
+        captures:
+          0:
+            name: punctuation.nonmatching.typst
 
       # Escape
       - name: constant.character.escape.content.typst
@@ -193,7 +211,7 @@ repository:
   # Strong (usually bold) text *between stars*
   mkp-strong:
     name: markup.bold.typst
-    # Typst checks that `*` is not in a word. This is defined so that `*`
+    # Typst checks that `*` is not in a "word". This is defined so that `*`
     # should match if it has a "non-wordy" char either before or after (or
     # there is no char before or after).
     #
@@ -234,14 +252,18 @@ repository:
     name: keyword.operator.typst
     match: \#
 
-  # Punctuation
+  # Punctuation.
   mkp-punctuation:
-    name: punctuation.typst
-    match: ([\[\]:])
+    patterns:
+      # Unmatched [] should not match in markup mode
+      - name: punctuation.nonmatching.typst
+        match: ([\[\]])
+
+      - name: punctuation.typst
+        match: ":"
 
   # Smart quotes
   mkp-smart-quote:
-    name: meta.paragraph.typst
     match: '"|'''
 
   # Dollar, which enters math mode
@@ -288,8 +310,10 @@ repository:
 
   # Non-special text content
   mkp-text:
-    name: meta.paragraph.typst
-    match: ([^ \t\n\x0b\x0c\r\\/\[\]{}~\-.'"*_:h`$<>@#]| (?=[\p{Alphabetic}\p{Nd}\p{Nl}\p{No}])|/(?![/*])|-(?![\-?])|\.(?!\.\.)|h(?!ttps?://)|@(?![\p{XID_Start}_]))+
+    patterns:
+      # Parens should not match in markup mode
+      - name: text.nonmatching.typst
+        match: ([^ \t\n\x0b\x0c\r\\/\[\]~\-.'"*_:h`$<>@#]| (?=[\p{Alphabetic}\p{Nd}\p{Nl}\p{No}])|/(?![/*])|-(?![\-?])|\.(?!\.\.)|h(?!ttps?://)|@(?![\p{XID_Start}_]))+
 
   #########################################
   # Code patterns
