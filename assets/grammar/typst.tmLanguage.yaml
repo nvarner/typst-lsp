@@ -368,8 +368,6 @@ repository:
   #########################################
   # Math patterns
   #########################################
-  # Opening delimiters are matched by `/[(\[{⌈⌊⌜⌞❲⟦⟨⟪⟬⟮⦃⦅⦇⦉⦋⦍⦏⦑⦓⦕⦗⧘⧚⧼]/`
-  # Closing delimiters are matched by `/[)\]}⌉⌋⌝⌟❳⟧⟩⟫⟭⟯⦄⦆⦈⦊⦌⦎⦐⦒⦔⦖⦘⧙⧛⧽]/`
   math:
     patterns:
       - { include: "#cmn-trivia" }
