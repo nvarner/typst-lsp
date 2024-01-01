@@ -396,10 +396,11 @@ repository:
       - name: constant.character.escape.typst
         match: ->>|->|-->|:=|::=|!=|\.\.\.|<==>|<-->|<--|<-<|<->|<<-|<<<|<=>|<==|<~~|<=|<<|<-|<~|>->|>>>|==>|=>|=:|>=|>>|\|->|\|=>|\|\||~~>|~>|\*|-
 
-  # Math operators
+  # Math operators. Strictly speaking, `_/^` should be treated more carefully,
+  # but this is likely acceptable for its intended purpose and is much simpler.
   math-op:
     name: keyword.operator.math.typst
-    match: √|∛|∜|&|'
+    match: ([√∛∜&'_/\^])
 
   # Math identifiers
   math-ident:
@@ -447,8 +448,6 @@ repository:
       # the character happens to be a bracket.
       - name: text.nonmatching.typst
         match: \X
-
-  # TODO: _/^
 
   #########################################
   # Math arg patterns
