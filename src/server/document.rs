@@ -10,7 +10,17 @@ impl TypstServer {
         let config = self.config.read().await;
         match config.export_pdf {
             ExportPdfMode::OnType => self.run_diagnostics_and_export(uri).await?,
-            _ => self.run_diagnostics(uri).await?,
+            ExportPdfMode::OnPinnedMainType => {
+                if let Some(main_uri) = self.main_url().await {
+                    self.run_diagnostics_and_export(&main_uri).await?
+                } else {
+                    self.run_diagnostics(uri).await?
+                }
+            }
+            _ => {
+                self.run_diagnostics(self.main_url().await.as_ref().unwrap_or(uri))
+                    .await?
+            }
         }
 
         Ok(())

@@ -6,8 +6,9 @@ use itertools::Itertools;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 use tower_lsp::lsp_types::{
-    self, ConfigurationItem, InitializeParams, PositionEncodingKind, Registration,
+    self, ConfigurationItem, InitializeParams, PositionEncodingKind, Registration, Url,
 };
+use tracing::warn;
 
 use crate::ext::InitializeParamsExt;
 
@@ -36,7 +37,9 @@ pub enum ExportPdfMode {
     Never,
     #[default]
     OnSave,
+    OnPinnedMainSave,
     OnType,
+    OnPinnedMainType,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
@@ -58,6 +61,7 @@ const CONFIG_ITEMS: &[&str] = &[
 
 #[derive(Default)]
 pub struct Config {
+    pub main_file: Option<Url>,
     pub export_pdf: ExportPdfMode,
     pub root_path: Option<PathBuf>,
     pub semantic_tokens: SemanticTokensMode,
@@ -150,7 +154,32 @@ impl Config {
             self.formatter = formatter;
         }
 
+        self.validate_main_file();
         Ok(())
+    }
+
+    pub async fn update_main_file(&mut self, main_file: Option<Url>) -> anyhow::Result<()> {
+        self.main_file = main_file;
+
+        self.validate_main_file();
+        Ok(())
+    }
+
+    fn validate_main_file(&mut self) {
+        if let Some(main_file) = &self.main_file {
+            if let Some(root_path) = &self.root_path {
+                if let Ok(main_file) = main_file.to_file_path() {
+                    if !main_file.starts_with(root_path) {
+                        warn!(
+                            "main file {main_file} is not in the workspace root {root_path}",
+                            main_file = main_file.display(),
+                            root_path = root_path.display(),
+                        );
+                        self.main_file = None;
+                    }
+                }
+            }
+        }
     }
 }
 

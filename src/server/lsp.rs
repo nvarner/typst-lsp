@@ -295,11 +295,18 @@ impl LanguageServer for TypstServer {
 
         let config = self.config.read().await;
 
-        if config.export_pdf == ExportPdfMode::OnSave {
-            if let Err(err) = self.run_diagnostics_and_export(&uri).await {
-                error!(%err, %uri, "could not handle source save");
-            };
-        }
+        let uri = match config.export_pdf {
+            ExportPdfMode::OnPinnedMainSave => Some(self.main_url().await.unwrap_or(uri)),
+            ExportPdfMode::OnSave => Some(uri),
+            _ => None,
+        };
+        let Some(uri) = uri else {
+            return;
+        };
+
+        if let Err(err) = self.run_diagnostics_and_export(&uri).await {
+            error!(%err, %uri, "could not handle source save");
+        };
     }
 
     #[tracing::instrument(skip(self))]
@@ -343,6 +350,9 @@ impl LanguageServer for TypstServer {
             }
             Some(LspCommand::ClearCache) => {
                 self.command_clear_cache(arguments).await?;
+            }
+            Some(LspCommand::PinMain) => {
+                self.command_pin_main(arguments).await?;
             }
             None => {
                 error!("asked to execute unknown command");
@@ -398,15 +408,19 @@ impl LanguageServer for TypstServer {
 
         let position_encoding = self.const_config().position_encoding;
         let doc = { self.document.lock().await.clone() };
+        let fid = self.workspace().read().await.full_id(&uri).map_err(|err| {
+            error!(%err, %uri, "error getting completion");
+            jsonrpc::Error::internal_error()
+        })?;
         let completions = self
-            .thread_with_world(&uri)
+            .thread_with_world(self.main_url().await.as_ref().unwrap_or(&uri))
             .await
             .map_err(|err| {
                 error!(%err, %uri, "error getting completion");
                 jsonrpc::Error::internal_error()
             })?
             .run(move |world| {
-                let source = world.main();
+                let source = world.source(fid.into()).ok()?;
 
                 let typst_offset =
                     lsp_to_typst::position_to_offset(position, position_encoding, &source);

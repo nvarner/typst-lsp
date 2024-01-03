@@ -4,7 +4,7 @@ use tower_lsp::{
     jsonrpc::{Error, Result},
     lsp_types::Url,
 };
-use tracing::error;
+use tracing::{error, info};
 
 use super::TypstServer;
 
@@ -12,6 +12,7 @@ use super::TypstServer;
 pub enum LspCommand {
     ExportPdf,
     ClearCache,
+    PinMain,
 }
 
 impl From<LspCommand> for String {
@@ -19,6 +20,7 @@ impl From<LspCommand> for String {
         match command {
             LspCommand::ExportPdf => "typst-lsp.doPdfExport".to_string(),
             LspCommand::ClearCache => "typst-lsp.doClearCache".to_string(),
+            LspCommand::PinMain => "typst-lsp.doPinMain".to_string(),
         }
     }
 }
@@ -28,12 +30,17 @@ impl LspCommand {
         match command {
             "typst-lsp.doPdfExport" => Some(Self::ExportPdf),
             "typst-lsp.doClearCache" => Some(Self::ClearCache),
+            "typst-lsp.doPinMain" => Some(Self::PinMain),
             _ => None,
         }
     }
 
     pub fn all_as_string() -> Vec<String> {
-        vec![Self::ExportPdf.into(), Self::ClearCache.into()]
+        vec![
+            Self::ExportPdf.into(),
+            Self::ClearCache.into(),
+            Self::PinMain.into(),
+        ]
     }
 }
 
@@ -68,6 +75,39 @@ impl TypstServer {
         })?;
 
         self.typst(|_| comemo::evict(0)).await;
+
+        Ok(())
+    }
+
+    /// Pin main file to some path.
+    #[tracing::instrument(skip_all)]
+    pub async fn command_pin_main(&self, arguments: Vec<Value>) -> Result<()> {
+        if arguments.is_empty() {
+            return Err(Error::invalid_params("Missing file URI argument"));
+        }
+        let Some(file_uri) = arguments.first().and_then(|v| v.as_str()) else {
+            return Err(Error::invalid_params("Missing file URI as first argument"));
+        };
+        let file_uri = if file_uri == "detached" {
+            None
+        } else {
+            Some(
+                Url::parse(file_uri)
+                    .map_err(|_| Error::invalid_params("Parameter is not a valid URI"))?,
+            )
+        };
+
+        let update_result = self.config.write().await.update_main_file(file_uri).await;
+
+        update_result.map_err(|err| {
+            error!(%err, "could not set main file");
+            jsonrpc::Error::internal_error()
+        })?;
+
+        info!(
+            "main file pinned: {main_url:?}",
+            main_url = self.main_url().await
+        );
 
         Ok(())
     }

@@ -47,6 +47,12 @@ async function startClient(context: ExtensionContext): Promise<void> {
     context.subscriptions.push(
         commands.registerCommand("typst-lsp.exportCurrentPdf", commandExportCurrentPdf)
     );
+    context.subscriptions.push(
+        commands.registerCommand("typst-lsp.pinMainToCurrent", () => commandPinMain(true))
+    );
+    context.subscriptions.push(
+        commands.registerCommand("typst-lsp.unpinMain", () => commandPinMain(false))
+    );
     context.subscriptions.push(commands.registerCommand("typst-lsp.showPdf", commandShowPdf));
     context.subscriptions.push(commands.registerCommand("typst-lsp.clearCache", commandClearCache));
 
@@ -123,6 +129,27 @@ async function commandExportCurrentPdf(): Promise<void> {
 
     await client?.sendRequest("workspace/executeCommand", {
         command: "typst-lsp.doPdfExport",
+        arguments: [uri],
+    });
+}
+
+async function commandPinMain(isPin: boolean): Promise<void> {
+    if (!isPin) {
+        await client?.sendRequest("workspace/executeCommand", {
+            command: "typst-lsp.doPinMain",
+            arguments: ["detached"],
+        });
+    }
+
+    const activeEditor = window.activeTextEditor;
+    if (activeEditor === undefined) {
+        return;
+    }
+
+    const uri = activeEditor.document.uri.toString();
+
+    await client?.sendRequest("workspace/executeCommand", {
+        command: "typst-lsp.doPinMain",
         arguments: [uri],
     });
 }
