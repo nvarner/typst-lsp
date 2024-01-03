@@ -1,34 +1,42 @@
-use tower_lsp::lsp_types::{FoldingRange, FoldingRangeKind};
+use tower_lsp::lsp_types::{FoldingRange, FoldingRangeKind, Url};
 use typst::syntax::Source;
 
 use super::TypstServer;
 
 impl TypstServer {
-    pub fn get_folding_ranges(&self, source: &Source) -> Option<Vec<FoldingRange>> {
-        let mut ranges = vec![];
-        let mut previous_idx: Option<usize> = None;
+    pub fn get_folding_ranges(&self, source: &Source, uri: &Url) -> Option<Vec<FoldingRange>> {
+        let symbols = self.document_symbols(source, uri, None).collect::<Vec<_>>();
 
-        for (line_idx, line) in source.text().lines().enumerate() {
-            if line.starts_with('=') {
-                if let Some(prev) = previous_idx {
-                    ranges.push(FoldingRange {
-                        start_line: prev.try_into().unwrap(),
-                        end_line: <usize as TryInto<u32>>::try_into(line_idx).unwrap() - 1u32,
-                        kind: Some(FoldingRangeKind::Region),
-                        ..Default::default()
-                    });
+        let mut starting_line: Option<u32> = None;
+        let mut ranges: Vec<FoldingRange> = Vec::new();
+
+        for symbol in symbols {
+            match symbol {
+                Ok(sym) => {
+                    if let Some(prev_line) = starting_line {
+                        ranges.push(FoldingRange {
+                            start_line: prev_line,
+                            end_line: sym.location.range.start.line - 1,
+                            kind: Some(FoldingRangeKind::Region),
+                            ..Default::default()
+                        })
+                    }
+
+                    starting_line = Some(sym.location.range.end.line)
                 }
-                previous_idx = Some(line_idx);
-            }
+                Err(_) => {}
+            };
         }
 
-        if let Some(prev) = previous_idx {
+        // we've reached the end of the document but there was still an 'open' header
+        if let Some(prev_line) = starting_line {
             ranges.push(FoldingRange {
-                start_line: prev.try_into().unwrap(),
-                end_line: <usize as TryInto<u32>>::try_into(source.len_lines()).unwrap() - 1u32,
+                start_line: prev_line,
+                end_line: <usize as TryInto<u32>>::try_into(source.len_lines())
+                    .expect("Could not convert usize into u32") - 1,
                 kind: Some(FoldingRangeKind::Region),
                 ..Default::default()
-            });
+            })
         }
 
         Some(ranges)

@@ -619,6 +619,7 @@ impl LanguageServer for TypstServer {
         Ok(selection_range)
     }
 
+    #[tracing::instrument(skip(self))]
     async fn folding_range(
         &self,
         params: FoldingRangeParams,
@@ -631,7 +632,7 @@ impl LanguageServer for TypstServer {
                 error!(%err, %uri, "error getting folding ranges");
                 jsonrpc::Error::internal_error()
             })?
-            .run(|source, _| self.get_folding_ranges(source));
+            .run(|source, _| self.get_folding_ranges(source, &uri));
         
         Ok(folding_ranges)
     }
