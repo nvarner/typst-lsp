@@ -1,4 +1,4 @@
-use tower_lsp::lsp_types::{FoldingRange, FoldingRangeKind, Url};
+use tower_lsp::lsp_types::{FoldingRange, FoldingRangeKind, Url, SymbolKind};
 use typst::syntax::Source;
 
 use super::TypstServer;
@@ -10,7 +10,7 @@ impl TypstServer {
         let mut starting_line: Option<u32> = None;
         let mut ranges: Vec<FoldingRange> = Vec::new();
 
-        for symbol in symbols.into_iter().flatten() {
+        for symbol in symbols.into_iter().flatten().filter(|sym| sym.kind == SymbolKind::NAMESPACE) {
             if let Some(prev_line) = starting_line {
                 ranges.push(FoldingRange {
                     start_line: prev_line,
