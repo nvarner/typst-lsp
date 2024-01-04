@@ -178,3 +178,8 @@ Run `CocConfig` to edit the settings so that `coc.nvim` could offer functions su
     }
 }
 ```
+
+
+### Sublime Text
+
+Follow the [configuration instructions](https://lsp.sublimetext.io/language_servers/#typst) for the LSP plugin for Sublime Text.
