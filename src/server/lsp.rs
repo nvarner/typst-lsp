@@ -647,7 +647,7 @@ impl LanguageServer for TypstServer {
                 jsonrpc::Error::internal_error()
             })?
             .run(|source, _| self.get_folding_ranges(source, &uri));
-        
+
         Ok(folding_ranges)
     }
 
