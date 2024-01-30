@@ -1,4 +1,4 @@
-use std::{fmt, path::PathBuf};
+use std::{fmt, path::PathBuf, str::FromStr};
 
 use anyhow::bail;
 use futures::future::BoxFuture;
@@ -53,6 +53,7 @@ pub enum SemanticTokensMode {
 pub type Listener<T> = Box<dyn FnMut(&T) -> BoxFuture<anyhow::Result<()>> + Send + Sync>;
 
 const CONFIG_ITEMS: &[&str] = &[
+    "mainFile",
     "exportPdf",
     "rootPath",
     "semanticTokens",
@@ -129,6 +130,20 @@ impl Config {
             }
             if let Some(root_path) = root_path.as_str().map(PathBuf::from) {
                 self.root_path = Some(root_path);
+            }
+        }
+        let main_file = update.get("mainFile");
+        if let Some(main_file) = main_file {
+            if main_file.is_null() {
+                self.main_file = None;
+            }
+            else {
+                self.main_file = main_file
+                    .as_str()
+                    // TODO support relative URLs
+                    .map(Url::from_str)
+                    // TODO user feedback when URL not ok
+                    .and_then(|r| r.ok());
             }
         }
 
