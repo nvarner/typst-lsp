@@ -280,7 +280,7 @@
             },
             {
                 "command": "typst-lsp.pinMainToCurrent",
-                "title": "Pin the main file to the currently openning document",
+                "title": "Pin the main file to the currently opened document",
                 "category": "Typst"
             },
             {
