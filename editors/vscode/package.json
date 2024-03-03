@@ -275,7 +275,7 @@
         "commands": [
             {
                 "command": "typst-lsp.exportCurrentPdf",
-                "title": "Export the currently open file as PDF",
+                "title": "Export the currently opened file as PDF",
                 "category": "Typst"
             },
             {
