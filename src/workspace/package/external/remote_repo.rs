@@ -9,7 +9,7 @@ use reqwest::{Client, Url};
 use tokio::io::{AsyncBufRead, AsyncRead};
 use tokio_tar::Archive;
 use tokio_util::io::StreamReader;
-use typst::syntax::PackageSpec;
+use typst::syntax::package::PackageSpec;
 
 use super::{RepoError, RepoProvider, RepoResult};
 
