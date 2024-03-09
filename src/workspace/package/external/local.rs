@@ -6,7 +6,8 @@ use async_trait::async_trait;
 use tokio::io::{AsyncBufRead, AsyncRead};
 use tokio_tar::Archive;
 use tower_lsp::lsp_types::Url;
-use typst::syntax::{PackageSpec, VirtualPath};
+use typst::syntax::package::PackageSpec;
+use typst::syntax::VirtualPath;
 
 use crate::workspace::fs::local::LocalFs;
 use crate::workspace::package::{FullFileId, Package, PackageId};
