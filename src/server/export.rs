@@ -23,7 +23,7 @@ impl TypstServer {
         self.thread_with_world(source_uri)
             .await?
             .run(move |world| {
-                let data = typst_pdf::pdf(&document, Smart::Custom(pdf_uri.as_str()), world.now());
+                let data = typst_pdf::pdf(&document, Smart::Auto, world.now());
 
                 world
                     .write_raw(&pdf_uri, &data)
