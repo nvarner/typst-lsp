@@ -156,12 +156,7 @@ By default, the LSP does not send data to Jaeger. To enable it:
 1. Run `MasonInstall typst-lsp`.
 2. Edit your `init.lua` settings (For more details, you may consult [server_configurations.md#typst_lsp](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#typst_lsp)):
 ```lua
-require'lspconfig'.typst_lsp.setup{
-	settings = {
-		exportPdf = "onType" -- Choose onType, onSave or never.
-        -- serverPath = "" -- Normally, there is no need to uncomment it.
-	}
-}
+require'lspconfig'.typst_lsp.setup{}
 ```
 3. You may also install [`typst.vim`](https://github.com/kaarmu/typst.vim) for more capabilities in nvim.
 
