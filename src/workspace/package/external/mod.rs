@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use tokio::io::AsyncBufRead;
 use tower_lsp::lsp_types::Url;
 use typst::diag::{EcoString, PackageError as TypstPackageError};
-use typst::syntax::PackageSpec;
+use typst::syntax::package::PackageSpec;
 
 use super::{FullFileId, Package};
 

@@ -4,7 +4,7 @@ use tokio::runtime;
 use tower_lsp::lsp_types::Url;
 use typst::diag::{EcoString, FileResult};
 use typst::foundations::{Bytes, Datetime};
-use typst::syntax::{FileId, PackageSpec, Source};
+use typst::syntax::{FileId, package::PackageSpec, Source};
 use typst::text::{Font, FontBook};
 use typst::{Library, World};
 

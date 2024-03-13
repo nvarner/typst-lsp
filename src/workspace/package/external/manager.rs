@@ -4,7 +4,7 @@ use tokio::sync::OnceCell;
 use tower_lsp::lsp_types::Url;
 use tracing::{info, warn};
 use typst::diag::EcoString;
-use typst::syntax::{PackageSpec, PackageVersion};
+use typst::syntax::package::{PackageSpec, PackageVersion};
 
 use crate::workspace::package::manager::{ExternalPackageError, ExternalPackageResult};
 use crate::workspace::package::{FullFileId, Package};

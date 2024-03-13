@@ -4,6 +4,7 @@ use anyhow::Context;
 use tower_lsp::lsp_types::Url;
 use tracing::info;
 use typst::model::Document;
+use typst::foundations::Smart;
 
 use crate::ext::UrlExt;
 
@@ -22,7 +23,7 @@ impl TypstServer {
         self.thread_with_world(source_uri)
             .await?
             .run(move |world| {
-                let data = typst_pdf::pdf(&document, Some(pdf_uri.as_str()), world.now());
+                let data = typst_pdf::pdf(&document, Smart::Auto, world.now());
 
                 world
                     .write_raw(&pdf_uri, &data)

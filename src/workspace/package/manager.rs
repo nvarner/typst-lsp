@@ -5,7 +5,7 @@ use itertools::Itertools;
 use tower_lsp::lsp_types::{Url, WorkspaceFoldersChangeEvent};
 use tracing::{error, info, trace, warn};
 use typst::diag::{EcoString, FileError, PackageError as TypstPackageError};
-use typst::syntax::{FileId, PackageSpec};
+use typst::syntax::{FileId, package::PackageSpec};
 
 use crate::ext::{UriError, UrlExt};
 use crate::workspace::fs::{FsError, FsResult};

@@ -3,7 +3,7 @@ use std::ffi::OsStr;
 
 use internment::Intern;
 use tower_lsp::lsp_types::Url;
-use typst::syntax::{FileId, PackageSpec, VirtualPath};
+use typst::syntax::{FileId, package::PackageSpec, VirtualPath};
 
 use crate::ext::{UriResult, UrlExt, VirtualPathExt};
 

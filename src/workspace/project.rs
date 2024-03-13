@@ -6,7 +6,7 @@ use tokio::sync::OwnedRwLockReadGuard;
 use tower_lsp::lsp_types::Url;
 use typst::diag::EcoString;
 use typst::foundations::Bytes;
-use typst::syntax::{FileId, PackageSpec, Source};
+use typst::syntax::{FileId, package::PackageSpec, Source};
 use typst::text::{Font, FontBook};
 use typst::Library;
 
