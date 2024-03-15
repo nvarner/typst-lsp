@@ -162,6 +162,8 @@ fn token_from_node(node: &LinkedNode) -> Option<TokenType> {
     match node.kind() {
         Star if node.parent_kind() == Some(Strong) => Some(TokenType::Punctuation),
         Star if node.parent_kind() == Some(ModuleImport) => Some(TokenType::Operator),
+        // Multiplication operator
+        Star => Some(TokenType::Operator),
 
         Underscore if node.parent_kind() == Some(Emph) => Some(TokenType::Punctuation),
         Underscore if node.parent_kind() == Some(MathAttach) => Some(TokenType::Operator),
