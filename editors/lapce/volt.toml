@@ -1,5 +1,5 @@
 name = "typst-lsp"
-version = "0.12.1"
+version = "0.13.0"
 author = "nvarner"
 display-name = "Typst LSP"
 description = "A language server for Typst"
