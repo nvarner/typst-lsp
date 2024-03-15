@@ -3360,9 +3360,9 @@ checksum = "6af6ae20167a9ece4bcb41af5b80f8a1f1df981f6391189ce00fd257af04126a"
 
 [[package]]
 name = "typst"
-version = "0.11.0-rc1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f3138c2abf8db20ac5292e59de8d32a02e7a36732060e8f9d1d5eff2accada8"
+checksum = "82ce6533a33d2cc4b5eba6b009b862e75c8f9146a584f84ca154c94463e43993"
 dependencies = [
  "az",
  "bitflags 2.4.2",
@@ -3410,7 +3410,7 @@ dependencies = [
  "typed-arena",
  "typst-assets",
  "typst-macros",
- "typst-syntax 0.11.0-rc1",
+ "typst-syntax 0.11.0",
  "typst-timing",
  "unicode-bidi",
  "unicode-math-class",
@@ -3422,15 +3422,15 @@ dependencies = [
 
 [[package]]
 name = "typst-assets"
-version = "0.11.0-rc1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e43b98ec1d7969c329e3735e597bbe5e69076445a570f9634b30c8dc01c704ae"
+checksum = "f13f85360328da54847dd7fefaf272dfa5b6d1fdeb53f32938924c39bf5b2c6c"
 
 [[package]]
 name = "typst-ide"
-version = "0.11.0-rc1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0050587ac2e9f54a29aed93ff06c463915ee3b46165284ef0ff5f83c2916d432"
+checksum = "dcb5654d91e00dc20e9bf0c427b4558392b03d59e684e10fae45ce915766be5e"
 dependencies = [
  "comemo 0.4.0",
  "ecow 0.2.1",
@@ -3491,9 +3491,9 @@ dependencies = [
 
 [[package]]
 name = "typst-macros"
-version = "0.11.0-rc1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17cfe85bbc9f01cddf9c68e733099432b352bcfb7575ccc4ef0a3ffc3c063255"
+checksum = "54e48fdd6dabf48a0e595960aaef6ae43dac7d243e8c1c6926a0787d5b8a9ba7"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -3503,9 +3503,9 @@ dependencies = [
 
 [[package]]
 name = "typst-pdf"
-version = "0.11.0-rc1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c1d0909c5dc633e9cb99706a430eee1bfd3dc87e8c4148bc9fb4bb28bf07d31"
+checksum = "7c27957bbe3e17b961746a7ddf6f0831479674331457680bb8e3b84f7b83bd58"
 dependencies = [
  "base64 0.22.0",
  "bytemuck",
@@ -3545,9 +3545,9 @@ dependencies = [
 
 [[package]]
 name = "typst-syntax"
-version = "0.11.0-rc1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4522484e1ab3c85ba83c3592d4e5d6bb3f994b33223bf8ef175756d14935791d"
+checksum = "367d86bf18f0363146bea1ea76fad19b54458695fdfad5e74ead3ede574b75fe"
 dependencies = [
  "comemo 0.4.0",
  "ecow 0.2.1",
@@ -3562,14 +3562,14 @@ dependencies = [
 
 [[package]]
 name = "typst-timing"
-version = "0.11.0-rc1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba47b6ae83becb7d15a0471ee0ce16d161c75eaf58752ee8aac9e482410a2567"
+checksum = "6b2629933cde6f299c43627b90c83bb006cb906c56cc5dec7324f0a5017d5fd8"
 dependencies = [
  "parking_lot",
  "serde",
  "serde_json",
- "typst-syntax 0.11.0-rc1",
+ "typst-syntax 0.11.0",
 ]
 
 [[package]]
