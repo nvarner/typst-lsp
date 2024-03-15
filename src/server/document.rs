@@ -27,11 +27,11 @@ impl TypstServer {
     }
 
     pub async fn run_export(&self, uri: &Url) -> anyhow::Result<()> {
-        let (Some(document), _) = self.compile_source(uri).await? else {
-            bail!("failed to generate document after compilation")
-        };
-
-        self.export_pdf(uri, document).await?;
+        let (document, _) = self.compile_source(uri).await?;
+        match document {
+            Some(document) => self.export_pdf(uri, document).await?,
+            None => bail!("failed to generate document after compilation"),
+        }
 
         Ok(())
     }
