@@ -109,7 +109,7 @@
         "languages": [
             {
                 "id": "typst",
-                "configuration": "./language-configuration.json",
+                "configuration": "./syntaxes/typst.language-configuration.json",
                 "extensions": [
                     ".typ"
                 ],
@@ -120,6 +120,13 @@
                     "light": "./icons/typst-small.png",
                     "dark": "./icons/typst-small.png"
                 }
+            }
+        ],
+        "grammars": [
+            {
+                "language": "typst",
+                "scopeName": "source.typst",
+                "path": "./syntaxes/typst.tmLanguage.json"
             }
         ],
         "semanticTokenTypes": [
