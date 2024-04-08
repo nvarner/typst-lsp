@@ -1,15 +1,19 @@
 use anyhow::anyhow;
+use futures::future::TryFutureExt;
 use tower_lsp::lsp_types::{Position, Range, Registration, TextEdit, Unregistration};
-use typst::syntax::{FileId, Source, VirtualPath};
+use typst::{
+    foundations::Bytes,
+    syntax::{FileId, Source, VirtualPath},
+};
 use typstfmt_lib::Config;
 
-use crate::workspace::project::Project;
+use crate::workspace::{fs::FsResult, project::Project};
 
 use super::TypstServer;
 
 const FORMATTING_REGISTRATION_ID: &str = "formatting";
 const DOCUMENT_FORMATTING_METHOD_ID: &str = "textDocument/formatting";
-const CONFIG_PATH: &str = "typstfmt-config.toml";
+const CONFIG_PATH: &str = "typstfmt.toml";
 
 pub fn get_formatting_registration() -> Registration {
     Registration {
@@ -59,8 +63,15 @@ async fn get_config(project: &Project) -> anyhow::Result<Config> {
 }
 
 async fn config_from_file(project: &Project) -> Option<anyhow::Result<Config>> {
-    let file_id = FileId::new(None, VirtualPath::new(CONFIG_PATH));
-    let file = project.read_bytes_by_id(file_id).await.ok()?;
+    async fn read_file(project: &Project, path: &str) -> FsResult<Bytes> {
+        let file_id = FileId::new(None, VirtualPath::new(path));
+        project.read_bytes_by_id(file_id).await
+    }
+
+    let file = read_file(project, CONFIG_PATH)
+        .or_else(|_| async { read_file(project, &format!(".{CONFIG_PATH}")).await })
+        .await
+        .ok()?;
     let bytes = file.as_slice();
     Some(config_from_bytes(bytes))
 }
