@@ -348,12 +348,12 @@
         "@typescript-eslint/parser": "^7.2.0",
         "@vscode/vsce": "^2.24.0",
         "esbuild": "^0.20.2",
-        "eslint": "^8.57.0",
+        "eslint": "^9.0.0",
         "eslint-config-prettier": "^9.1.0",
         "eslint-plugin-import": "^2.29.1",
-        "eslint-plugin-n": "^16.6.2",
+        "eslint-plugin-n": "^17.0.0",
         "eslint-plugin-promise": "^6.1.1",
-        "ovsx": "^0.8.3",
+        "ovsx": "^0.9.0",
         "prettier": "^3.2.5",
         "typescript": "^5.4.2"
     }
