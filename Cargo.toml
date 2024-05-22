@@ -27,9 +27,9 @@ native-tls = ["reqwest?/native-tls"]
 fontconfig = ["fontdb/fontconfig"]
 
 [dependencies]
-typst = "0.11.0"
-typst-ide = "0.11.0"
-typst-pdf = "0.11.0"
+typst = "0.11.1"
+typst-ide = "0.11.1"
+typst-pdf = "0.11.1"
 comemo = "0.4"
 
 anyhow = "1.0.71"
