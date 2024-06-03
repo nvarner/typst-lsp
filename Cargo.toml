@@ -42,7 +42,7 @@ chrono = { version = "0.4.24", default-features = false, features = [
 ] }
 dirs = "5.0"
 elsa = "1.10.0"
-fontdb = { version = "0.16.0", default-features = false, features = [
+fontdb = { version = "0.18.0", default-features = false, features = [
     "std",
     "fs",
     "memmap",
@@ -50,8 +50,8 @@ fontdb = { version = "0.16.0", default-features = false, features = [
 futures = "0.3"
 if_chain = "1.0"
 indexmap = "2.1.0"
-internment = "0.7.1"
-itertools = "0.12.0"
+internment = "0.8.3"
+itertools = "0.13.0"
 lazy_static = "1.4.0"
 once_cell = "1.19"
 parking_lot = "0.12.1"
@@ -63,7 +63,7 @@ serde_json = "1.0.94"
 siphasher = "1.0"
 strum = { version = "0.26.1", features = ["derive"] }
 thiserror = "1.0.44"
-tokio = { version = "1.35.1", features = [
+tokio = { version = "1.38.0", features = [
     "macros",
     "rt-multi-thread",
     "io-std",
@@ -81,16 +81,16 @@ walkdir = "2.4"
 typstfmt_lib = { git = "https://github.com/astrale-sharp/typstfmt", tag = "0.2.7" }
 
 # jaeger
-opentelemetry = { version = "0.21.0", optional = true }
-opentelemetry-jaeger = { version = "0.20.0", features = [
+opentelemetry = { version = "0.23.0", optional = true }
+opentelemetry-jaeger = { version = "0.22.0", features = [
     "rt-tokio",
     "isahc_collector_client",
     "collector_client",
 ], optional = true }
-tracing-opentelemetry = { version = "0.22.0", optional = true }
+tracing-opentelemetry = { version = "0.24.0", optional = true }
 
 # remote-packages
-reqwest = { version = "0.11.18", default-features = false, features = [
+reqwest = { version = "0.12.4", default-features = false, features = [
     "stream",
 ], optional = true }
 
