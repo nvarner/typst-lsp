@@ -173,7 +173,8 @@ Run `CocConfig` to edit the settings so that `coc.nvim` could offer functions su
 "languageserver": {
     "typst": {
         "command": "typst-lsp",
-        "filetypes": ["typst"]
+        "filetypes": ["typst"],
+        "settings": {"exportPdf": "onType"}
         }
     }
 }
