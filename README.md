@@ -1,3 +1,7 @@
+# Deprecation notice
+
+This project is no longer maintained. It has been deprecated in favor of [tinymist](https://github.com/Myriad-Dreamin/tinymist).
+
 # Typst LSP
 
 A language server for [Typst](https://typst.app/).
